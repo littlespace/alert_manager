@@ -1,0 +1,43 @@
+[agent]
+  api_addr = ":8181"
+  default_output = "influx"
+  stats_export_interval = "60s"
+
+[db]
+  addr = ":5432"
+  username = "mgaitonde"
+  password = "roblox123"
+  ## database name to use - needs to be present already
+  db_name = "alert_manager"
+
+[reporter]
+  url = "http://localhost:8186/write"
+  flush_interval = "10s"
+
+[listeners.webhook]
+  listen_addr = ":8282"
+  ## Enable http basic auth for webhook listener	
+  use_auth = false
+  ## username, password for http basic auth
+  username = ""
+  password = ""
+
+[transforms.netbox]
+  addr = "https://netbox.roblox.local"
+  token = "0efe5a223ac55733ae1e6b3757640e8445ea4d3f"
+  priority = 1 # lower comes first
+  register = "Neteng\\s.*"
+
+[outputs.influx]
+  measurement = "alert_manager_alerts"
+
+[outputs.slack]
+  url = "https://hooks.slack.com/services/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"
+  recipient = "#neteng-test-alert"
+  upload = false
+  token = "xoxb-8109473847-414073848160-p3o9I2HC22sSa9WsSSxDcU9r"
+
+#
+#[outputs.victorops]
+#  url = "https://alert.victorops.com/integrations/generic/20131114/alert/f70a9d4d-fff6-4962-bd25-fadcad0c985c/ops-networking"
+#  auto_resolve = true
