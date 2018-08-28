@@ -18,7 +18,7 @@ type DB struct {
 	*sqlx.DB
 }
 
-func NewDB(addr, username, password, dbName, schemaFile string) *DB {
+func NewDB(addr, username, password, dbName, schemaFile string, timeout int) *DB {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		glog.Fatalf("Invalid DB addr: %s", addr)
@@ -26,7 +26,7 @@ func NewDB(addr, username, password, dbName, schemaFile string) *DB {
 	if host == "" {
 		host = "localhost"
 	}
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, username, password, dbName)
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s connect_timeout=%d sslmode=disable", host, port, username, password, dbName, timeout)
 	db, err := sqlx.Open("postgres", connStr)
 	if err != nil {
 		glog.Fatalf("Can open DB: %v", err)
@@ -50,6 +50,9 @@ func NewTx(db *DB) *Tx {
 
 func (tx *Tx) InQuery(query string, arg ...interface{}) error {
 	query, args, err := sqlx.In(query, arg...)
+	if err != nil {
+		return err
+	}
 	query = tx.Rebind(query)
 	_, err = tx.Exec(query, args...)
 	return err

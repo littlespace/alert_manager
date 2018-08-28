@@ -18,6 +18,7 @@ type AgentConfig struct {
 type DbConfig struct {
 	Addr, Username, Password string
 	DbName                   string `mapstructure:"db_name"`
+	Timeout                  int
 }
 
 type Config struct {

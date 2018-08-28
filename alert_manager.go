@@ -37,7 +37,7 @@ func AddOutput(o Output) {
 }
 
 func Run(config *Config) {
-	db := models.NewDB(config.Db.Addr, config.Db.Username, config.Db.Password, config.Db.DbName, *schemaFile)
+	db := models.NewDB(config.Db.Addr, config.Db.Username, config.Db.Password, config.Db.DbName, *schemaFile, config.Db.Timeout)
 	defer db.Close()
 	ah.DefaultOutput = config.Agent.DefaultOutput
 	handler := ah.NewHandler(db)

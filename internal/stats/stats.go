@@ -12,7 +12,7 @@ type statType int
 
 const measurement = "alert_manager_stats"
 
-// counter is always incremented and reset to 0 at the end of the export interval
+// counter is always incremented
 type Counter struct {
 	name  string
 	value int64
@@ -20,7 +20,7 @@ type Counter struct {
 	sync.Mutex
 }
 
-// gauge is any arbitrary value and does not reset
+// gauge is any arbitrary value
 type Gauge struct {
 	name   string
 	values map[time.Time]int64
@@ -62,6 +62,8 @@ func (c *Counter) Reset() {
 }
 
 func (c *Counter) toDatapoint() *reporting.Datapoint {
+	c.Lock()
+	defer c.Unlock()
 	return &reporting.Datapoint{
 		Measurement: measurement,
 		Fields:      map[string]interface{}{c.name: c.value},
@@ -76,6 +78,8 @@ func (g *Gauge) Set(value int64) {
 }
 
 func (g *Gauge) toDatapoint() []*reporting.Datapoint {
+	g.Lock()
+	defer g.Unlock()
 	dp := []*reporting.Datapoint{}
 	for ts, v := range g.values {
 		dp = append(dp, &reporting.Datapoint{
@@ -97,13 +101,14 @@ func StartExport(ctx context.Context, interval time.Duration) {
 		case <-t.C:
 			for _, c := range allCounters {
 				reporting.DataChan <- c.toDatapoint()
-				c.Reset()
 			}
 			for _, g := range allGauges {
 				for _, dp := range g.toDatapoint() {
 					reporting.DataChan <- dp
 				}
+				g.Lock()
 				g.values = make(map[time.Time]int64)
+				g.Unlock()
 			}
 		case <-ctx.Done():
 			return

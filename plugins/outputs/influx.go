@@ -4,12 +4,12 @@ import (
 	"context"
 	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
-	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/reporting"
 	"time"
 )
 
-func (n *InfluxNotifier) parseFromAlert(alert *models.Alert) *reporting.Datapoint {
+func (n *InfluxNotifier) parseFromEvent(event *ah.AlertEvent) *reporting.Datapoint {
+	alert := event.Alert
 	tags := map[string]string{
 		"name":     alert.Name,
 		"entity":   alert.Entity,
@@ -26,14 +26,14 @@ func (n *InfluxNotifier) parseFromAlert(alert *models.Alert) *reporting.Datapoin
 	if alert.Team.Valid {
 		tags["team"] = alert.Team.String
 	}
-	if alert.AggregatorId.Valid {
-		tags["is_aggregated"] = "true"
+	if alert.IsAggregate {
+		tags["is_aggregate"] = "true"
 	} else {
-		tags["is_aggregated"] = "false"
+		tags["is_aggregate"] = "false"
 	}
 	fields := make(map[string]interface{})
-	switch alert.Status.String() {
-	case "ACTIVE":
+	switch event.Type {
+	case ah.EventType_ACTIVE:
 		fields["num_active"] = 1
 		switch alert.Severity.String() {
 		case "CRITICAL":
@@ -43,10 +43,16 @@ func (n *InfluxNotifier) parseFromAlert(alert *models.Alert) *reporting.Datapoin
 		case "INFO":
 			fields["num_info"] = 1
 		}
-	case "SUPPRESSED":
+	case ah.EventType_SUPPRESSED:
 		fields["num_suppressed"] = 1
-	case "EXPIRED":
+	case ah.EventType_EXPIRED:
 		fields["num_expired"] = 1
+	case ah.EventType_CLEARED:
+		fields["num_cleared"] = 1
+	case ah.EventType_ACKD:
+		fields["num_ackd"] = 1
+	case ah.EventType_ESCALATED:
+		fields["num_escalated"] = 1
 	}
 	return &reporting.Datapoint{
 		Measurement: n.Measurement,
@@ -74,7 +80,7 @@ func (n *InfluxNotifier) Start(ctx context.Context) {
 	for {
 		select {
 		case event := <-n.Notif:
-			d := n.parseFromAlert(event.Alert)
+			d := n.parseFromEvent(event)
 			reporting.DataChan <- d
 		case <-ctx.Done():
 			return

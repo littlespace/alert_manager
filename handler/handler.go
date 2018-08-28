@@ -150,10 +150,6 @@ func (h *AlertHandler) Start(ctx context.Context) {
 						glog.V(2).Infof("Not auto-clearing alert %d ", existingAlert.Id)
 						return nil
 					}
-					if existingAlert.Status == models.Status_CLEARED {
-						glog.V(2).Infof("Existing Alert %d is not Active", existingAlert.Id)
-						return nil
-					}
 					err = h.Clear(ctx, tx, existingAlert.Id)
 					if err != nil {
 						return fmt.Errorf("Cant clear existing alert %d: %v", existingAlert.Id, err)
@@ -179,7 +175,11 @@ func (h *AlertHandler) checkExistingActive(tx *models.Tx, alert *models.Alert) b
 		return false
 	}
 	// extend the expiry time if alert already exists
-	_, err = tx.Exec(models.QueryUpdateLastActive, models.MyTime{time.Now()}, existingAlert.Id)
+	toUpdate := []int64{existingAlert.Id}
+	if existingAlert.AggregatorId.Valid {
+		toUpdate = append(toUpdate, existingAlert.AggregatorId.Int64)
+	}
+	err = tx.InQuery(models.QueryUpdateLastActive, models.MyTime{time.Now()}, toUpdate)
 	if err != nil {
 		glog.Errorf("Failed update last active: %v", err)
 	}
@@ -207,6 +207,7 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 
 func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType) {
 	var isProcessed bool
+	gMu.Lock()
 	for alertName, recvChans := range Processors {
 		if match, _ := regexp.MatchString(alertName, alert.Name); match {
 			isProcessed = true
@@ -215,6 +216,7 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType)
 			}
 		}
 	}
+	gMu.Unlock()
 	// if the alert is not subscribed to by any processor, send it directly to the outputs
 	if !isProcessed {
 		event := &AlertEvent{Alert: alert, Type: eventType}
@@ -241,6 +243,9 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 					return err
 				}
 				for _, ex := range expired {
+					if ex.IsAggregate {
+						continue
+					}
 					glog.V(2).Infof("Alert ID %d has now expired", ex.Id)
 					ex.Status = models.Status_EXPIRED
 					_, err := tx.Exec(models.QueryUpdateStatusById, ex.Status, ex.Id)
@@ -367,7 +372,6 @@ func (h *AlertHandler) Suppress(ctx context.Context, tx *models.Tx, alertID int6
 	return err
 }
 
-// Clear clears out an alert based on manual action
 func (h *AlertHandler) Clear(ctx context.Context, tx *models.Tx, alertID int64) error {
 	alert := &models.Alert{}
 	err := tx.Get(alert, models.QuerySelectById, alertID)

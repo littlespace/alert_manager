@@ -85,12 +85,7 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 	if err != nil {
 		return err
 	}
-	metaData, err := json.Marshal(m)
-	if err != nil {
-		return err
-	}
-	alert.AddMeta(string(metaData))
-	return nil
+	return alert.AddMeta(m)
 }
 
 func init() {

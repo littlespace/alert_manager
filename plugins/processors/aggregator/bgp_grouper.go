@@ -3,7 +3,6 @@ package aggregator
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
@@ -12,6 +11,23 @@ import (
 )
 
 const ruleName = "bgp_session"
+
+type BgpPeer struct {
+	Type            string `json:"bgp_type"`
+	LocalIp         string `json:"local_ip"`
+	LocalDevice     string `json:"local_device"`
+	LocalInterface  string `json:"local_interface"`
+	RemoteIp        string `json:"remote_ip"`
+	RemoteDevice    string `json:"remote_device"`
+	RemoteInterface string `json:"remote_interface"`
+	AlertId         int64  `json:",omitempty"`
+}
+
+// grouperFunc defines the condition for two bgp peers to be considered same to be grouped together
+var grouperFunc = func(i, j interface{}) bool {
+	return (i.(BgpPeer).LocalDevice == j.(BgpPeer).RemoteDevice && i.(BgpPeer).RemoteDevice == j.(BgpPeer).LocalDevice) ||
+		(i.(BgpPeer).LocalDevice == j.(BgpPeer).LocalDevice && i.(BgpPeer).RemoteDevice == j.(BgpPeer).RemoteDevice)
+}
 
 type bgpGrouper struct {
 	ruleConfig ah.AggregationRuleConfig
@@ -26,6 +42,10 @@ func (g *bgpGrouper) setRule(rule ah.AggregationRuleConfig) {
 	g.ruleConfig = rule
 }
 
+func (g *bgpGrouper) getRule() ah.AggregationRuleConfig {
+	return g.ruleConfig
+}
+
 func (g *bgpGrouper) addToBuf(a *models.Alert) {
 	g.Lock()
 	defer g.Unlock()
@@ -33,10 +53,12 @@ func (g *bgpGrouper) addToBuf(a *models.Alert) {
 }
 
 func (g *bgpGrouper) addAlert(a *models.Alert) {
+	g.Lock()
+	defer g.Unlock()
 	g.recvChan <- a
 }
 
-func (g *bgpGrouper) aggAlert(ctx context.Context, tx *models.Tx, group []BgpPeer) (*models.Alert, error) {
+func (g *bgpGrouper) origAlerts(group []BgpPeer) []*models.Alert {
 	var orig []*models.Alert
 	for _, p := range group {
 		for _, a := range g.recvBuf {
@@ -46,75 +68,40 @@ func (g *bgpGrouper) aggAlert(ctx context.Context, tx *models.Tx, group []BgpPee
 			}
 		}
 	}
-	peer := group[0] // alert only on the first peer in the group
-	desc := fmt.Sprintf("BGP session down: %s (%s) <-> %s (%s)",
-		peer.LocalDevice, peer.LocalIp, peer.RemoteDevice, peer.RemoteIp)
-	agg := &models.Alert{
-		Name:        g.ruleConfig.Alert.Name,
-		Description: desc,
-		Source:      g.ruleConfig.Alert.Config.Source,
-		Severity:    models.SevMap[g.ruleConfig.Alert.Config.Severity],
-		StartTime:   orig[0].StartTime,
-		LastActive:  orig[0].LastActive,
-		ExternalId:  orig[0].ExternalId,
-	}
-	agg.AddDevice(peer.LocalDevice)
-	agg.AddTags(g.ruleConfig.Alert.Config.Tags...)
-	if g.ruleConfig.Alert.Config.AutoExpire != nil && *g.ruleConfig.Alert.Config.AutoExpire {
-		agg.SetAutoExpire(g.ruleConfig.Alert.Config.ExpireAfter)
-	}
-	if g.ruleConfig.Alert.Config.AutoClear != nil {
-		agg.AutoClear = *g.ruleConfig.Alert.Config.AutoClear
-	}
-	var newId int64
-	stmt, err := tx.PrepareNamed(models.QueryInsertNew)
-	err = stmt.Get(&newId, agg)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to insert new alert: %v", err)
-	}
-	agg.Id = newId
-	// update the agg IDs of all the original alerts
-	var origIds []int64
-	for _, o := range orig {
-		origIds = append(origIds, o.Id)
-	}
-	err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to update agg Ids: %v", err)
-	}
-	return agg, nil
+	return orig
 }
 
 func (g *bgpGrouper) doGrouping(ctx context.Context) {
 	// first group by peer endpoints. Assume the alert metadata contains the peer-device
 	g.Lock()
 	defer g.Unlock()
-	var peers []BgpPeer
+	glog.V(4).Infof("Bgp Agg: Now grouping %d alerts", len(g.recvBuf))
+	var peers []interface{}
 	for _, alert := range g.recvBuf {
 		p := BgpPeer{}
 		if err := json.Unmarshal([]byte(alert.Metadata.String), &p); err != nil {
-			glog.Errorf("Unable to unmarshal metadata: %v", err)
+			glog.Errorf("Bgp Agg: Unable to unmarshal metadata: %v", err)
 			continue
 		}
 		p.AlertId = alert.Id
 		peers = append(peers, p)
 	}
-	groups := groupBySession(peers)
+
+	groups := group(grouperFunc, peers)
 	//TODO : group by device
 
 	// create new aggregated alerts
 	tx := models.NewTx(g.db)
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
 		for _, group := range groups {
-			aggAlert, err := g.aggAlert(ctx, tx, group)
+			var b []BgpPeer
+			for _, gg := range group {
+				b = append(b, gg.(BgpPeer))
+			}
+			err := aggAlert(ctx, tx, g, g.origAlerts(b))
 			if err != nil {
 				return err
 			}
-			// send the aggAlert to the right output
-			ah.NotifyOutputs(
-				&ah.AlertEvent{Alert: aggAlert, Type: ah.EventType_ACTIVE},
-				g.ruleConfig.Alert.Config.Outputs,
-			)
 		}
 		return nil
 	})
@@ -126,19 +113,15 @@ func (g *bgpGrouper) doGrouping(ctx context.Context) {
 
 func (g *bgpGrouper) start(ctx context.Context, db *models.DB) {
 	g.db = db
-	g.recvChan = make(chan *models.Alert)
-	var start time.Time
 	for {
 		alert := <-g.recvChan
 		if len(g.recvBuf) == 0 {
-			start = time.Now()
+			go func() {
+				<-time.After(g.ruleConfig.Window)
+				g.doGrouping(ctx)
+			}()
 		}
 		g.addToBuf(alert)
-		if time.Now().Sub(start) >= g.ruleConfig.Window {
-			glog.V(4).Infof("Bgp Agg: Now grouping %d alerts", len(g.recvBuf))
-			g.doGrouping(ctx)
-			start = time.Time{}
-		}
 	}
 }
 

@@ -12,36 +12,37 @@ var (
 	QueryInsertNew = `INSERT INTO 
     alerts (
       name, description, entity, external_id, source, device, owner, team, tags, start_time, last_active,
-      agg_id, auto_expire, auto_clear, expire_after, severity, status, metadata, scope
+      agg_id, auto_expire, auto_clear, expire_after, severity, status, metadata, scope, is_aggregate
     ) VALUES (
       :name, :description, :entity, :external_id, :source, :device, :owner, :team, :tags,
       :start_time, :last_active, :agg_id, :auto_expire, :auto_clear, :expire_after,
-      :severity, :status, :metadata, :scope
+      :severity, :status, :metadata, :scope, :is_aggregate
     ) RETURNING id`
 
 	QueryUpdateAlertById = `UPDATE alerts SET
     name=:name, description=:description, entity=:entity, external_id=:external_id, source=:source,
     device=:device, owner=:owner, team=:team, tags=:tags, start_time=:start_time, last_active=:last_active,
     agg_id=:agg_id, auto_expire=:auto_expire, auto_clear=:auto_clear, expire_after=:expire_after,
-    severity=:severity, status=:status, metadata=:metadata, scope=:scope
+    severity=:severity, status=:status, metadata=:metadata, scope=:scope, is_aggregate=:is_aggregate
       WHERE id=:id`
 
 	QueryUpdateOwnerById  = "UPDATE alerts SET owner=$1, team=$2 WHERE id=$3"
 	QueryUpdateStatusById = "UPDATE alerts SET status=$1 WHERE id=$2"
 	QueryUpdateSevById    = "UPDATE alerts SET severity=$1 WHERE id=$2"
-	QueryUpdateLastActive = "UPDATE alerts SET last_active=$1 WHERE id=$2"
-	QueryUpdateAggId      = "UPDATE alerts SET agg_id=$1 WHERE id in ($2)"
+	QueryUpdateLastActive = "UPDATE alerts SET last_active=? WHERE id IN (?)"
+	QueryUpdateAggId      = "UPDATE alerts SET agg_id=? WHERE id IN (?)"
 
 	querySelect             = "SELECT * from alerts"
 	QuerySelectByName       = querySelect + " WHERE name=$1 and status=1 FOR UPDATE"
 	QuerySelectById         = querySelect + " WHERE id=$1 FOR UPDATE"
-	QuerySelectByStatus     = querySelect + " WHERE status IN ($1) FOR UPDATE"
+	QuerySelectByStatus     = querySelect + " WHERE status IN (?) FOR UPDATE"
 	QuerySelectNoOwner      = querySelect + " WHERE owner is NULL AND status=1 FOR UPDATE"
 	QuerySelectByNameEntity = querySelect + " WHERE name=$1 AND entity=$2 AND status=1 FOR UPDATE"
 	QuerySelectByDevice     = querySelect + " WHERE name=$1 AND entity=$2 AND device=$3 AND status=1 FOR UPDATE"
 	QuerySelectTags         = "SELECT tags from alerts WHERE id=$1"
 	QuerySelectExpired      = querySelect + ` WHERE
     status=1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after`
+	QuerySelectAggregated = querySelect + " WHERE agg_id=$1 FOR UPDATE"
 )
 
 type AlertSeverity int
@@ -99,22 +100,14 @@ type Alert struct {
 	AutoExpire   bool           `db:"auto_expire"`
 	AutoClear    bool           `db:"auto_clear"`
 	AggregatorId sql.NullInt64  `db:"agg_id"`
+	IsAggregate  bool           `db:"is_aggregate"`
 	ExpireAfter  sql.NullInt64  `db:"expire_after"`
 	Severity     AlertSeverity
 	Status       AlertStatus
 	Metadata     sql.NullString // json encoded metadata
 }
 
-func NewAlert(name, description, entity, source, scope string, extId string, startTime time.Time, sev string) *Alert {
-	var severity AlertSeverity
-	switch sev {
-	case "CRITICAL":
-		severity = Sev_CRITICAL
-	case "WARN":
-		severity = Sev_WARN
-	case "INFO":
-		severity = Sev_INFO
-	}
+func NewAlert(name, description, entity, source, scope string, extId string, startTime time.Time, sev string, isAgg bool) *Alert {
 	return &Alert{
 		Status:      Status_ACTIVE,
 		ExternalId:  extId,
@@ -125,9 +118,10 @@ func NewAlert(name, description, entity, source, scope string, extId string, sta
 		Scope:       scope,
 		StartTime:   MyTime{startTime},
 		LastActive:  MyTime{time.Now()},
-		Severity:    severity,
+		Severity:    SevMap[sev],
 		AutoClear:   true,
 		AutoExpire:  false,
+		IsAggregate: isAgg,
 	}
 }
 
@@ -192,4 +186,21 @@ func (a Alerts) AnyStatusIn(status AlertStatus) bool {
 		}
 	}
 	return false
+}
+
+func (a Alerts) AllStatusIn(status AlertStatus) bool {
+	for _, alert := range a {
+		if alert.Status != status {
+			return false
+		}
+	}
+	return true
+}
+
+func (a Alerts) AllCleared() bool {
+	return a.AllStatusIn(Status_CLEARED)
+}
+
+func (a Alerts) AllExpired() bool {
+	return a.AllStatusIn(Status_EXPIRED)
 }

@@ -8,3 +8,7 @@ debug:
 
 test:
 	go test -race -short -failfast ./...
+
+linux:
+	dep ensure
+	GOOS=linux GOARCH=amd64 go build -o alert_manager_linux ./cmd/alert_manager

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS alerts (
   agg_id INT,
   auto_expire BOOLEAN NOT NULL,
   auto_clear BOOLEAN NOT NULL,
+  is_aggregate BOOLEAN NOT NULL,
   expire_after INT,
   severity SMALLINT NOT NULL,
   status SMALLINT NOT NULL,

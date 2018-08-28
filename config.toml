@@ -1,7 +1,7 @@
 [agent]
   api_addr = ":8181"
   default_output = "influx"
-  stats_export_interval = "60s"
+  stats_export_interval = "120s"
 
 [db]
   addr = ":5432"
@@ -9,9 +9,12 @@
   password = "roblox123"
   ## database name to use - needs to be present already
   db_name = "alert_manager"
+  # connect timeout in seconds
+  timeout = 5
 
 [reporter]
-  url = "http://localhost:8186/write"
+  #url = "http://localhost:8186/write"
+  url = "stdout"
   flush_interval = "10s"
 
 [listeners.webhook]

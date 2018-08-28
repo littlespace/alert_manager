@@ -64,7 +64,7 @@ func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent,
 		scope = defined.Config.Scope
 	}
 	event := &ah.AlertEvent{}
-	event.Alert = models.NewAlert(d.Name, d.Details, d.Entity, d.Source, scope, d.Id, d.Time, d.Level)
+	event.Alert = models.NewAlert(d.Name, d.Details, d.Entity, d.Source, scope, d.Id, d.Time, d.Level, false)
 	event.Alert.AddDevice(d.Device)
 	switch d.Status {
 	case Status_CLEARED:
@@ -108,6 +108,10 @@ func (k *WebHookListener) basicAuth(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 	}
+}
+
+func (k WebHookListener) pingHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "I-AM-ALIVE")
 }
 
 func (k WebHookListener) httpHandler(w http.ResponseWriter, r *http.Request) {
@@ -176,6 +180,7 @@ func (k *WebHookListener) Uri() string {
 
 func (k WebHookListener) Listen(ctx context.Context) {
 	http.HandleFunc("/listener/alert/", k.basicAuth(k.httpHandler))
+	http.HandleFunc("/listener/ping/", k.pingHandler)
 	srv := &http.Server{Addr: k.ListenAddr}
 	idleConnsClosed := make(chan struct{})
 	go func() {

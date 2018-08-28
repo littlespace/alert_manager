@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/listener"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -13,9 +12,9 @@ import (
 type observiumData struct {
 	State             string `json:"alert_state"`
 	Url               string `json:"alert_url"`
-	Id                int    `json"alert_id"`
+	Id                string `json:"alert_id"`
 	Message           string `json:"alert_message"`
-	Timestamp         string
+	Timestamp         string `json:"alert_timestamp_rfc3339"`
 	EntityName        string `json:"entity_name"`
 	EntityDescription string `json:"entity_description"`
 	DeviceName        string `json:"device_hostname"`
@@ -37,16 +36,15 @@ func (p *ObserviumParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 		glog.Errorf("Unable to decode json: %v", err)
 		return nil, err
 	}
-	timelayout := "2006-01-02 04:05:22"
-	t, err := time.Parse(timelayout, d.Timestamp)
+	t, err := time.Parse(time.RFC3339, d.Timestamp)
 	if err != nil {
 		glog.Errorf("Unable to parse time string , using current time")
 		t = time.Now()
 	}
 	l := &listener.WebHookAlertData{
-		Id:      strconv.FormatInt(int64(d.Id), 10),
-		Name:    d.Title,
-		Details: d.Message + fmt.Sprintf(" Url: %s", d.Url),
+		Id:      d.Id,
+		Name:    d.Message,
+		Details: d.Title + fmt.Sprintf(" Url: %s", d.Url),
 		Device:  d.DeviceName,
 		Entity:  d.EntityName,
 		Time:    t,

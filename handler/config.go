@@ -29,27 +29,14 @@ type AlertConfig struct {
 }
 
 type AggregationRuleConfig struct {
-	Name         string
-	Groupby      []string
-	Window       time.Duration
-	SendOriginal bool `yaml:"send_original"`
-	Alert        AlertConfig
-}
-
-type TransformConfig struct {
-	Name     string
-	Priority int
-	Register string
-	Metadata []struct {
-		Scope  string
-		Fields []string
-	}
+	Name   string
+	Window time.Duration
+	Alert  AlertConfig
 }
 
 type configs struct {
 	AlertConfig            []AlertConfig           `yaml:"alert_config"`
 	AggregationRuleConfigs []AggregationRuleConfig `yaml:"aggregation_rules"`
-	Transforms             []TransformConfig
 }
 
 func readConfig(file string) (configs, error) {
@@ -71,7 +58,6 @@ type ConfigHandler struct {
 	file         string
 	alertConfigs map[string]AlertConfig
 	aggRules     map[string]AggregationRuleConfig
-	transforms   map[string]TransformConfig
 	sync.Mutex
 }
 
@@ -80,7 +66,6 @@ func NewConfigHandler(file string) *ConfigHandler {
 		file:         file,
 		alertConfigs: make(map[string]AlertConfig),
 		aggRules:     make(map[string]AggregationRuleConfig),
-		transforms:   make(map[string]TransformConfig),
 	}
 	c.LoadConfig()
 	return c
@@ -94,17 +79,14 @@ func (c *ConfigHandler) LoadConfig() {
 	glog.Infof("Loading configs from file: %s", c.file)
 	configs, err := readConfig(c.file)
 	if err != nil {
-		glog.Errorf("Unable to load config file : %v", err)
-		return
+		glog.Fatalf("Unable to load config file : %v", err)
 	}
 	for _, config := range configs.AlertConfig {
 		c.alertConfigs[config.Name] = config
 	}
 	for _, rule := range configs.AggregationRuleConfigs {
 		c.aggRules[rule.Name] = rule
-	}
-	for _, xform := range configs.Transforms {
-		c.transforms[xform.Name] = xform
+		c.alertConfigs[rule.Alert.Name] = rule.Alert
 	}
 }
 
@@ -140,11 +122,4 @@ func (c *ConfigHandler) GetAggregationRuleConfig(name string) (AggregationRuleCo
 	defer c.Unlock()
 	rule, ok := c.aggRules[name]
 	return rule, ok
-}
-
-func (c *ConfigHandler) GetTransformConfig(name string) (TransformConfig, bool) {
-	c.Lock()
-	defer c.Unlock()
-	xform, ok := c.transforms[name]
-	return xform, ok
 }
