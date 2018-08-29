@@ -124,7 +124,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 					glog.V(2).Infof("Received alert with ID: %v", alert.Id)
 
 					// check if alert matches an existing suppression rule
-					filters := map[string]string{"Entity": alert.Entity}
+					filters := map[string]string{"Entity": alert.Entity, "Alert": alert.Name}
 					if alert.Device.Valid {
 						filters["Device"] = alert.Device.String
 					}
@@ -218,7 +218,7 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType)
 	}
 	gMu.Unlock()
 	// if the alert is not subscribed to by any processor, send it directly to the outputs
-	if !isProcessed {
+	if !isProcessed && eventType != EventType_SUPPRESSED {
 		event := &AlertEvent{Alert: alert, Type: eventType}
 		if alertConfig, ok := Config.GetAlertConfig(alert.Name); ok {
 			NotifyOutputs(event, alertConfig.Config.Outputs)
@@ -244,6 +244,7 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 				}
 				for _, ex := range expired {
 					if ex.IsAggregate {
+						// aggregate expiry handled by aggregators
 						continue
 					}
 					glog.V(2).Infof("Alert ID %d has now expired", ex.Id)

@@ -42,9 +42,9 @@ type WebHookListener struct {
 	UseAuth            bool   `mapstructure:"use_auth"`
 	Username, Password string
 
-	statRequestsRecvd *stats.Counter
-	statRequestsError *stats.Counter
-	statsAuthFailures *stats.Counter
+	statRequestsRecvd stats.Stat
+	statRequestsError stats.Stat
+	statsAuthFailures stats.Stat
 }
 
 func NewWebHookListener() *WebHookListener {
@@ -118,6 +118,10 @@ func (k WebHookListener) httpHandler(w http.ResponseWriter, r *http.Request) {
 	k.statRequestsRecvd.Add(1)
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.Body == nil {
+		http.Error(w, "Empty body", http.StatusInternalServerError)
 		return
 	}
 	defer r.Body.Close()

@@ -1,0 +1,16 @@
+{
+  "title": "My First Test Alert",
+  "ruleId": 1,
+  "ruleName": "Neteng BB Input Errors Test",
+  "ruleUrl": "http://url.to.grafana/db/dashboard/my_dashboard?panelId=2",
+  "state": "ok",
+  "imageUrl": "http://s3.image.url",
+  "message": "A BB Link is experiencing > 1000pps input errors over 15 minutes!",
+  "evalMatches": [
+    {
+      "metric": "input_errors",
+      "tags": {"device": "br1-sjc1", "interface": "et-0/0/3:0"},
+      "value": 1222
+    }
+  ]
+}

@@ -14,8 +14,8 @@ import (
 
 // global flags
 var (
-	alertConfig = flag.String("alert-config", "handler/config.yaml", "full path to alert defintion file")
-	schemaFile  = flag.String("schema", "internal/models/schema.sql", "full path to DB schema file")
+	alertConfig = flag.String("alert-config", "alert_config.yaml", "full path to alert defintion file")
+	schemaFile  = flag.String("schema", "schema.sql", "full path to DB schema file")
 )
 
 var (

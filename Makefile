@@ -7,7 +7,8 @@ debug:
 	go build -race ./cmd/alert_manager
 
 test:
-	go test -race -short -failfast ./...
+	dep ensure
+	go test -v -race -short -failfast ./...
 
 linux:
 	dep ensure

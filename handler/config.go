@@ -4,6 +4,7 @@ import (
 	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -40,7 +41,8 @@ type configs struct {
 }
 
 func readConfig(file string) (configs, error) {
-	data, err := ioutil.ReadFile(file)
+	absPath, _ := filepath.Abs(file)
+	data, err := ioutil.ReadFile(absPath)
 	if err != nil {
 		glog.Errorf("Unable to read config file: %v", err)
 		return configs{}, err

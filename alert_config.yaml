@@ -94,7 +94,7 @@ aggregation_rules:
             send_to: [ victorops ] 
 
   - name: bgp_session
-    window: 1m
+    window: 5m
     alert:
       name: Neteng_Aggregated BGP Down
       config:

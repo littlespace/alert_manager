@@ -12,17 +12,6 @@ import (
 
 const ruleName = "bgp_session"
 
-type BgpPeer struct {
-	Type            string `json:"bgp_type"`
-	LocalIp         string `json:"local_ip"`
-	LocalDevice     string `json:"local_device"`
-	LocalInterface  string `json:"local_interface"`
-	RemoteIp        string `json:"remote_ip"`
-	RemoteDevice    string `json:"remote_device"`
-	RemoteInterface string `json:"remote_interface"`
-	AlertId         int64  `json:",omitempty"`
-}
-
 // grouperFunc defines the condition for two bgp peers to be considered same to be grouped together
 var grouperFunc = func(i, j interface{}) bool {
 	return (i.(BgpPeer).LocalDevice == j.(BgpPeer).RemoteDevice && i.(BgpPeer).RemoteDevice == j.(BgpPeer).LocalDevice) ||

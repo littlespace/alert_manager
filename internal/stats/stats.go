@@ -12,6 +12,12 @@ type statType int
 
 const measurement = "alert_manager_stats"
 
+type Stat interface {
+	Add(Value int64)
+	Reset()
+	Set(value int64)
+}
+
 // counter is always incremented
 type Counter struct {
 	name  string
@@ -61,6 +67,10 @@ func (c *Counter) Reset() {
 	c.value = 0
 }
 
+func (c *Counter) Set(value int64) {
+	glog.Errorf("CAnnot set a counter type")
+}
+
 func (c *Counter) toDatapoint() *reporting.Datapoint {
 	c.Lock()
 	defer c.Unlock()
@@ -75,6 +85,16 @@ func (g *Gauge) Set(value int64) {
 	g.Lock()
 	defer g.Unlock()
 	g.values[time.Now()] = value
+}
+
+func (g *Gauge) Add(value int64) {
+	glog.Errorf("Cannot add a gauge type")
+}
+
+func (g *Gauge) Reset() {
+	g.Lock()
+	defer g.Unlock()
+	g.values = make(map[time.Time]int64)
 }
 
 func (g *Gauge) toDatapoint() []*reporting.Datapoint {
@@ -106,9 +126,7 @@ func StartExport(ctx context.Context, interval time.Duration) {
 				for _, dp := range g.toDatapoint() {
 					reporting.DataChan <- dp
 				}
-				g.Lock()
-				g.values = make(map[time.Time]int64)
-				g.Unlock()
+				g.Reset()
 			}
 		case <-ctx.Done():
 			return

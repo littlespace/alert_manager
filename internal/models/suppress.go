@@ -94,7 +94,7 @@ func QueryParams(params map[string]string) string {
 		query = query + fmt.Sprintf("%s=%s", field, value)
 		i++
 		if i != len(fields) {
-			query = query + " AND "
+			query = query + " OR "
 		}
 	}
 	return QuerySelectActive + query
@@ -110,17 +110,17 @@ func (s SuppRules) Find(params map[string]string) (SuppressionRule, bool) {
 			case "Device":
 				if rule.Device.Valid {
 					m, _ := regexp.MatchString(v, rule.Device.String)
-					match = match && m
+					match = match || m
 				}
 			case "Entity":
 				if rule.Entity.Valid {
 					m, _ := regexp.MatchString(v, rule.Entity.String)
-					match = match && m
+					match = match || m
 				}
 			case "Alert":
 				if rule.AlertName.Valid {
 					m, _ := regexp.MatchString(v, rule.AlertName.String)
-					match = match && m
+					match = match || m
 				}
 			}
 		}
