@@ -69,8 +69,6 @@ func TestAlertHandlerBadRequest(t *testing.T) {
 
 func TestAlertHandlerParsing(t *testing.T) {
 	lis := &WebHookListener{statRequestsRecvd: &tu.MockStat{}, statRequestsError: &tu.MockStat{}}
-	mockChan := make(chan *ah.AlertEvent)
-	ah.ListenChan = mockChan
 
 	req, err := http.NewRequest("POST", "/listener/alert/?source=mocked", bytes.NewReader([]byte("blah")))
 	if err != nil {
@@ -81,7 +79,7 @@ func TestAlertHandlerParsing(t *testing.T) {
 
 	go handler.ServeHTTP(rr, req)
 
-	event := <-mockChan
+	event := <-ah.ListenChan
 	assert.Equal(t, event.Type, ah.EventType_ACTIVE)
 	assert.Equal(t, event.Alert.Name, "Test Alert")
 	assert.Equal(t, event.Alert.Description, "Test Alert 123")

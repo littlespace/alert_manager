@@ -30,14 +30,16 @@ func group(f groupingFunc, items []interface{}) [][]interface{} {
 	return groups
 }
 
-// aggAlert generates new aggregated alerts from originals
-func aggAlert(ctx context.Context, tx *models.Tx, g grouper, orig []*models.Alert) error {
-	rule := g.getRule()
+type alertGroup struct {
+	groupedAlerts []*models.Alert
+	grouper       grouper
+}
+
+func (ag alertGroup) aggAlert() *models.Alert {
+	rule := ag.grouper.getRule()
 	desc := ""
-	var origIds []int64
-	for _, o := range orig {
-		origIds = append(origIds, o.Id)
-		// TODO send notif for all originals
+	for _, o := range ag.groupedAlerts {
+		// TODO send notif for all groupedAlerts
 		desc += o.Description + "\n"
 	}
 	agg := models.NewAlert(
@@ -46,8 +48,8 @@ func aggAlert(ctx context.Context, tx *models.Tx, g grouper, orig []*models.Aler
 		"Various",
 		rule.Alert.Config.Source,
 		"aggregated",
-		orig[0].ExternalId,
-		orig[0].StartTime.Time,
+		ag.groupedAlerts[0].ExternalId,
+		ag.groupedAlerts[0].StartTime.Time,
 		rule.Alert.Config.Severity,
 		true)
 
@@ -58,52 +60,77 @@ func aggAlert(ctx context.Context, tx *models.Tx, g grouper, orig []*models.Aler
 	if rule.Alert.Config.AutoClear != nil {
 		agg.AutoClear = *rule.Alert.Config.AutoClear
 	}
-	var newId int64
-	stmt, err := tx.PrepareNamed(models.QueryInsertNew)
-	err = stmt.Get(&newId, agg)
-	if err != nil {
-		return fmt.Errorf("Unable to insert agg alert: %v", err)
-	}
-	agg.Id = newId
-	// update the agg IDs of all the original alerts
-	err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
-	if err != nil {
-		return fmt.Errorf("Unable to update agg Ids: %v", err)
-	}
-	// send the aggAlert to the right output
-	ah.NotifyOutputs(
-		&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE},
-		rule.Alert.Config.Outputs,
-	)
-	return nil
+	return agg
 }
 
+var groupedChan = make(chan *alertGroup)
+
 type grouper interface {
-	start(ctx context.Context, db *models.DB)
+	name() string
+	start(ctx context.Context)
 	setRule(rule ah.AggregationRuleConfig)
 	getRule() ah.AggregationRuleConfig
 	addAlert(alert *models.Alert)
+	addToBuf(alert *models.Alert)
+	doGrouping(ctx context.Context)
 }
 
 var groupers = make(map[string]grouper)
 
-func addGrouper(ruleName string, g grouper) {
-	groupers[ruleName] = g
+func addGrouper(g grouper) {
+	groupers[g.name()] = g
 }
 
 type Aggregator struct {
 	Notif chan *ah.AlertEvent
+	db    *models.DB
 }
 
 func (a *Aggregator) Name() string {
 	return "aggregator"
 }
 
-func (a *Aggregator) handleEvent(ctx context.Context, db *models.DB, g grouper, event *ah.AlertEvent) {
+func (a *Aggregator) handleGrouped(ctx context.Context) {
+	for {
+		group := <-groupedChan
+		agg := group.aggAlert()
+		tx := models.NewTx(a.db)
+		err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
+			var newId int64
+			stmt, err := tx.PrepareNamed(models.QueryInsertNew)
+			err = stmt.Get(&newId, agg)
+			if err != nil {
+				return fmt.Errorf("Unable to insert agg alert: %v", err)
+			}
+			agg.Id = newId
+			// update the agg IDs of all the original alerts
+			var origIds []int64
+			for _, o := range group.groupedAlerts {
+				origIds = append(origIds, o.Id)
+			}
+			err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
+			if err != nil {
+				return fmt.Errorf("Unable to update agg Ids: %v", err)
+			}
+			// send the aggAlert to the right output
+			rule := group.grouper.getRule()
+			ah.NotifyOutputs(
+				&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE},
+				rule.Alert.Config.Outputs,
+			)
+			return nil
+		})
+		if err != nil {
+			glog.Errorf("Agg: Unable to save Agg alert: %v", err)
+		}
+	}
+}
+
+func (a *Aggregator) handleEvent(ctx context.Context, g grouper, event *ah.AlertEvent) {
 	if event.Type != ah.EventType_CLEARED && event.Type != ah.EventType_EXPIRED {
 		return
 	}
-	tx := models.NewTx(db)
+	tx := models.NewTx(a.db)
 	rule := g.getRule()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
 		var grouped models.Alerts
@@ -142,10 +169,12 @@ func (a *Aggregator) handleEvent(ctx context.Context, db *models.DB, g grouper, 
 }
 
 func (a *Aggregator) Start(ctx context.Context, db *models.DB) {
+	go a.handleGrouped(ctx)
+	a.db = db
 	for name, grouper := range groupers {
 		if rule, ok := ah.Config.GetAggregationRuleConfig(name); ok {
 			grouper.setRule(rule)
-			go grouper.start(ctx, db)
+			go grouper.start(ctx)
 		} else {
 			glog.Errorf("No agg rule defined for grouper: %s, skipping", name)
 		}
@@ -170,11 +199,10 @@ func (a *Aggregator) Start(ctx context.Context, db *models.DB) {
 					continue
 				}
 				if event.Type == ah.EventType_ACTIVE {
-					go func() {
-						grouper.addAlert(event.Alert)
-					}()
+					go grouper.addAlert(event.Alert)
+
 				} else {
-					a.handleEvent(ctx, db, grouper, event)
+					go a.handleEvent(ctx, grouper, event)
 				}
 			}
 		case <-ctx.Done():

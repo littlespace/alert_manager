@@ -5,6 +5,7 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"net"
 	"regexp"
+	"strings"
 )
 
 type BgpPeer struct {
@@ -74,11 +75,12 @@ func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {
 	p.RemoteDevice = device["name"].(string)
 
 	p.RemoteInterface = iface["name"].(string)
-	if p.RemoteInterface == "lo0.0" {
+	p.RemoteInterface = strings.Replace(p.RemoteInterface, ".0", "", -1)
+	if p.RemoteInterface == "lo0" {
 		// the bgp session is ibgp
 		p.Type = "ibgp"
 		p.LocalIp = d.Ip
-		p.LocalInterface = "lo0.0"
+		p.LocalInterface = "lo0"
 	} else {
 		p.Type = "ebgp"
 		remoteAddr := result["address"].(string)
@@ -105,6 +107,7 @@ func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {
 		result = results[0].(map[string]interface{})
 		iface := result["interface"].(map[string]interface{})
 		p.LocalInterface = iface["name"].(string)
+		p.LocalInterface = strings.Replace(p.LocalInterface, ".0", "", -1)
 	}
 
 	return nil

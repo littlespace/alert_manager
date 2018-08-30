@@ -31,12 +31,6 @@ type WebHookAlertData struct {
 	Source  string
 }
 
-var parsers []Parser
-
-func AddParser(parser Parser) {
-	parsers = append(parsers, parser)
-}
-
 type WebHookListener struct {
 	ListenAddr         string `mapstructure:"listen_addr"`
 	UseAuth            bool   `mapstructure:"use_auth"`

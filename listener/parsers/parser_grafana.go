@@ -38,6 +38,9 @@ func (p *GrafanaParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		glog.Errorf("Unable to decode json: %v", err)
 		return nil, err
 	}
+	if d.RuleName == "" || d.Message == "" {
+		return nil, fmt.Errorf("Invalid alert data received")
+	}
 	metricText := fmt.Sprintf("\nMetric: %v, Value: %v\n", d.EvalMatches[0].Metric, d.EvalMatches[0].Value)
 	l := &listener.WebHookAlertData{
 		Id:      strconv.FormatInt(int64(d.RuleId), 10),

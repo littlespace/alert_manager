@@ -6,3 +6,9 @@ type Parser interface {
 	Name() string
 	Parse(data []byte) (*WebHookAlertData, error)
 }
+
+var parsers []Parser
+
+func AddParser(parser Parser) {
+	parsers = append(parsers, parser)
+}

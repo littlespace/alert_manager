@@ -42,7 +42,7 @@ var (
 	QuerySelectTags         = "SELECT tags from alerts WHERE id=$1"
 	QuerySelectExpired      = querySelect + ` WHERE
     status=1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after`
-	QuerySelectAggregated = querySelect + " WHERE agg_id=$1 FOR UPDATE"
+	QuerySelectAggregated = querySelect + " WHERE agg_id=$1"
 )
 
 type AlertSeverity int
@@ -134,6 +134,25 @@ func (a *Alert) AddTags(tags ...string) {
 	t = append(t, tags...)
 	tagString := strings.Join(t, ",")
 	a.Tags = sql.NullString{tagString, true}
+}
+
+func (a *Alert) HasTags(tags ...string) bool {
+	hasTags := true
+	if !a.Tags.Valid {
+		return false
+	}
+	t := strings.Split(a.Tags.String, ",")
+	for _, tag := range tags {
+		var found bool
+		for _, tt := range t {
+			if tt == tag {
+				found = true
+				break
+			}
+		}
+		hasTags = hasTags && found
+	}
+	return hasTags
 }
 
 func (a *Alert) SetAutoExpire(duration time.Duration) {

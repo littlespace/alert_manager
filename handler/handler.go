@@ -132,7 +132,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 					if rule, ok := h.suppRules.Find(filters); ok {
 						glog.V(2).Infof("Found matching suppression rule: %v", rule)
 						secondsLeft := rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
-						h.Suppress(ctx, tx, alert.Id, secondsLeft)
+						h.Suppress(ctx, tx, alert, secondsLeft)
 						return nil
 					}
 
@@ -150,7 +150,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 						glog.V(2).Infof("Not auto-clearing alert %d ", existingAlert.Id)
 						return nil
 					}
-					err = h.Clear(ctx, tx, existingAlert.Id)
+					err = h.Clear(ctx, tx, existingAlert)
 					if err != nil {
 						return fmt.Errorf("Cant clear existing alert %d: %v", existingAlert.Id, err)
 					}
@@ -343,14 +343,9 @@ func (h *AlertHandler) GetExisting(tx *models.Tx, alert *models.Alert) (*models.
 	return existing, nil
 }
 
-func (h *AlertHandler) Suppress(ctx context.Context, tx *models.Tx, alertID int64, duration time.Duration) error {
-	alert := &models.Alert{}
-	err := tx.Get(alert, models.QuerySelectById, alertID)
-	if err != nil {
-		return err
-	}
+func (h *AlertHandler) Suppress(ctx context.Context, tx *models.Tx, alert *models.Alert, duration time.Duration) error {
 	alert.Suppress(duration)
-	_, err = tx.Exec(models.QueryUpdateStatusById, alert.Id, alert.Status)
+	_, err := tx.Exec(models.QueryUpdateStatusById, alert.Id, alert.Status)
 	if err != nil {
 		return err
 	}
@@ -373,14 +368,9 @@ func (h *AlertHandler) Suppress(ctx context.Context, tx *models.Tx, alertID int6
 	return err
 }
 
-func (h *AlertHandler) Clear(ctx context.Context, tx *models.Tx, alertID int64) error {
-	alert := &models.Alert{}
-	err := tx.Get(alert, models.QuerySelectById, alertID)
-	if err != nil {
-		return err
-	}
+func (h *AlertHandler) Clear(ctx context.Context, tx *models.Tx, alert *models.Alert) error {
 	alert.Clear()
-	_, err = tx.Exec(models.QueryUpdateStatusById, alert.Status, alert.Id)
+	_, err := tx.Exec(models.QueryUpdateStatusById, alert.Status, alert.Id)
 	if err != nil {
 		return err
 	}
@@ -389,14 +379,9 @@ func (h *AlertHandler) Clear(ctx context.Context, tx *models.Tx, alertID int64) 
 }
 
 // SetOwner sets the owner when an alert is acknowledged
-func (h *AlertHandler) SetOwner(ctx context.Context, tx *models.Tx, alertID int64, name, teamName string) error {
-	alert := &models.Alert{}
-	err := tx.Get(alert, models.QuerySelectById, alertID)
-	if err != nil {
-		return err
-	}
+func (h *AlertHandler) SetOwner(ctx context.Context, tx *models.Tx, alert *models.Alert, name, teamName string) error {
 	alert.SetOwner(name, teamName)
-	_, err = tx.Exec(models.QueryUpdateOwnerById, alert.Owner, alert.Team, alert.Id)
+	_, err := tx.Exec(models.QueryUpdateOwnerById, alert.Owner, alert.Team, alert.Id)
 	if err != nil {
 		return err
 	}

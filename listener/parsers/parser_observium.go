@@ -36,6 +36,9 @@ func (p *ObserviumParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 		glog.Errorf("Unable to decode json: %v", err)
 		return nil, err
 	}
+	if d.Message == "" || d.EntityName == "" {
+		return nil, fmt.Errorf("Invalid alert data received")
+	}
 	t, err := time.Parse(time.RFC3339, d.Timestamp)
 	if err != nil {
 		glog.Errorf("Unable to parse time string , using current time")

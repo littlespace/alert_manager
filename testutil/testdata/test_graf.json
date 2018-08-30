@@ -3,7 +3,7 @@
   "ruleId": 1,
   "ruleName": "Neteng BB Input Errors Test",
   "ruleUrl": "http://url.to.grafana/db/dashboard/my_dashboard?panelId=2",
-  "state": "ok",
+  "state": "alerting",
   "imageUrl": "http://s3.image.url",
   "message": "A BB Link is experiencing > 1000pps input errors over 15 minutes!",
   "evalMatches": [

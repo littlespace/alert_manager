@@ -1,10 +1,10 @@
 package testutil
 
 import (
-	"database/sql"
 	"flag"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"time"
 )
 
 type MockStat struct{}
@@ -21,18 +21,33 @@ func MockAlertEvent(eType ah.EventType, name, device, entity, source, scope, ext
 	case ah.EventType_CLEARED:
 		status = models.Status_CLEARED
 	}
-	return &ah.AlertEvent{
-		Type: eType,
-		Alert: &models.Alert{
-			Name:       name,
-			Status:     status,
-			Device:     sql.NullString{device, true},
-			Entity:     entity,
-			Source:     source,
-			Scope:      scope,
-			ExternalId: extId,
-		},
+	a := &models.Alert{
+		Name:       name,
+		Status:     status,
+		Entity:     entity,
+		Source:     source,
+		Scope:      scope,
+		ExternalId: extId,
 	}
+	a.AddDevice(device)
+	return &ah.AlertEvent{Type: eType, Alert: a}
+}
+
+func MockAlert(id int64, name, device, entity, source, scope, extId string, tags []string, meta interface{}) *models.Alert {
+	a := &models.Alert{
+		Id:         id,
+		Name:       name,
+		Status:     models.Status_ACTIVE,
+		Entity:     entity,
+		Source:     source,
+		Scope:      scope,
+		ExternalId: extId,
+		StartTime:  models.MyTime{time.Now()},
+	}
+	a.AddDevice(device)
+	a.AddTags(tags...)
+	a.AddMeta(meta)
+	return a
 }
 
 func InitTests() {

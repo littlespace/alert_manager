@@ -20,7 +20,7 @@ alert_config:
     config:
       scope: device
       source: observium 
-      tags: [ neteng, bb, test ]
+      tags: [ neteng, bb, device ]
       severity: WARN
       outputs: [ slack ]
       escalation_rules:
@@ -54,25 +54,26 @@ alert_config:
     config:
       scope: link
       source: observium
-      tags: [ neteng, bb, linkdown ]
+      tags: [ neteng, bb, link ]
       severity: INFO
       aggregation_rules:
         - fibercut
 
   - name: Neteng DC Link Down
     config:
-      scopt: link
+      scope: link
       source: observium
-      tags: [ neteng, dc, linkdown ]
+      tags: [ neteng, dc, link ]
       severity: INFO
       aggregation_rules:
         - dc_circuit_down
+        - bgp_session
 
   - name: Neteng BGP Down
     config:
       scope: bgp_peer
       source: observium
-      tags: [ neteng, bgpdown ]
+      tags: [ neteng, bgp ]
       severity: INFO
       aggregation_rules:
         - dc_circuit_down
@@ -94,12 +95,23 @@ aggregation_rules:
             send_to: [ victorops ] 
 
   - name: bgp_session
-    window: 5m
+    window: 1m
     alert:
       name: Neteng_Aggregated BGP Down
       config:
         source: aggregated
         severity: WARN
-        tags: [ neteng, bgp ]
+        tags: [ neteng, agg, bgp ]
         auto_expire: true  ## aggregated alert will expire only when all component alerts expire
+        outputs: [ slack ]
+
+  - name: dc_circuit_down
+    window: 1m
+    alert:
+      name: Neteng_Aggregated DC Link Down
+      config:
+        source: aggregated
+        severity: WARN
+        tags: [ neteng, agg, dc, link ]
+        auto_expire: true
         outputs: [ slack ]
