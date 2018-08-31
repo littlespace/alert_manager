@@ -11,9 +11,9 @@ import (
 )
 
 type bgpGrouper struct {
-	ruleConfig ah.AggregationRuleConfig
-	recvChan   chan *models.Alert
-	recvBuf    []*models.Alert
+	sub      []string
+	recvChan chan *models.Alert
+	recvBuf  []*models.Alert
 
 	sync.Mutex
 }
@@ -30,12 +30,12 @@ func (g *bgpGrouper) name() string {
 	return "bgp_session"
 }
 
-func (g *bgpGrouper) setRule(rule ah.AggregationRuleConfig) {
-	g.ruleConfig = rule
+func (g *bgpGrouper) addSubscription(a string) {
+	g.sub = append(g.sub, a)
 }
 
-func (g *bgpGrouper) getRule() ah.AggregationRuleConfig {
-	return g.ruleConfig
+func (g *bgpGrouper) subscribed() []string {
+	return g.sub
 }
 
 func (g *bgpGrouper) addToBuf(a *models.Alert) {
@@ -63,12 +63,15 @@ func (g *bgpGrouper) origAlerts(group []interface{}) []*models.Alert {
 	return orig
 }
 
-func (g *bgpGrouper) doGrouping(ctx context.Context) {
-	// first group by peer endpoints. Assume the alert metadata contains the peer-device
+func (g *bgpGrouper) doGrouping() {
 	g.Lock()
 	defer g.Unlock()
+	// first group by peer endpoints. Assume the alert metadata contains the peer-device
 	var peers []interface{}
 	for _, alert := range g.recvBuf {
+		if !alert.Metadata.Valid {
+			continue
+		}
 		if !alert.HasTags("bgp") {
 			glog.V(2).Infof("Bgp Agg: Found non bgp alert, skip grouping")
 			g.recvBuf = g.recvBuf[:0]
@@ -95,15 +98,20 @@ func (g *bgpGrouper) doGrouping(ctx context.Context) {
 }
 
 func (g *bgpGrouper) start(ctx context.Context) {
+	rule, _ := ah.Config.GetAggregationRuleConfig(g.name())
 	for {
-		alert := <-g.recvChan
-		if len(g.recvBuf) == 0 {
-			go func() {
-				<-time.After(g.ruleConfig.Window)
-				g.doGrouping(ctx)
-			}()
+		select {
+		case alert := <-g.recvChan:
+			if len(g.recvBuf) == 0 {
+				go func() {
+					<-time.After(rule.Window)
+					g.doGrouping()
+				}()
+			}
+			g.addToBuf(alert)
+		case <-ctx.Done():
+			return
 		}
-		g.addToBuf(alert)
 	}
 }
 

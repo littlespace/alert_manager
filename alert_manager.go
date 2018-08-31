@@ -100,6 +100,7 @@ func Run(config *Config) {
 			if sig == syscall.SIGHUP {
 				glog.Infof("Reloading alert config")
 				reloadConfig <- struct{}{}
+				// TODO restart the processors ?
 			}
 		}
 	}()

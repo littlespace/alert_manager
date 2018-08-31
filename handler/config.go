@@ -30,9 +30,10 @@ type AlertConfig struct {
 }
 
 type AggregationRuleConfig struct {
-	Name   string
-	Window time.Duration
-	Alert  AlertConfig
+	Name         string
+	Window       time.Duration
+	PollInterval time.Duration `yaml:"poll_interval"`
+	Alert        AlertConfig
 }
 
 type configs struct {

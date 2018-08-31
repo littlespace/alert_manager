@@ -11,9 +11,9 @@ import (
 )
 
 type dcCktGrouper struct {
-	ruleConfig ah.AggregationRuleConfig
-	recvChan   chan *models.Alert
-	recvBuf    []*models.Alert
+	sub      []string
+	recvChan chan *models.Alert
+	recvBuf  []*models.Alert
 
 	sync.Mutex
 }
@@ -49,12 +49,12 @@ func (g *dcCktGrouper) name() string {
 	return "dc_circuit_down"
 }
 
-func (g *dcCktGrouper) setRule(rule ah.AggregationRuleConfig) {
-	g.ruleConfig = rule
+func (g *dcCktGrouper) addSubscription(a string) {
+	g.sub = append(g.sub, a)
 }
 
-func (g *dcCktGrouper) getRule() ah.AggregationRuleConfig {
-	return g.ruleConfig
+func (g *dcCktGrouper) subscribed() []string {
+	return g.sub
 }
 
 func (g *dcCktGrouper) addToBuf(a *models.Alert) {
@@ -89,12 +89,15 @@ func (g *dcCktGrouper) origAlerts(group []interface{}) []*models.Alert {
 	return orig
 }
 
-func (g *dcCktGrouper) doGrouping(ctx context.Context) {
+func (g *dcCktGrouper) doGrouping() {
 	g.Lock()
 	defer g.Unlock()
 	var entities []interface{}
 	allBgp := true
 	for _, alert := range g.recvBuf {
+		if !alert.Metadata.Valid {
+			continue
+		}
 		allBgp = allBgp && alert.HasTags("bgp")
 		if alert.HasTags("bgp") {
 			p := BgpPeer{}
@@ -132,12 +135,13 @@ func (g *dcCktGrouper) doGrouping(ctx context.Context) {
 }
 
 func (g *dcCktGrouper) start(ctx context.Context) {
+	rule, _ := ah.Config.GetAggregationRuleConfig(g.name())
 	for {
 		alert := <-g.recvChan
 		if len(g.recvBuf) == 0 {
 			go func() {
-				<-time.After(g.ruleConfig.Window)
-				g.doGrouping(ctx)
+				<-time.After(rule.Window)
+				g.doGrouping()
 			}()
 		}
 		g.addToBuf(alert)

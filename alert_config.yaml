@@ -82,10 +82,11 @@ alert_config:
 aggregation_rules:
   - name: fibercut
     window: 5m
+    poll_interval: 5m
     alert:
       name: Neteng_Aggregated FiberCut
       config:
-        source: aggregated
+        source: fibercut
         severity: WARN
         tags: [ neteng, bb, fibercut ]
         outputs: [ slack ]
@@ -96,10 +97,11 @@ aggregation_rules:
 
   - name: bgp_session
     window: 1m
+    poll_interval: 1m
     alert:
       name: Neteng_Aggregated BGP Down
       config:
-        source: aggregated
+        source: bgp_session
         severity: WARN
         tags: [ neteng, agg, bgp ]
         auto_expire: true  ## aggregated alert will expire only when all component alerts expire
@@ -107,10 +109,11 @@ aggregation_rules:
 
   - name: dc_circuit_down
     window: 1m
+    poll_interval: 1m
     alert:
       name: Neteng_Aggregated DC Link Down
       config:
-        source: aggregated
+        source: dc_circuit_down
         severity: WARN
         tags: [ neteng, agg, dc, link ]
         auto_expire: true

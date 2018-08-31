@@ -1,7 +1,6 @@
 package aggregator
 
 import (
-	"context"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
@@ -61,17 +60,32 @@ var testDatas = map[string]struct {
 			[]int64{3},
 		},
 	},
+	"fibercut": {
+		incoming: []*models.Alert{
+			tu.MockAlert(
+				1, "Neteng BB Link Down", "dev1", "if1", "src", "scp", "1", []string{"bb", "link"},
+				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if1", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev2", Interface: "if2", Description: ""}, Role: "bb", Provider: "telstra"}),
+			tu.MockAlert(
+				2, "Neteng BB Link Down", "dev2", "if2", "src", "scp", "2", []string{"bb", "link"},
+				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev2", Interface: "if2", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if1", Description: ""}, Role: "bb", Provider: "telstra"}),
+			tu.MockAlert(
+				3, "Neteng BB Link Down", "dev1", "if3", "src", "scp", "3", []string{"bb", "link"},
+				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if3", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev4", Interface: "if4", Description: ""}, Role: "bb", Provider: "level3"}),
+		},
+		grouped: [][]int64{
+			[]int64{1, 2, 3},
+		},
+	},
 }
 
 func TestGrouping(t *testing.T) {
-	ctx := context.Background()
 	for name, datas := range testDatas {
 		grouper := groupers[name]
 		for _, alert := range datas.incoming {
 			grouper.addToBuf(alert)
 		}
 		go func() {
-			grouper.doGrouping(ctx)
+			grouper.doGrouping()
 		}()
 		var aggregated [][]int64
 		for range datas.grouped {

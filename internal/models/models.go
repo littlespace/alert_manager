@@ -58,6 +58,15 @@ func (tx *Tx) InQuery(query string, arg ...interface{}) error {
 	return err
 }
 
+func (tx *Tx) InSelect(query string, to interface{}, arg ...interface{}) error {
+	query, args, err := sqlx.In(query, arg...)
+	if err != nil {
+		return err
+	}
+	query = tx.Rebind(query)
+	return tx.Select(to, query, args...)
+}
+
 // WithTx wraps a transaction around a function call.
 func WithTx(ctx context.Context, tx *Tx, cb func(ctx context.Context, tx *Tx) error) error {
 	err := cb(ctx, tx)

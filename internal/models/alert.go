@@ -33,7 +33,7 @@ var (
 	QueryUpdateAggId      = "UPDATE alerts SET agg_id=? WHERE id IN (?)"
 
 	querySelect             = "SELECT * from alerts"
-	QuerySelectByName       = querySelect + " WHERE name=$1 and status=1 FOR UPDATE"
+	QuerySelectByNames      = querySelect + " WHERE name IN (?) AND status=1 AND agg_id IS NULL FOR UPDATE"
 	QuerySelectById         = querySelect + " WHERE id=$1 FOR UPDATE"
 	QuerySelectByStatus     = querySelect + " WHERE status IN (?) FOR UPDATE"
 	QuerySelectNoOwner      = querySelect + " WHERE owner is NULL AND status=1 FOR UPDATE"
@@ -42,7 +42,7 @@ var (
 	QuerySelectTags         = "SELECT tags from alerts WHERE id=$1"
 	QuerySelectExpired      = querySelect + ` WHERE
     status=1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after`
-	QuerySelectAggregated = querySelect + " WHERE agg_id=$1"
+	QuerySelectAllAggregated = querySelect + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
 )
 
 type AlertSeverity int

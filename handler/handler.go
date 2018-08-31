@@ -26,6 +26,15 @@ const (
 	SUPPRULE_UPDATE_INTERVAL  = 10 * time.Minute
 )
 
+var EventMap = map[string]EventType{
+	"ACTIVE":     EventType_ACTIVE,
+	"EXPIRED":    EventType_EXPIRED,
+	"SUPPRESSED": EventType_SUPPRESSED,
+	"CLEARED":    EventType_CLEARED,
+	"ACKD":       EventType_ACKD,
+	"ESCALATED":  EventType_ESCALATED,
+}
+
 // AlertEvent signifies a type of action on an alert
 type AlertEvent struct {
 	Alert *models.Alert
