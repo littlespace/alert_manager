@@ -191,6 +191,8 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 	}
 }
 
+// StartPoll does grouping based on periodic querying the db for matching alerts.
+// Only one of this or Start() must be used to fix the grouping method.
 func (a *Aggregator) StartPoll(ctx context.Context, db *models.DB) {
 	a.db = db
 	go a.handleExpiry(ctx)
@@ -236,6 +238,8 @@ func (a *Aggregator) StartPoll(ctx context.Context, db *models.DB) {
 	a.handleGrouped(ctx)
 }
 
+// Start does grouping by subscribing to alerts from the handler and grouping based
+// on configured time windows.
 func (a *Aggregator) Start(ctx context.Context, db *models.DB) {
 	//a.StartPoll(ctx, db)
 	a.db = db

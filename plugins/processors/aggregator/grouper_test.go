@@ -41,13 +41,13 @@ var testDatas = map[string]struct {
 		incoming: []*models.Alert{
 			tu.MockAlert(
 				1, "Neteng DC Link Down", "dev1", "if1", "src", "scp", "1", []string{"dc", "link"},
-				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if1", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev2", Interface: "if2", Description: ""}, Role: "dc"}),
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev1", Interface: "if1", Agg: ""}, ZSide: struct{ Device, Interface, Agg string }{Device: "dev2", Interface: "if2", Agg: ""}, Role: "dc"}),
 			tu.MockAlert(
 				2, "Neteng DC Link Down", "dev2", "if2", "src", "scp", "2", []string{"dc", "link"},
-				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev2", Interface: "if2", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if1", Description: ""}, Role: "dc"}),
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev2", Interface: "if2", Agg: ""}, ZSide: struct{ Device, Interface, Agg string }{Device: "dev1", Interface: "if1", Agg: ""}, Role: "dc"}),
 			tu.MockAlert(
 				3, "Neteng DC Link Down", "dev1", "if3", "src", "scp", "3", []string{"dc", "link"},
-				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if3", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev3", Interface: "if1", Description: ""}, Role: "dc"}),
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev1", Interface: "if3", Agg: ""}, ZSide: struct{ Device, Interface, Agg string }{Device: "dev3", Interface: "if1", Agg: ""}, Role: "dc"}),
 			tu.MockAlert(
 				4, "Neteng BGP Down", "dev1", "PeerX", "src", "scp", "1", []string{"bgp", "dc"},
 				BgpPeer{Type: "ebgp", LocalDevice: "dev1", LocalInterface: "if1", RemoteDevice: "dev2", RemoteInterface: "if2"}),
@@ -64,16 +64,23 @@ var testDatas = map[string]struct {
 		incoming: []*models.Alert{
 			tu.MockAlert(
 				1, "Neteng BB Link Down", "dev1", "if1", "src", "scp", "1", []string{"bb", "link"},
-				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if1", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev2", Interface: "if2", Description: ""}, Role: "bb", Provider: "telstra"}),
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev1", Interface: "if1", Agg: "ae1"}, ZSide: struct{ Device, Interface, Agg string }{Device: "dev2", Interface: "if2", Agg: "ae2"}, Role: "bb", Provider: "telstra"}),
 			tu.MockAlert(
 				2, "Neteng BB Link Down", "dev2", "if2", "src", "scp", "2", []string{"bb", "link"},
-				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev2", Interface: "if2", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if1", Description: ""}, Role: "bb", Provider: "telstra"}),
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev2", Interface: "if2", Agg: "ae2"}, ZSide: struct{ Device, Interface, Agg string }{Device: "dev1", Interface: "if1", Agg: "ae1"}, Role: "bb", Provider: "telstra"}),
 			tu.MockAlert(
-				3, "Neteng BB Link Down", "dev1", "if3", "src", "scp", "3", []string{"bb", "link"},
-				Circuit{ASide: struct{ Device, Interface, Description string }{Device: "dev1", Interface: "if3", Description: ""}, ZSide: struct{ Device, Interface, Description string }{Device: "dev4", Interface: "if4", Description: ""}, Role: "bb", Provider: "level3"}),
+				3, "Neteng BB Link Down", "dev3", "if3", "src", "scp", "3", []string{"bb", "link"},
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev3", Interface: "if3", Agg: "ae3"}, ZSide: struct{ Device, Interface, Agg string }{Device: "dev4", Interface: "if4", Agg: "ae4"}, Role: "bb", Provider: "level3"}),
+			tu.MockAlert(
+				4, "Neteng BB Link Down", "dev4", "if4", "src", "scp", "4", []string{"bb", "link"},
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev4", Interface: "if4", Agg: "ae4"}, ZSide: struct{ Device, Interface, Agg string }{Device: "dev3", Interface: "if3", Agg: "ae3"}, Role: "bb", Provider: "level3"}),
+			tu.MockAlert(
+				5, "Neteng BB Link Down", "dev4", "ae4", "src", "scp", "5", []string{"bb", "link"},
+				Circuit{ASide: struct{ Device, Interface, Agg string }{Device: "dev4", Interface: "ae4", Agg: ""}}),
 		},
 		grouped: [][]int64{
-			[]int64{1, 2, 3},
+			[]int64{1, 2},
+			[]int64{3, 4, 5},
 		},
 	},
 }

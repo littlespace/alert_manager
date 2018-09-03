@@ -1,7 +1,7 @@
 package aggregator
 
 type Circuit struct {
-	ASide, ZSide struct{ Device, Interface, Description string }
+	ASide, ZSide struct{ Device, Interface, Agg string }
 	Role         string
 	CktId        string `json:"circuit_id,omitempty"`
 	Provider     string `json:",omitempty"`

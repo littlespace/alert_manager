@@ -10,6 +10,7 @@ type NetboxInterface struct {
 	Interface   string
 	Description string
 	Role        string
+	Type        string
 	Agg         string `json:",omitempty"`
 	Term        struct {
 		TermSide string  `json:",omitempty"`
@@ -28,11 +29,17 @@ func (i *NetboxInterface) parse(raw map[string]interface{}) {
 	i.Device = device["name"].(string)
 	i.Interface = raw["name"].(string)
 	i.Description = raw["description"].(string)
+	i.Type = "phy"
 
 	if raw["circuit_termination"] == nil {
 		// check if ckt is a DC ckt
 		if raw["interface_connection"] == nil {
-			return
+			// check if iface is a lag
+			ff := raw["form_factor"].(map[string]interface{})
+			if ff["value"].(float64) == 200 {
+				i.Type = "lag"
+				return
+			}
 		}
 		i.Role = "dc"
 		conn := raw["interface_connection"].(map[string]interface{})
@@ -88,7 +95,7 @@ func (i *NetboxInterface) query(n *Netbox, alert *models.Alert) error {
 }
 
 type NetboxCircuit struct {
-	ASide, ZSide struct{ Device, Interface, Description string }
+	ASide, ZSide struct{ Device, Interface, Agg string }
 	Role         string
 	CktId        string `json:"circuit_id,omitempty"`
 	Provider     string `json:",omitempty"`
@@ -101,16 +108,20 @@ func (c *NetboxCircuit) query(n *Netbox, alert *models.Alert) error {
 		return err
 	}
 	if iface.Role == "" {
+		if iface.Type == "lag" {
+			// lag has no endpoint info. Just save it as the ASide
+			c.ASide.Device = iface.Device
+			c.ASide.Interface = iface.Interface
+			return nil
+		}
 		return fmt.Errorf("Unable to get circuit role")
 	}
 	c.Role = iface.Role
 	if c.Role == "dc" {
 		c.ASide.Device = iface.Device
 		c.ASide.Interface = iface.Interface
-		c.ASide.Description = iface.Description
 		c.ZSide.Device = iface.Conn.Device
 		c.ZSide.Interface = iface.Conn.Interface
-		c.ZSide.Description = iface.Conn.Description
 		return nil
 	}
 
@@ -148,9 +159,9 @@ func (c *NetboxCircuit) query(n *Netbox, alert *models.Alert) error {
 	}
 	c.ASide.Device = aSide.Device
 	c.ASide.Interface = aSide.Interface
-	c.ASide.Description = aSide.Description
+	c.ASide.Agg = aSide.Agg
 	c.ZSide.Device = zSide.Device
 	c.ZSide.Interface = zSide.Interface
-	c.ZSide.Description = zSide.Description
+	c.ZSide.Agg = zSide.Agg
 	return nil
 }

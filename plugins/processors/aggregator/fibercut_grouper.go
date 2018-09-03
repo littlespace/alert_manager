@@ -20,7 +20,14 @@ type fibercutGrouper struct {
 
 func (g fibercutGrouper) grouperFunc() func(i, j interface{}) bool {
 	return func(i, j interface{}) bool {
-		return i.(Circuit).Provider == j.(Circuit).Provider || i.(Circuit).ASide == j.(Circuit).ZSide
+		return (
+		// same provider
+		i.(Circuit).Provider == j.(Circuit).Provider ||
+			// 2 ends of same circuit
+			i.(Circuit).ASide == j.(Circuit).ZSide ||
+			// phy member of lag
+			i.(Circuit).ASide.Device == j.(Circuit).ASide.Device && i.(Circuit).ASide.Interface == j.(Circuit).ASide.Agg ||
+			i.(Circuit).ASide.Device == j.(Circuit).ZSide.Device && i.(Circuit).ASide.Interface == j.(Circuit).ZSide.Agg)
 	}
 }
 

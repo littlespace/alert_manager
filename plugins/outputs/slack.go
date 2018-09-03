@@ -46,6 +46,9 @@ func (n *SlackNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
 	}
 	fields := []map[string]interface{}{
 		map[string]interface{}{
+			"title": "AlertID", "value": event.Alert.Id, "short": false,
+		},
+		map[string]interface{}{
 			"title": "Device", "value": device, "short": false,
 		},
 		map[string]interface{}{
@@ -76,6 +79,20 @@ func (n *SlackNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
 	return json.Marshal(&body)
 }
 
+func (n *SlackNotifier) post(data []byte) {
+	resp, err := http.Post(n.Url, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		//n.statsPostError.Add(1)
+		glog.Errorf("Output: Unable to post to slack: %v", err)
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		//n.statsPostError.Add(1)
+		glog.Errorf("Output: Unable to post to slack: Got HTTP %d", resp.StatusCode)
+	}
+	//n.statPostsSent.Add(1)
+}
+
 func (n *SlackNotifier) Start(ctx context.Context) {
 	for {
 		select {
@@ -85,17 +102,7 @@ func (n *SlackNotifier) Start(ctx context.Context) {
 				glog.Errorf("Output: Slack: Cant get json body for alert %s", event.Alert.Name)
 				break
 			}
-			resp, err := http.Post(n.Url, "application/json", bytes.NewBuffer(body))
-			if err != nil {
-				//n.statsPostError.Add(1)
-				glog.Errorf("Output: Unable to post to slack: %v", err)
-				break
-			}
-			if resp.StatusCode != http.StatusOK {
-				//n.statsPostError.Add(1)
-				glog.Errorf("Output: Unable to post to slack: Got HTTP %d", resp.StatusCode)
-			}
-			//n.statPostsSent.Add(1)
+			n.post(body)
 		case <-ctx.Done():
 			return
 		}
