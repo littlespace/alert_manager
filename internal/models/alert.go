@@ -26,9 +26,6 @@ var (
     severity=:severity, status=:status, metadata=:metadata, scope=:scope, is_aggregate=:is_aggregate
       WHERE id=:id`
 
-	QueryUpdateOwnerById  = "UPDATE alerts SET owner=$1, team=$2 WHERE id=$3"
-	QueryUpdateStatusById = "UPDATE alerts SET status=$1 WHERE id=$2"
-	QueryUpdateSevById    = "UPDATE alerts SET severity=$1 WHERE id=$2"
 	QueryUpdateLastActive = "UPDATE alerts SET last_active=? WHERE id IN (?)"
 	QueryUpdateAggId      = "UPDATE alerts SET agg_id=? WHERE id IN (?)"
 
@@ -222,4 +219,30 @@ func (a Alerts) AllCleared() bool {
 
 func (a Alerts) AllExpired() bool {
 	return a.AllStatusIn(Status_EXPIRED)
+}
+
+func (tx *Tx) UpdateAlert(alert *Alert) error {
+	_, err := tx.NamedExec(QueryUpdateAlertById, alert)
+	return err
+}
+
+func (tx *Tx) NewAlert(alert *Alert) (int64, error) {
+	var newId int64
+	stmt, err := tx.PrepareNamed(QueryInsertNew)
+	err = stmt.Get(&newId, alert)
+	return newId, err
+}
+
+func (tx *Tx) GetAlert(query string, args ...interface{}) (*Alert, error) {
+	alert := &Alert{}
+	if err := tx.Get(alert, query, args...); err != nil {
+		return nil, err
+	}
+	return alert, nil
+}
+
+func (tx *Tx) SelectAlerts(query string) (Alerts, error) {
+	var alerts Alerts
+	err := tx.Select(&alerts, query)
+	return alerts, err
 }

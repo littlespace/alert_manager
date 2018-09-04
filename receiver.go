@@ -7,7 +7,7 @@ import (
 
 type Processor interface {
 	Name() string
-	Start(ctx context.Context, db *models.DB)
+	Start(ctx context.Context, db models.Dbase)
 }
 
 type Output interface {

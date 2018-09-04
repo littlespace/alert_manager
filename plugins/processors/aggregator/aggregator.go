@@ -86,7 +86,7 @@ func addGrouper(g grouper) {
 
 type Aggregator struct {
 	Notif chan *ah.AlertEvent
-	db    *models.DB
+	db    models.Dbase
 }
 
 func (a *Aggregator) Name() string {
@@ -99,10 +99,9 @@ func (a *Aggregator) handleGrouped(ctx context.Context) {
 		case group := <-groupedChan:
 			agg := group.aggAlert()
 			tx := models.NewTx(a.db)
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
+			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 				var newId int64
-				stmt, err := tx.PrepareNamed(models.QueryInsertNew)
-				err = stmt.Get(&newId, agg)
+				newId, err := tx.NewAlert(agg)
 				if err != nil {
 					return fmt.Errorf("Unable to insert agg alert: %v", err)
 				}
@@ -139,9 +138,8 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 		select {
 		case <-t.C:
 			tx := models.NewTx(a.db)
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
-				var allAggregated models.Alerts
-				err := tx.Select(&allAggregated, models.QuerySelectAllAggregated)
+			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+				allAggregated, err := tx.SelectAlerts(models.QuerySelectAllAggregated)
 				if err != nil {
 					return fmt.Errorf("Agg: Unable to query aggregated: %v", err)
 				}
@@ -152,8 +150,7 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 				}
 				// check if every group needs clear/expiry
 				for aggId, alerts := range aggGroup {
-					aggAlert := &models.Alert{}
-					err = tx.Get(aggAlert, models.QuerySelectById, aggId)
+					aggAlert, err := tx.GetAlert(models.QuerySelectById, aggId)
 					if err != nil {
 						return fmt.Errorf("Agg: Unable to query agg alert: %v", err)
 					}
@@ -172,11 +169,10 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 						glog.V(2).Infof("Agg : Agg Alert %d has now expired", aggId)
 					}
 					if status != "" {
-						_, err = tx.Exec(models.QueryUpdateStatusById, models.StatusMap[status], aggId)
-						if err != nil {
+						aggAlert.Status = models.StatusMap[status]
+						if err := tx.UpdateAlert(aggAlert); err != nil {
 							return fmt.Errorf("Agg: Unable to update agg status: %v", err)
 						}
-						aggAlert.Status = models.StatusMap[status]
 						ah.NotifyOutputs(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]}, rule.Alert.Config.Outputs)
 					}
 				}
@@ -193,7 +189,7 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 
 // StartPoll does grouping based on periodic querying the db for matching alerts.
 // Only one of this or Start() must be used to fix the grouping method.
-func (a *Aggregator) StartPoll(ctx context.Context, db *models.DB) {
+func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 	a.db = db
 	go a.handleExpiry(ctx)
 	for _, alert := range ah.Config.GetConfiguredAlerts() {
@@ -215,7 +211,7 @@ func (a *Aggregator) StartPoll(ctx context.Context, db *models.DB) {
 				case <-t.C:
 					var alerts []*models.Alert
 					tx := models.NewTx(db)
-					err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
+					err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 						return tx.InSelect(models.QuerySelectByNames, &alerts, g.subscribed())
 					})
 					if err != nil {
@@ -240,7 +236,7 @@ func (a *Aggregator) StartPoll(ctx context.Context, db *models.DB) {
 
 // Start does grouping by subscribing to alerts from the handler and grouping based
 // on configured time windows.
-func (a *Aggregator) Start(ctx context.Context, db *models.DB) {
+func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 	//a.StartPoll(ctx, db)
 	a.db = db
 	go a.handleGrouped(ctx)

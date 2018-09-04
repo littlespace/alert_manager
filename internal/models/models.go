@@ -14,11 +14,16 @@ import (
 )
 
 // custom structs to allow for mocking
+type Dbase interface {
+	MustBegin() *sqlx.Tx
+	Close() error
+}
+
 type DB struct {
 	*sqlx.DB
 }
 
-func NewDB(addr, username, password, dbName, schemaFile string, timeout int) *DB {
+func NewDB(addr, username, password, dbName, schemaFile string, timeout int) Dbase {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		glog.Fatalf("Invalid DB addr: %s", addr)
@@ -29,7 +34,7 @@ func NewDB(addr, username, password, dbName, schemaFile string, timeout int) *DB
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s connect_timeout=%d sslmode=disable", host, port, username, password, dbName, timeout)
 	db, err := sqlx.Open("postgres", connStr)
 	if err != nil {
-		glog.Fatalf("Can open DB: %v", err)
+		glog.Fatalf("Cant open DB: %v", err)
 	}
 	schema, err := ioutil.ReadFile(schemaFile)
 	if err != nil {
@@ -39,11 +44,23 @@ func NewDB(addr, username, password, dbName, schemaFile string, timeout int) *DB
 	return &DB{db}
 }
 
+type Txn interface {
+	InQuery(query string, arg ...interface{}) error
+	InSelect(query string, to interface{}, arg ...interface{}) error
+	UpdateAlert(alert *Alert) error
+	NewAlert(alert *Alert) (int64, error)
+	GetAlert(query string, args ...interface{}) (*Alert, error)
+	SelectAlerts(query string) (Alerts, error)
+	SelectRules(query string) (SuppRules, error)
+	Rollback() error
+	Commit() error
+}
+
 type Tx struct {
 	*sqlx.Tx
 }
 
-func NewTx(db *DB) *Tx {
+func NewTx(db Dbase) Txn {
 	tx := db.MustBegin()
 	return &Tx{tx}
 }
@@ -68,7 +85,7 @@ func (tx *Tx) InSelect(query string, to interface{}, arg ...interface{}) error {
 }
 
 // WithTx wraps a transaction around a function call.
-func WithTx(ctx context.Context, tx *Tx, cb func(ctx context.Context, tx *Tx) error) error {
+func WithTx(ctx context.Context, tx Txn, cb func(ctx context.Context, tx Txn) error) error {
 	err := cb(ctx, tx)
 	if err != nil {
 		tx.Rollback()

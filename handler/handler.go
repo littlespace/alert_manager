@@ -61,14 +61,14 @@ func NotifyOutputs(event *AlertEvent, outputs []string) {
 // It also sends alerts to interested receivers
 type AlertHandler struct {
 	// db handler
-	Db *models.DB
+	Db models.Dbase
 	// cache of suppression rules
 	suppRules models.SuppRules
 
 	sync.Mutex
 }
 
-func NewHandler(db *models.DB) *AlertHandler {
+func NewHandler(db models.Dbase) *AlertHandler {
 	h := &AlertHandler{
 		Db: db,
 	}
@@ -80,9 +80,15 @@ func (h *AlertHandler) loadSuppRules() {
 	glog.V(2).Infof("Updating suppression rules")
 	tx := models.NewTx(h.Db)
 	ctx := context.Background()
-	var rules models.SuppRules
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
-		return tx.Select(&rules, models.QuerySelectActive+" LIMIT 50")
+	var (
+		rules models.SuppRules
+		er    error
+	)
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		if rules, er = tx.SelectRules(models.QuerySelectActive + " LIMIT 50"); er != nil {
+			return er
+		}
+		return nil
 	})
 	if err != nil {
 		glog.Errorf("Unable to select rules from db: %v", err)
@@ -112,7 +118,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 		select {
 		case alertEvent := <-ListenChan:
 			tx := models.NewTx(h.Db)
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
+			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 				alert := alertEvent.Alert
 
 				switch alertEvent.Type {
@@ -123,9 +129,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 					// add transforms
 					h.applyTransforms(alert)
 					// new alert
-					var newId int64
-					stmt, err := tx.PrepareNamed(models.QueryInsertNew)
-					err = stmt.Get(&newId, alert)
+					newId, err := tx.NewAlert(alert)
 					if err != nil {
 						return fmt.Errorf("Unable to insert new alert: %v", err)
 					}
@@ -177,7 +181,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 	}
 }
 
-func (h *AlertHandler) checkExistingActive(tx *models.Tx, alert *models.Alert) bool {
+func (h *AlertHandler) checkExistingActive(tx models.Txn, alert *models.Alert) bool {
 	existingAlert, err := h.GetExisting(tx, alert)
 	if err != nil {
 		glog.V(2).Infof("No existing alert found for %s:%s", alert.Name, alert.Entity)
@@ -245,9 +249,8 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 		select {
 		case <-t.C:
 			tx := models.NewTx(h.Db)
-			var expired models.Alerts
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
-				err := tx.Select(&expired, models.QuerySelectExpired)
+			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+				expired, err := tx.SelectAlerts(models.QuerySelectExpired)
 				if err != nil {
 					return err
 				}
@@ -258,8 +261,7 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 					}
 					glog.V(2).Infof("Alert ID %d has now expired", ex.Id)
 					ex.Status = models.Status_EXPIRED
-					_, err := tx.Exec(models.QueryUpdateStatusById, ex.Status, ex.Id)
-					if err != nil {
+					if err := tx.UpdateAlert(&ex); err != nil {
 						return err
 					}
 					h.notifyReceivers(&ex, EventType_EXPIRED)
@@ -281,9 +283,8 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 		select {
 		case <-t.C:
 			tx := models.NewTx(h.Db)
-			var unAckd models.Alerts
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
-				err := tx.Select(&unAckd, models.QuerySelectNoOwner)
+			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+				unAckd, err := tx.SelectAlerts(models.QuerySelectNoOwner)
 				if err != nil {
 					return err
 				}
@@ -304,8 +305,7 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 							changed = true
 							glog.V(2).Infof("Escalating alert %s:%d to %s", alert.Name, alert.Id, rule.EscalateTo)
 							alert.Severity = newSev
-							_, err = tx.Exec(models.QueryUpdateSevById, alert.Severity, alert.Id)
-							if err != nil {
+							if err := tx.UpdateAlert(&alert); err != nil {
 								return err
 							}
 							for _, s := range rule.SendTo {
@@ -333,17 +333,17 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 	}
 }
 
-func (h *AlertHandler) GetExisting(tx *models.Tx, alert *models.Alert) (*models.Alert, error) {
-	existing := &models.Alert{}
+func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.Alert, error) {
+	var existing *models.Alert
 	var err error
 	// an alert is assumed to be uniquely identified by its Id or by its Name:Device:Entity
 	if alert.Id > 0 {
-		err = tx.Get(existing, models.QuerySelectById, alert.Id)
+		existing, err = tx.GetAlert(models.QuerySelectById, alert.Id)
 	} else {
 		if alert.Device.Valid {
-			err = tx.Get(existing, models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device)
+			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device)
 		} else {
-			err = tx.Get(existing, models.QuerySelectByNameEntity, alert.Name, alert.Entity)
+			existing, err = tx.GetAlert(models.QuerySelectByNameEntity, alert.Name, alert.Entity)
 		}
 	}
 	if err != nil {
@@ -352,10 +352,9 @@ func (h *AlertHandler) GetExisting(tx *models.Tx, alert *models.Alert) (*models.
 	return existing, nil
 }
 
-func (h *AlertHandler) Suppress(ctx context.Context, tx *models.Tx, alert *models.Alert, duration time.Duration) error {
+func (h *AlertHandler) Suppress(ctx context.Context, tx models.Txn, alert *models.Alert, duration time.Duration) error {
 	alert.Suppress(duration)
-	_, err := tx.Exec(models.QueryUpdateStatusById, alert.Id, alert.Status)
-	if err != nil {
+	if err := tx.UpdateAlert(alert); err != nil {
 		return err
 	}
 	h.notifyReceivers(alert, EventType_SUPPRESSED)
@@ -364,9 +363,8 @@ func (h *AlertHandler) Suppress(ctx context.Context, tx *models.Tx, alert *model
 		alert.Unsuppress()
 		// need a new tx here because the closure wont be active any more
 		tx := models.NewTx(h.Db)
-		models.WithTx(ctx, tx, func(ctx context.Context, tx *models.Tx) error {
-			_, err := tx.Exec(models.QueryUpdateStatusById, alert.Id, alert.Status)
-			if err != nil {
+		models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+			if err := tx.UpdateAlert(alert); err != nil {
 				glog.Errorf("Failed up update status: %v", err)
 				return err
 			}
@@ -374,13 +372,12 @@ func (h *AlertHandler) Suppress(ctx context.Context, tx *models.Tx, alert *model
 			return nil
 		})
 	}()
-	return err
+	return nil
 }
 
-func (h *AlertHandler) Clear(ctx context.Context, tx *models.Tx, alert *models.Alert) error {
+func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
 	alert.Clear()
-	_, err := tx.Exec(models.QueryUpdateStatusById, alert.Status, alert.Id)
-	if err != nil {
+	if err := tx.UpdateAlert(alert); err != nil {
 		return err
 	}
 	h.notifyReceivers(alert, EventType_CLEARED)
@@ -388,10 +385,9 @@ func (h *AlertHandler) Clear(ctx context.Context, tx *models.Tx, alert *models.A
 }
 
 // SetOwner sets the owner when an alert is acknowledged
-func (h *AlertHandler) SetOwner(ctx context.Context, tx *models.Tx, alert *models.Alert, name, teamName string) error {
+func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *models.Alert, name, teamName string) error {
 	alert.SetOwner(name, teamName)
-	_, err := tx.Exec(models.QueryUpdateOwnerById, alert.Owner, alert.Team, alert.Id)
-	if err != nil {
+	if err := tx.UpdateAlert(alert); err != nil {
 		return err
 	}
 	// Notify all the receivers

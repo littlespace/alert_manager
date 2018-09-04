@@ -130,3 +130,9 @@ func (s SuppRules) Find(params map[string]string) (SuppressionRule, bool) {
 	}
 	return SuppressionRule{}, false
 }
+
+func (tx *Tx) SelectRules(query string) (SuppRules, error) {
+	var rules SuppRules
+	err := tx.Select(&rules, query)
+	return rules, err
+}
