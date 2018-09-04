@@ -1,4 +1,4 @@
-package aggregator
+package groupers
 
 type Circuit struct {
 	ASide, ZSide struct{ Device, Interface, Agg string }

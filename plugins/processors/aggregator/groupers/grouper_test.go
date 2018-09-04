@@ -1,4 +1,4 @@
-package aggregator
+package groupers
 
 import (
 	"github.com/mayuresh82/alert_manager/internal/models"
@@ -87,18 +87,11 @@ var testDatas = map[string]struct {
 
 func TestGrouping(t *testing.T) {
 	for name, datas := range testDatas {
-		grouper := groupers[name]
-		for _, alert := range datas.incoming {
-			grouper.addToBuf(alert)
-		}
-		go func() {
-			grouper.doGrouping()
-		}()
+		grouper := AllGroupers[name]
 		var aggregated [][]int64
-		for range datas.grouped {
-			group := <-groupedChan
+		for _, group := range grouper.DoGrouping(datas.incoming) {
 			var groupedIds []int64
-			for _, a := range group.groupedAlerts {
+			for _, a := range group {
 				groupedIds = append(groupedIds, a.Id)
 			}
 			aggregated = append(aggregated, groupedIds)

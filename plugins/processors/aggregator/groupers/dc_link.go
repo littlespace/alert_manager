@@ -1,24 +1,18 @@
-package aggregator
+package groupers
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/golang/glog"
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
-	"sync"
-	"time"
 )
 
 type dcCktGrouper struct {
-	sub      []string
-	recvChan chan *models.Alert
-	recvBuf  []*models.Alert
-
-	sync.Mutex
+	name string
 }
 
-func (g dcCktGrouper) grouperFunc() func(i, j interface{}) bool {
+// grouperFunc defines the condition for two circuit related objects  to be considered same to be grouped together
+// Currently, it considers a/z endpoints as well as bgp peers
+func (g dcCktGrouper) grouperFunc() groupingFunc {
 	return func(i, j interface{}) bool {
 		switch i := i.(type) {
 		case Circuit:
@@ -45,35 +39,15 @@ func (g dcCktGrouper) grouperFunc() func(i, j interface{}) bool {
 	}
 }
 
-func (g *dcCktGrouper) name() string {
-	return "dc_circuit_down"
+func (g *dcCktGrouper) Name() string {
+	return g.name
 }
 
-func (g *dcCktGrouper) addSubscription(a string) {
-	g.sub = append(g.sub, a)
-}
-
-func (g *dcCktGrouper) subscribed() []string {
-	return g.sub
-}
-
-func (g *dcCktGrouper) addToBuf(a *models.Alert) {
-	g.Lock()
-	defer g.Unlock()
-	g.recvBuf = append(g.recvBuf, a)
-}
-
-func (g *dcCktGrouper) addAlert(a *models.Alert) {
-	g.Lock()
-	defer g.Unlock()
-	g.recvChan <- a
-}
-
-func (g *dcCktGrouper) origAlerts(group []interface{}) []*models.Alert {
+func (g *dcCktGrouper) origAlerts(alerts []*models.Alert, group []interface{}) []*models.Alert {
 	var orig []*models.Alert
 	for _, p := range group {
 	innerfor:
-		for _, a := range g.recvBuf {
+		for _, a := range alerts {
 			var cond bool
 			if c, ok := p.(Circuit); ok {
 				cond = a.Id == c.AlertId
@@ -89,13 +63,12 @@ func (g *dcCktGrouper) origAlerts(group []interface{}) []*models.Alert {
 	return orig
 }
 
-func (g *dcCktGrouper) doGrouping() {
-	g.Lock()
-	defer g.Unlock()
+func (g *dcCktGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 	var entities []interface{}
+	var groupedAlerts [][]*models.Alert
 	allBgp := true
-	for _, alert := range g.recvBuf {
-		if !alert.Metadata.Valid {
+	for _, alert := range alerts {
+		if !alert.Metadata.Valid || alert.Status != models.Status_ACTIVE {
 			continue
 		}
 		allBgp = allBgp && alert.HasTags("bgp")
@@ -119,36 +92,20 @@ func (g *dcCktGrouper) doGrouping() {
 	}
 	if allBgp {
 		glog.V(2).Infof("Ckt Agg: Did not find a dc link alert, skip grouping")
-		g.recvBuf = g.recvBuf[:0]
-		return
+		return groupedAlerts
 	}
-	glog.V(4).Infof("Ckt Agg: Now grouping %d alerts", len(g.recvBuf))
+	glog.V(4).Infof("Ckt Agg: Now grouping %d alerts", len(alerts))
 	groups := group(g.grouperFunc(), entities)
 	//TODO : group by device
 
-	// create new aggregated alerts
 	for _, group := range groups {
-		orig := g.origAlerts(group)
-		groupedChan <- &alertGroup{groupedAlerts: orig, grouper: g}
+		orig := g.origAlerts(alerts, group)
+		groupedAlerts = append(groupedAlerts, orig)
 	}
-	g.recvBuf = g.recvBuf[:0]
-}
-
-func (g *dcCktGrouper) start(ctx context.Context) {
-	rule, _ := ah.Config.GetAggregationRuleConfig(g.name())
-	for {
-		alert := <-g.recvChan
-		if len(g.recvBuf) == 0 {
-			go func() {
-				<-time.After(rule.Window)
-				g.doGrouping()
-			}()
-		}
-		g.addToBuf(alert)
-	}
+	return groupedAlerts
 }
 
 func init() {
-	g := &dcCktGrouper{recvChan: make(chan *models.Alert)}
+	g := &dcCktGrouper{name: "dc_circuit_down"}
 	addGrouper(g)
 }

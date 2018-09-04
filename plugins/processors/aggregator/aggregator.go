@@ -7,39 +7,21 @@ import (
 	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
 	"time"
 )
 
 const AGG_CHECK_INTERVAL = 2 * time.Minute
 
-type groupingFunc func(i, j interface{}) bool
-
-//  generic grouping func
-func group(f groupingFunc, items []interface{}) [][]interface{} {
-	groups := [][]interface{}{[]interface{}{items[0]}}
-	for i := 1; i < len(items); i++ {
-		var found bool
-		for j := 0; j < len(groups); j++ {
-			if f(items[i], groups[j][0]) {
-				found = true
-				groups[j] = append(groups[j], items[i])
-				break
-			}
-		}
-		if !found {
-			groups = append(groups, []interface{}{items[i]})
-		}
-	}
-	return groups
-}
-
+// alertGroup represents a set of grouped alerts for a given grouper
 type alertGroup struct {
 	groupedAlerts []*models.Alert
-	grouper       grouper
+	grouper       groupers.Grouper
 }
 
+// aggAlert generates an aggregate alert for a given alert group based on defined config.
 func (ag alertGroup) aggAlert() *models.Alert {
-	rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.name())
+	rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.Name())
 	desc := ""
 	for _, o := range ag.groupedAlerts {
 		// TODO send notif for all groupedAlerts
@@ -68,25 +50,10 @@ func (ag alertGroup) aggAlert() *models.Alert {
 
 var groupedChan = make(chan *alertGroup)
 
-type grouper interface {
-	name() string
-	start(ctx context.Context)
-	addSubscription(a string)
-	subscribed() []string
-	addAlert(alert *models.Alert)
-	addToBuf(alert *models.Alert)
-	doGrouping()
-}
-
-var groupers = make(map[string]grouper)
-
-func addGrouper(g grouper) {
-	groupers[g.name()] = g
-}
-
 type Aggregator struct {
-	Notif chan *ah.AlertEvent
-	db    models.Dbase
+	Notif   chan *ah.AlertEvent
+	grouper *Grouper
+	db      models.Dbase
 }
 
 func (a *Aggregator) Name() string {
@@ -116,7 +83,7 @@ func (a *Aggregator) handleGrouped(ctx context.Context) {
 					return fmt.Errorf("Unable to update agg Ids: %v", err)
 				}
 				// send the aggAlert to the right output
-				rule, _ := ah.Config.GetAggregationRuleConfig(group.grouper.name())
+				rule, _ := ah.Config.GetAggregationRuleConfig(group.grouper.Name())
 				ah.NotifyOutputs(
 					&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE},
 					rule.Alert.Config.Outputs,
@@ -197,14 +164,12 @@ func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 			continue
 		}
 		for _, ruleName := range alert.Config.AggregationRules {
-			if grouper, ok := groupers[ruleName]; ok {
-				grouper.addSubscription(alert.Name)
-			}
+			a.grouper.addSubscription(ruleName, alert.Name)
 		}
 	}
-	for _, gpr := range groupers {
-		go func(g grouper) {
-			rule, _ := ah.Config.GetAggregationRuleConfig(g.name())
+	for _, gpr := range groupers.AllGroupers {
+		go func(g groupers.Grouper) {
+			rule, _ := ah.Config.GetAggregationRuleConfig(g.Name())
 			t := time.NewTicker(rule.PollInterval)
 			for {
 				select {
@@ -212,7 +177,7 @@ func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 					var alerts []*models.Alert
 					tx := models.NewTx(db)
 					err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-						return tx.InSelect(models.QuerySelectByNames, &alerts, g.subscribed())
+						return tx.InSelect(models.QuerySelectByNames, &alerts, a.grouper.subscribed(g.Name()))
 					})
 					if err != nil {
 						glog.Errorf("Agg: Unable to query: %v", err)
@@ -221,10 +186,9 @@ func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 					if len(alerts) == 0 {
 						break
 					}
-					for _, a := range alerts {
-						g.addToBuf(a)
+					for _, group := range g.DoGrouping(alerts) {
+						groupedChan <- &alertGroup{groupedAlerts: group, grouper: g}
 					}
-					g.doGrouping()
 				case <-ctx.Done():
 					return
 				}
@@ -241,13 +205,6 @@ func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 	a.db = db
 	go a.handleGrouped(ctx)
 	go a.handleExpiry(ctx)
-	for name, grouper := range groupers {
-		if _, ok := ah.Config.GetAggregationRuleConfig(name); ok {
-			go grouper.start(ctx)
-		} else {
-			glog.Errorf("No agg rule defined for grouper: %s, skipping", name)
-		}
-	}
 	// subscribe to alerts that have agg rules defined
 	for _, alert := range ah.Config.GetConfiguredAlerts() {
 		if len(alert.Config.AggregationRules) > 0 {
@@ -263,12 +220,16 @@ func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 				break
 			}
 			for _, ruleName := range config.Config.AggregationRules {
-				grouper, ok := groupers[ruleName]
+				grouper, ok := groupers.AllGroupers[ruleName]
 				if !ok {
+					glog.Errorf("No grouper found for rule: %s, skipping", ruleName)
 					continue
 				}
-				if event.Type == ah.EventType_ACTIVE {
-					go grouper.addAlert(event.Alert)
+				switch event.Type {
+				case ah.EventType_ACTIVE:
+					a.grouper.addAlert(grouper.Name(), event.Alert)
+				case ah.EventType_CLEARED:
+					a.grouper.removeAlert(grouper.Name(), event.Alert)
 				}
 			}
 		case <-ctx.Done():
@@ -278,6 +239,9 @@ func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 }
 
 func init() {
-	agg := &Aggregator{Notif: make(chan *ah.AlertEvent)}
+	agg := &Aggregator{
+		Notif:   make(chan *ah.AlertEvent),
+		grouper: &Grouper{recvBuffers: make(map[string][]*models.Alert), subs: make(map[string][]string)},
+	}
 	am.AddProcessor(agg)
 }
