@@ -78,7 +78,7 @@ func NewHandler(db models.Dbase) *AlertHandler {
 
 func (h *AlertHandler) loadSuppRules() {
 	glog.V(2).Infof("Updating suppression rules")
-	tx := models.NewTx(h.Db)
+	tx := h.Db.NewTx()
 	ctx := context.Background()
 	var (
 		rules models.SuppRules
@@ -117,61 +117,28 @@ func (h *AlertHandler) Start(ctx context.Context) {
 	for {
 		select {
 		case alertEvent := <-ListenChan:
-			tx := models.NewTx(h.Db)
+			tx := h.Db.NewTx()
 			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 				alert := alertEvent.Alert
 
 				switch alertEvent.Type {
 				case EventType_ACTIVE:
-					if h.checkExistingActive(tx, alert) {
-						return nil
-					}
-					// add transforms
-					h.applyTransforms(alert)
-					// new alert
-					newId, err := tx.NewAlert(alert)
+					notify, err := h.handleActive(ctx, tx, alert)
 					if err != nil {
-						return fmt.Errorf("Unable to insert new alert: %v", err)
+						return err
 					}
-					alert.Id = newId
-					glog.V(2).Infof("Received alert with ID: %v", alert.Id)
-
-					// check if alert matches an existing suppression rule
-					filters := map[string]string{"Entity": alert.Entity, "Alert": alert.Name}
-					if alert.Device.Valid {
-						filters["Device"] = alert.Device.String
+					if notify {
+						// Send to interested parties
+						h.notifyReceivers(alert, EventType_ACTIVE)
 					}
-					// TODO Add other filters for site, region etc.
-					if rule, ok := h.suppRules.Find(filters); ok {
-						glog.V(2).Infof("Found matching suppression rule: %v", rule)
-						secondsLeft := rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
-						h.Suppress(ctx, tx, alert, secondsLeft)
-						return nil
-					}
-
-					// Send to interested parties
-					h.notifyReceivers(alert, EventType_ACTIVE)
-
+					return nil
 				case EventType_CLEARED:
-					// clear existing alert if auto clear is true
-					existingAlert, err := h.GetExisting(tx, alert)
-					if err != nil {
-						glog.V(2).Infof("No existing alert found for %s:%s to clear", alert.Name, alert.Entity)
-						return nil
-					}
-					if !existingAlert.AutoClear {
-						glog.V(2).Infof("Not auto-clearing alert %d ", existingAlert.Id)
-						return nil
-					}
-					err = h.Clear(ctx, tx, existingAlert)
-					if err != nil {
-						return fmt.Errorf("Cant clear existing alert %d: %v", existingAlert.Id, err)
-					}
+					return h.handleClear(ctx, tx, alert)
 				}
 				return nil
 			})
 			if err != nil {
-				glog.Errorf("Unable to Create Alert: %v", err)
+				glog.Errorf("Unable to Handle Alert: %v", err)
 			}
 
 		case <-ctx.Done():
@@ -179,6 +146,52 @@ func (h *AlertHandler) Start(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) (bool, error) {
+	if h.checkExistingActive(tx, alert) {
+		return false, nil
+	}
+	// add transforms
+	h.applyTransforms(alert)
+	// new alert
+	newId, err := tx.NewAlert(alert)
+	if err != nil {
+		return false, fmt.Errorf("Unable to insert new alert: %v", err)
+	}
+	alert.Id = newId
+	glog.V(2).Infof("Received alert with ID: %v", alert.Id)
+
+	// check if alert matches an existing suppression rule
+	filters := map[string]string{"Entity": alert.Entity, "Alert": alert.Name}
+	if alert.Device.Valid {
+		filters["Device"] = alert.Device.String
+	}
+	// TODO Add other filters for site, region etc.
+	if rule, ok := h.suppRules.Find(filters); ok {
+		glog.V(2).Infof("Found matching suppression rule: %v", rule)
+		secondsLeft := rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
+		return false, h.Suppress(ctx, tx, alert, secondsLeft)
+	}
+	return true, nil
+}
+
+func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
+	// clear existing alert if auto clear is true
+	existingAlert, err := h.GetExisting(tx, alert)
+	if err != nil {
+		glog.V(2).Infof("No existing alert found for %s:%s to clear", alert.Name, alert.Entity)
+		return nil
+	}
+	if !existingAlert.AutoClear {
+		glog.V(2).Infof("Not auto-clearing alert %d ", existingAlert.Id)
+		return nil
+	}
+	err = h.Clear(ctx, tx, existingAlert)
+	if err != nil {
+		return fmt.Errorf("Cant clear existing alert %d: %v", existingAlert.Id, err)
+	}
+	return nil
 }
 
 func (h *AlertHandler) checkExistingActive(tx models.Txn, alert *models.Alert) bool {
@@ -248,7 +261,7 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 	for {
 		select {
 		case <-t.C:
-			tx := models.NewTx(h.Db)
+			tx := h.Db.NewTx()
 			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 				expired, err := tx.SelectAlerts(models.QuerySelectExpired)
 				if err != nil {
@@ -282,7 +295,7 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 	for {
 		select {
 		case <-t.C:
-			tx := models.NewTx(h.Db)
+			tx := h.Db.NewTx()
 			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 				unAckd, err := tx.SelectAlerts(models.QuerySelectNoOwner)
 				if err != nil {
@@ -341,7 +354,7 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 		existing, err = tx.GetAlert(models.QuerySelectById, alert.Id)
 	} else {
 		if alert.Device.Valid {
-			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device)
+			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device.String)
 		} else {
 			existing, err = tx.GetAlert(models.QuerySelectByNameEntity, alert.Name, alert.Entity)
 		}
@@ -362,7 +375,7 @@ func (h *AlertHandler) Suppress(ctx context.Context, tx models.Txn, alert *model
 		<-time.NewTimer(duration).C
 		alert.Unsuppress()
 		// need a new tx here because the closure wont be active any more
-		tx := models.NewTx(h.Db)
+		tx := h.Db.NewTx()
 		models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 			if err := tx.UpdateAlert(alert); err != nil {
 				glog.Errorf("Failed up update status: %v", err)

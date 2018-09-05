@@ -92,6 +92,8 @@ func TestAlertHandlerParsing(t *testing.T) {
 func TestMain(m *testing.M) {
 	p := &mockParser{}
 	AddParser(p)
-	tu.InitTests()
+	flag.Parse()
+	ah.Config = ah.NewConfigHandler("../testutil/testdata/test_config.yaml")
+	ah.Config.LoadConfig()
 	os.Exit(m.Run())
 }

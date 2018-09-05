@@ -15,12 +15,17 @@ import (
 
 // custom structs to allow for mocking
 type Dbase interface {
-	MustBegin() *sqlx.Tx
+	NewTx() Txn
 	Close() error
 }
 
 type DB struct {
 	*sqlx.DB
+}
+
+func (d *DB) NewTx() Txn {
+	tx := d.DB.MustBegin()
+	return &Tx{tx}
 }
 
 func NewDB(addr, username, password, dbName, schemaFile string, timeout int) Dbase {
@@ -58,11 +63,6 @@ type Txn interface {
 
 type Tx struct {
 	*sqlx.Tx
-}
-
-func NewTx(db Dbase) Txn {
-	tx := db.MustBegin()
-	return &Tx{tx}
 }
 
 func (tx *Tx) InQuery(query string, arg ...interface{}) error {
