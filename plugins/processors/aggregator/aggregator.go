@@ -65,7 +65,7 @@ func (a *Aggregator) handleGrouped(ctx context.Context) {
 		select {
 		case group := <-groupedChan:
 			agg := group.aggAlert()
-			tx := models.NewTx(a.db)
+			tx := a.db.NewTx()
 			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 				var newId int64
 				newId, err := tx.NewAlert(agg)
@@ -104,7 +104,7 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 	for {
 		select {
 		case <-t.C:
-			tx := models.NewTx(a.db)
+			tx := a.db.NewTx()
 			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 				allAggregated, err := tx.SelectAlerts(models.QuerySelectAllAggregated)
 				if err != nil {
@@ -175,7 +175,7 @@ func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 				select {
 				case <-t.C:
 					var alerts []*models.Alert
-					tx := models.NewTx(db)
+					tx := db.NewTx()
 					err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 						return tx.InSelect(models.QuerySelectByNames, &alerts, a.grouper.subscribed(g.Name()))
 					})

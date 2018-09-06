@@ -26,8 +26,9 @@ var (
     severity=:severity, status=:status, metadata=:metadata, scope=:scope, is_aggregate=:is_aggregate
       WHERE id=:id`
 
-	QueryUpdateLastActive = "UPDATE alerts SET last_active=? WHERE id IN (?)"
-	QueryUpdateAggId      = "UPDATE alerts SET agg_id=? WHERE id IN (?)"
+	queryUpdate           = "UPDATE alerts"
+	QueryUpdateLastActive = queryUpdate + " SET last_active=? WHERE id IN (?)"
+	QueryUpdateAggId      = queryUpdate + " SET agg_id=? WHERE id IN (?)"
 
 	querySelect             = "SELECT * from alerts"
 	QuerySelectByNames      = querySelect + " WHERE name IN (?) AND status=1 AND agg_id IS NULL FOR UPDATE"
@@ -102,6 +103,41 @@ type Alert struct {
 	Severity     AlertSeverity
 	Status       AlertStatus
 	Metadata     sql.NullString // json encoded metadata
+}
+
+// custom Marshaler interface for Alert
+func (a Alert) MarshalJSON() ([]byte, error) {
+	tmp := struct {
+		Id                                       int64
+		ExternalId                               string `json:"external_id"`
+		Name, Description, Entity, Source, Scope string
+		Device, Owner, Team, Tags                string
+		StartTime                                int64 `json:"start_time"`
+		LastActive                               int64 `json:"last_active"`
+		AggregatorId                             int64 `json:"agg_id"`
+		IsAggregate                              bool  `json:"is_aggregate"`
+		Severity                                 string
+		Status                                   string
+	}{
+		Id:           a.Id,
+		ExternalId:   a.ExternalId,
+		Name:         a.Name,
+		Description:  a.Description,
+		Entity:       a.Entity,
+		Source:       a.Source,
+		Scope:        a.Scope,
+		Device:       a.Device.String,
+		Owner:        a.Owner.String,
+		Team:         a.Team.String,
+		Tags:         a.Tags.String,
+		StartTime:    a.StartTime.Unix(),
+		LastActive:   a.LastActive.Unix(),
+		AggregatorId: a.AggregatorId.Int64,
+		IsAggregate:  a.IsAggregate,
+		Severity:     a.Severity.String(),
+		Status:       a.Status.String(),
+	}
+	return json.Marshal(&tmp)
 }
 
 func NewAlert(name, description, entity, source, scope string, extId string, startTime time.Time, sev string, isAgg bool) *Alert {

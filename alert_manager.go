@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/golang/glog"
+	"github.com/mayuresh82/alert_manager/api"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
@@ -78,7 +79,8 @@ func Run(config *Config) {
 
 	// start the API server
 	glog.Infof("Starting API server on %s", config.Agent.ApiAddr)
-	// TODO
+	server := api.NewServer(config.Agent.ApiAddr, handler)
+	go server.Start(ctx)
 
 	// start the reporting agent
 	glog.Infof("Will send stats to %s", config.Reporter.Url)
