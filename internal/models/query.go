@@ -19,6 +19,7 @@ type Param struct {
 
 type Querier interface {
 	Run(tx Txn) (Alerts, error)
+	toSQL() string
 }
 
 type Query struct {

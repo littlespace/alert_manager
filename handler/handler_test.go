@@ -137,9 +137,6 @@ func TestHandlerAlertActive(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	Transforms = []Transform{}
-	Processors = make(map[string][]chan *AlertEvent)
-	Outputs = make(map[string]chan *AlertEvent)
 	AddTransform(&mockTransform{name: "mock", priority: 100, register: "Test Alert"})
 	flag.Parse()
 	Config = NewConfigHandler("../testutil/testdata/test_config.yaml")

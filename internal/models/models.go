@@ -81,7 +81,6 @@ func (tx *Tx) InSelect(query string, to interface{}, arg ...interface{}) error {
 		return err
 	}
 	query = tx.Rebind(query)
-	fmt.Println(query, args)
 	return tx.Select(to, query, args...)
 }
 

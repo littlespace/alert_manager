@@ -143,7 +143,15 @@ func (s *Server) Validate(next http.HandlerFunc) http.HandlerFunc {
 
 func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 	var user User
-	_ = json.NewDecoder(req.Body).Decode(&user)
+	if req.Body == nil {
+		http.Error(w, "Empty body", http.StatusBadRequest)
+		return
+	}
+	err := json.NewDecoder(req.Body).Decode(&user)
+	if err != nil {
+		http.Error(w, "Invalid credentials", http.StatusBadRequest)
+		return
+	}
 
 	//TODO Authenticate user provided creds against AD
 
