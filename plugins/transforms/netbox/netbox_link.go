@@ -38,8 +38,8 @@ func (i *NetboxInterface) parse(raw map[string]interface{}) {
 			ff := raw["form_factor"].(map[string]interface{})
 			if ff["value"].(float64) == 200 {
 				i.Type = "lag"
-				return
 			}
+			return
 		}
 		i.Role = "dc"
 		conn := raw["interface_connection"].(map[string]interface{})
