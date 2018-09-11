@@ -1,5 +1,13 @@
 all:
+	$(MAKE) deps
+	$(MAKE) alert_manager
+
+deps:
+	go get -u github.com/golang/lint/golint
+	go get -u github.com/golang/dep/cmd/dep
 	dep ensure
+
+alert_manager:
 	go build ./cmd/alert_manager
 
 debug:

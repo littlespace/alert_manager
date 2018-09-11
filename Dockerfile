@@ -4,8 +4,8 @@ RUN apk update && \
     apk add --no-cache git && \
     apk add make
 RUN mkdir -p /opt/alert_manager
-RUN mkdir -p /go/src
-RUN cd /go/src && \
+RUN mkdir -p /go/src/github.com/mayuresh82
+RUN cd /go/src/github.com/mayuresh82 && \
     git clone --branch dev https://github.com/mayuresh82/alert_manager
 WORKDIR /go/src/github.com/mayuresh82/alert_manager
 RUN make
