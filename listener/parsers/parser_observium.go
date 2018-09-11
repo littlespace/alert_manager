@@ -17,7 +17,7 @@ type observiumData struct {
 	Timestamp         string `json:"alert_timestamp_rfc3339"`
 	EntityName        string `json:"entity_name"`
 	EntityDescription string `json:"entity_description"`
-	DeviceName        string `json:"device_hostname"`
+	DeviceName        string `json:"device_sysname"`
 	DeviceOs          string `json:"device_os"`
 	Title             string
 }
