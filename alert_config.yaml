@@ -59,6 +59,15 @@ alert_config:
       aggregation_rules:
         - fibercut
 
+  - name: Neteng BB Agg Link Down
+    config:
+      scope: link
+      source: observium
+      tags: [ neteng, bb, link ]
+      severity: INFO
+      aggregation_rules:
+        - fibercut
+
   - name: Neteng DC Link Down
     config:
       scope: link
@@ -96,8 +105,8 @@ aggregation_rules:
             send_to: [ victorops ] 
 
   - name: bgp_session
-    window: 1m
-    poll_interval: 1m
+    window: 5m
+    poll_interval: 5m
     alert:
       name: Neteng_Aggregated BGP Down
       config:
@@ -108,8 +117,8 @@ aggregation_rules:
         outputs: [ slack ]
 
   - name: dc_circuit_down
-    window: 1m
-    poll_interval: 1m
+    window: 5m
+    poll_interval: 5m
     alert:
       name: Neteng_Aggregated DC Link Down
       config:

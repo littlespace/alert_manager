@@ -68,18 +68,18 @@ type AlertHandler struct {
 	sync.Mutex
 }
 
+// NewHandler returns a new alert handler which uses the supplied db
 func NewHandler(db models.Dbase) *AlertHandler {
 	h := &AlertHandler{
 		Db: db,
 	}
-	h.loadSuppRules()
+	h.loadSuppRules(context.Background())
 	return h
 }
 
-func (h *AlertHandler) loadSuppRules() {
+func (h *AlertHandler) loadSuppRules(ctx context.Context) {
 	glog.V(2).Infof("Updating suppression rules")
 	tx := h.Db.NewTx()
-	ctx := context.Background()
 	var (
 		rules models.SuppRules
 		er    error
@@ -96,23 +96,25 @@ func (h *AlertHandler) loadSuppRules() {
 	h.suppRules = rules
 }
 
-func (h *AlertHandler) updateSuppRules(ctx context.Context) {
-	t := time.NewTicker(SUPPRULE_UPDATE_INTERVAL)
-	for {
-		select {
-		case <-t.C:
-			h.loadSuppRules()
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 // Start needs to be called in a go-routine
 func (h *AlertHandler) Start(ctx context.Context) {
-	go h.updateSuppRules(ctx)
-	go h.handleExpiry(ctx)
-	go h.handleEscalation(ctx)
+	go func() {
+		t1 := time.NewTicker(SUPPRULE_UPDATE_INTERVAL)
+		t2 := time.NewTicker(EXPIRY_CHECK_INTERVAL)
+		t3 := time.NewTicker(ESCALATION_CHECK_INTERVAL)
+		for {
+			select {
+			case <-t1.C:
+				h.loadSuppRules(ctx)
+			case <-t2.C:
+				h.handleExpiry(ctx)
+			case <-t3.C:
+				h.handleEscalation(ctx)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 	// start listening for alerts
 	for {
 		select {
@@ -123,15 +125,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 
 				switch alertEvent.Type {
 				case EventType_ACTIVE:
-					notify, err := h.handleActive(ctx, tx, alert)
-					if err != nil {
-						return err
-					}
-					if notify {
-						// Send to interested parties
-						h.notifyReceivers(alert, EventType_ACTIVE)
-					}
-					return nil
+					return h.handleActive(ctx, tx, alert)
 				case EventType_CLEARED:
 					return h.handleClear(ctx, tx, alert)
 				}
@@ -148,16 +142,16 @@ func (h *AlertHandler) Start(ctx context.Context) {
 	}
 }
 
-func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) (bool, error) {
+func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
 	if h.checkExistingActive(tx, alert) {
-		return false, nil
+		return nil
 	}
 	// add transforms
 	h.applyTransforms(alert)
 	// new alert
 	newId, err := tx.NewAlert(alert)
 	if err != nil {
-		return false, fmt.Errorf("Unable to insert new alert: %v", err)
+		return fmt.Errorf("Unable to insert new alert: %v", err)
 	}
 	alert.Id = newId
 	glog.V(2).Infof("Received alert with ID: %v", alert.Id)
@@ -171,9 +165,12 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	if rule, ok := h.suppRules.Find(filters); ok {
 		glog.V(2).Infof("Found matching suppression rule: %v", rule)
 		secondsLeft := rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
-		return false, h.Suppress(ctx, tx, alert, secondsLeft)
+		return h.Suppress(ctx, tx, alert, secondsLeft)
 	}
-	return true, nil
+	
+	// Send to interested parties
+	h.notifyReceivers(alert, EventType_ACTIVE)
+	return nil
 }
 
 func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
@@ -257,92 +254,76 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType)
 }
 
 func (h *AlertHandler) handleExpiry(ctx context.Context) {
-	t := time.NewTicker(EXPIRY_CHECK_INTERVAL)
-	for {
-		select {
-		case <-t.C:
-			tx := h.Db.NewTx()
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-				expired, err := tx.SelectAlerts(models.QuerySelectExpired)
-				if err != nil {
-					return err
-				}
-				for _, ex := range expired {
-					if ex.IsAggregate {
-						// aggregate expiry handled by aggregators
-						continue
-					}
-					glog.V(2).Infof("Alert ID %d has now expired", ex.Id)
-					ex.Status = models.Status_EXPIRED
-					if err := tx.UpdateAlert(&ex); err != nil {
-						return err
-					}
-					h.notifyReceivers(&ex, EventType_EXPIRED)
-				}
-				return nil
-			})
-			if err != nil {
-				glog.Errorf("Failed to update expired alerts: %v", err)
-			}
-		case <-ctx.Done():
-			return
+	tx := h.Db.NewTx()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		expired, err := tx.SelectAlerts(models.QuerySelectExpired)
+		if err != nil {
+			return err
 		}
+		for _, ex := range expired {
+			if ex.IsAggregate {
+				// aggregate expiry handled by aggregators
+				continue
+			}
+			glog.V(2).Infof("Alert ID %d has now expired", ex.Id)
+			ex.Status = models.Status_EXPIRED
+			if err := tx.UpdateAlert(&ex); err != nil {
+				return err
+			}
+			h.notifyReceivers(&ex, EventType_EXPIRED)
+		}
+		return nil
+	})
+	if err != nil {
+		glog.Errorf("Failed to update expired alerts: %v", err)
 	}
 }
 
 func (h *AlertHandler) handleEscalation(ctx context.Context) {
-	t := time.NewTicker(ESCALATION_CHECK_INTERVAL)
-	for {
-		select {
-		case <-t.C:
-			tx := h.Db.NewTx()
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-				unAckd, err := tx.SelectAlerts(models.QuerySelectNoOwner)
-				if err != nil {
-					return err
-				}
-				for _, alert := range unAckd {
-					config, ok := Config.GetAlertConfig(alert.Name)
-					if !ok {
-						glog.Errorf("Failed to check escalation for %s : No config found", alert.Name)
-						continue
-					}
-					var changed bool
-					for _, rule := range config.Config.EscalationRules {
-						newSev := models.SevMap[rule.EscalateTo]
-						if newSev >= alert.Severity {
-							continue
-						}
-						timePassed := time.Now().Sub(alert.StartTime.Time)
-						if timePassed >= rule.After {
-							changed = true
-							glog.V(2).Infof("Escalating alert %s:%d to %s", alert.Name, alert.Id, rule.EscalateTo)
-							alert.Severity = newSev
-							if err := tx.UpdateAlert(&alert); err != nil {
-								return err
-							}
-							for _, s := range rule.SendTo {
-								for name, outChan := range Outputs {
-									if name == s {
-										outChan <- &AlertEvent{Alert: &alert, Type: EventType_ESCALATED}
-									}
-								}
-							}
-							break
-						}
-					}
-					if changed {
-						h.notifyReceivers(&alert, EventType_ESCALATED)
-					}
-				}
-				return nil
-			})
-			if err != nil {
-				glog.Errorf("Failed to escalate alerts : %v", err)
-			}
-		case <-ctx.Done():
-			return
+	tx := h.Db.NewTx()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		unAckd, err := tx.SelectAlerts(models.QuerySelectNoOwner)
+		if err != nil {
+			return err
 		}
+		for _, alert := range unAckd {
+			config, ok := Config.GetAlertConfig(alert.Name)
+			if !ok {
+				glog.Errorf("Failed to check escalation for %s : No config found", alert.Name)
+				continue
+			}
+			var changed bool
+			for _, rule := range config.Config.EscalationRules {
+				newSev := models.SevMap[rule.EscalateTo]
+				if newSev >= alert.Severity {
+					continue
+				}
+				timePassed := time.Now().Sub(alert.StartTime.Time)
+				if timePassed >= rule.After {
+					changed = true
+					glog.V(2).Infof("Escalating alert %s:%d to %s", alert.Name, alert.Id, rule.EscalateTo)
+					alert.Severity = newSev
+					if err := tx.UpdateAlert(&alert); err != nil {
+						return err
+					}
+					for _, s := range rule.SendTo {
+						for name, outChan := range Outputs {
+							if name == s {
+								outChan <- &AlertEvent{Alert: &alert, Type: EventType_ESCALATED}
+							}
+						}
+					}
+					break
+				}
+			}
+			if changed {
+				h.notifyReceivers(&alert, EventType_ESCALATED)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		glog.Errorf("Failed to escalate alerts : %v", err)
 	}
 }
 

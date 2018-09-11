@@ -1,5 +1,5 @@
 alert_config:
-  - name: Neteng BB Input Errors Test
+  - name: Test Alert 4
     config:
       scope: phy_interface
       source: grafana

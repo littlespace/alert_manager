@@ -66,7 +66,7 @@ type Tx struct {
 }
 
 func (tx *Tx) InQuery(query string, arg ...interface{}) error {
-	query, args, err := sqlx.In(query, arg)
+	query, args, err := sqlx.In(query, arg...)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (tx *Tx) InQuery(query string, arg ...interface{}) error {
 }
 
 func (tx *Tx) InSelect(query string, to interface{}, arg ...interface{}) error {
-	query, args, err := sqlx.In(query, arg)
+	query, args, err := sqlx.In(query, arg...)
 	if err != nil {
 		return err
 	}
