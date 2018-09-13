@@ -167,7 +167,7 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		secondsLeft := rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
 		return h.Suppress(ctx, tx, alert, secondsLeft)
 	}
-	
+
 	// Send to interested parties
 	h.notifyReceivers(alert, EventType_ACTIVE)
 	return nil
@@ -270,7 +270,8 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 			if err := tx.UpdateAlert(&ex); err != nil {
 				return err
 			}
-			h.notifyReceivers(&ex, EventType_EXPIRED)
+			toSend := ex // this copy needed to avoid overwriting
+			h.notifyReceivers(&toSend, EventType_EXPIRED)
 		}
 		return nil
 	})
@@ -317,7 +318,8 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 				}
 			}
 			if changed {
-				h.notifyReceivers(&alert, EventType_ESCALATED)
+				toSend := alert // this copy needed to avoid overwriting
+				h.notifyReceivers(&toSend, EventType_ESCALATED)
 			}
 		}
 		return nil

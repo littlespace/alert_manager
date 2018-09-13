@@ -1,3 +1,5 @@
+.PHONY: all alert_manager test
+
 all:
 	$(MAKE) deps
 	$(MAKE) alert_manager

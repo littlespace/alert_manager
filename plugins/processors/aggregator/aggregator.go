@@ -34,7 +34,7 @@ func (ag alertGroup) aggAlert() *models.Alert {
 		rule.Alert.Config.Source,
 		"aggregated",
 		ag.groupedAlerts[0].ExternalId,
-		ag.groupedAlerts[0].StartTime.Time,
+		time.Now(),
 		rule.Alert.Config.Severity,
 		true)
 

@@ -34,7 +34,7 @@ func queryIfaceResults(n *Netbox, ip string) ([]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return n.getResults(body), nil
+	return n.getResults(body)
 }
 
 func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {

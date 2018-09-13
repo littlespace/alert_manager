@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS alerts (
   external_id VARCHAR(32) NOT NULL,
   source VARCHAR(16) NOT NULL,
   device VARCHAR(16),
+  site VARCHAR(16),
   owner VARCHAR(16),
   team VARCHAR(16),
   tags VARCHAR(128),

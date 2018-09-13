@@ -14,6 +14,10 @@ type meta interface {
 	query(n *Netbox, alert *models.Alert) error
 }
 
+type Clienter interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type Client struct {
 	*http.Client
 }
@@ -22,7 +26,7 @@ type Netbox struct {
 	Addr, Token string
 	Priority    int
 	Register    string
-	client      *Client
+	client      Clienter
 }
 
 func (n *Netbox) Name() string {
@@ -37,12 +41,20 @@ func (n *Netbox) GetRegister() string {
 	return n.Register
 }
 
-func (n *Netbox) getResults(data []byte) []interface{} {
+func (n *Netbox) getResults(data []byte) ([]interface{}, error) {
 	var d map[string]interface{}
 	if err := json.Unmarshal(data, &d); err != nil {
-		return []interface{}{}
+		return []interface{}{}, fmt.Errorf("Unable to unmarshal data: %v", err)
 	}
-	return d["results"].([]interface{})
+	return d["results"].([]interface{}), nil
+}
+
+func (n *Netbox) getResult(data []byte) (map[string]interface{}, error) {
+	var d map[string]interface{}
+	if err := json.Unmarshal(data, &d); err != nil {
+		return d, fmt.Errorf("Unable to unmarshal data: %v", err)
+	}
+	return d, nil
 }
 
 func (n *Netbox) query(query string) ([]byte, error) {

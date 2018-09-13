@@ -11,19 +11,20 @@ import (
 var (
 	QueryInsertNew = `INSERT INTO 
     alerts (
-      name, description, entity, external_id, source, device, owner, team, tags, start_time, last_active,
+      name, description, entity, external_id, source, device, site, owner, team, tags, start_time, last_active,
       agg_id, auto_expire, auto_clear, expire_after, severity, status, metadata, scope, is_aggregate
     ) VALUES (
-      :name, :description, :entity, :external_id, :source, :device, :owner, :team, :tags,
+      :name, :description, :entity, :external_id, :source, :device, :site, :owner, :team, :tags,
       :start_time, :last_active, :agg_id, :auto_expire, :auto_clear, :expire_after,
       :severity, :status, :metadata, :scope, :is_aggregate
     ) RETURNING id`
 
 	QueryUpdateAlertById = `UPDATE alerts SET
     name=:name, description=:description, entity=:entity, external_id=:external_id, source=:source,
-    device=:device, owner=:owner, team=:team, tags=:tags, start_time=:start_time, last_active=:last_active,
-    agg_id=:agg_id, auto_expire=:auto_expire, auto_clear=:auto_clear, expire_after=:expire_after,
-    severity=:severity, status=:status, metadata=:metadata, scope=:scope, is_aggregate=:is_aggregate
+    device=:device, site=:site, owner=:owner, team=:team, tags=:tags, start_time=:start_time,
+    last_active=:last_active, agg_id=:agg_id, auto_expire=:auto_expire, auto_clear=:auto_clear,
+    expire_after=:expire_after, severity=:severity, status=:status, metadata=:metadata, scope=:scope,
+    is_aggregate=:is_aggregate
       WHERE id=:id`
 
 	queryUpdate           = "UPDATE alerts"
@@ -90,6 +91,7 @@ type Alert struct {
 	Source       string
 	Scope        string
 	Device       sql.NullString
+	Site         sql.NullString
 	Owner        sql.NullString
 	Team         sql.NullString
 	Tags         sql.NullString // TODO maybe store in separate table
@@ -111,7 +113,7 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		Id                                       int64
 		ExternalId                               string `json:"external_id"`
 		Name, Description, Entity, Source, Scope string
-		Device, Owner, Team, Tags                string
+		Device, Site, Owner, Team, Tags          string
 		StartTime                                int64 `json:"start_time"`
 		LastActive                               int64 `json:"last_active"`
 		AggregatorId                             int64 `json:"agg_id"`
@@ -127,6 +129,7 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		Source:       a.Source,
 		Scope:        a.Scope,
 		Device:       a.Device.String,
+		Site:         a.Site.String,
 		Owner:        a.Owner.String,
 		Team:         a.Team.String,
 		Tags:         a.Tags.String,
@@ -160,6 +163,10 @@ func NewAlert(name, description, entity, source, scope string, extId string, sta
 
 func (a *Alert) AddDevice(device string) {
 	a.Device = sql.NullString{device, true}
+}
+
+func (a *Alert) AddSite(site string) {
+	a.Site = sql.NullString{site, true}
 }
 
 func (a *Alert) AddTags(tags ...string) {
