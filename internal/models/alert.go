@@ -221,6 +221,10 @@ func (a *Alert) SetSeverity(sev AlertSeverity) {
 	a.Severity = sev
 }
 
+func (a *Alert) SetAggId(id int64) {
+	a.AggregatorId = sql.NullInt64{id, true}
+}
+
 func (a *Alert) Clear() {
 	glog.V(2).Infof("Clearing out alert %d", a.Id)
 	a.Status = Status_CLEARED

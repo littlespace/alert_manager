@@ -29,7 +29,7 @@ func (i *NetboxInterface) parse(ifaceData map[string]interface{}) error {
 	if len(ifaceData) == 0 {
 		return fmt.Errorf("Interface not found in result data")
 	}
-	if !ifaceData["is_connected"].(bool) || !ifaceData["link_is_active"].(bool) {
+	if !ifaceData["is_connected"].(bool) {
 		return fmt.Errorf("Link is not connected or inactive")
 	}
 	i.Description = ifaceData["rblx_description"].(string)

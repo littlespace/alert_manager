@@ -48,6 +48,34 @@ func (ag alertGroup) aggAlert() *models.Alert {
 	return agg
 }
 
+func (ag alertGroup) saveAgg(ctx context.Context, tx models.Txn) error {
+	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		agg := ag.aggAlert()
+		var newId int64
+		newId, err := tx.NewAlert(agg)
+		if err != nil {
+			return fmt.Errorf("Unable to insert agg alert: %v", err)
+		}
+		agg.Id = newId
+		// update the agg IDs of all the original alerts
+		var origIds []int64
+		for _, o := range ag.groupedAlerts {
+			origIds = append(origIds, o.Id)
+		}
+		err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
+		if err != nil {
+			return fmt.Errorf("Unable to update agg Ids: %v", err)
+		}
+		// send the aggAlert to the right output
+		rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.Name())
+		ah.NotifyOutputs(
+			&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE},
+			rule.Alert.Config.Outputs,
+		)
+		return nil
+	})
+}
+
 var groupedChan = make(chan *alertGroup)
 
 type Aggregator struct {
@@ -64,33 +92,8 @@ func (a *Aggregator) handleGrouped(ctx context.Context) {
 	for {
 		select {
 		case group := <-groupedChan:
-			agg := group.aggAlert()
 			tx := a.db.NewTx()
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-				var newId int64
-				newId, err := tx.NewAlert(agg)
-				if err != nil {
-					return fmt.Errorf("Unable to insert agg alert: %v", err)
-				}
-				agg.Id = newId
-				// update the agg IDs of all the original alerts
-				var origIds []int64
-				for _, o := range group.groupedAlerts {
-					origIds = append(origIds, o.Id)
-				}
-				err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
-				if err != nil {
-					return fmt.Errorf("Unable to update agg Ids: %v", err)
-				}
-				// send the aggAlert to the right output
-				rule, _ := ah.Config.GetAggregationRuleConfig(group.grouper.Name())
-				ah.NotifyOutputs(
-					&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE},
-					rule.Alert.Config.Outputs,
-				)
-				return nil
-			})
-			if err != nil {
+			if err := group.saveAgg(ctx, tx); err != nil {
 				glog.Errorf("Agg: Unable to save Agg alert: %v", err)
 			}
 		case <-ctx.Done():
@@ -99,53 +102,56 @@ func (a *Aggregator) handleGrouped(ctx context.Context) {
 	}
 }
 
+func (a *Aggregator) checkExpired(ctx context.Context, tx models.Txn) error {
+	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		allAggregated, err := tx.SelectAlerts(models.QuerySelectAllAggregated)
+		if err != nil {
+			return fmt.Errorf("Agg: Unable to query aggregated: %v", err)
+		}
+		// group by agg-id
+		aggGroup := make(map[int64]models.Alerts)
+		for _, a := range allAggregated {
+			aggGroup[a.AggregatorId.Int64] = append(aggGroup[a.AggregatorId.Int64], a)
+		}
+		// check if every group needs clear/expiry
+		for aggId, alerts := range aggGroup {
+			aggAlert, err := tx.GetAlert(models.QuerySelectById, aggId)
+			if err != nil {
+				return fmt.Errorf("Agg: Unable to query agg alert: %v", err)
+			}
+			rule, ok := ah.Config.GetAggregationRuleConfig(aggAlert.Source)
+			if !ok {
+				glog.Errorf("Agg: Cant find rule : %s", aggAlert.Source)
+				continue
+			}
+			var status string
+			if alerts.AllCleared() {
+				glog.V(2).Infof("Agg : Agg Alert %d has now cleared", aggId)
+				status = "CLEARED"
+			}
+			if alerts.AllExpired() && rule.Alert.Config.AutoExpire != nil && *rule.Alert.Config.AutoExpire {
+				status = "EXPIRED"
+				glog.V(2).Infof("Agg : Agg Alert %d has now expired", aggId)
+			}
+			if status != "" {
+				aggAlert.Status = models.StatusMap[status]
+				if err := tx.UpdateAlert(aggAlert); err != nil {
+					return fmt.Errorf("Agg: Unable to update agg status: %v", err)
+				}
+				ah.NotifyOutputs(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]}, rule.Alert.Config.Outputs)
+			}
+		}
+		return nil
+	})
+}
+
 func (a *Aggregator) handleExpiry(ctx context.Context) {
 	t := time.NewTicker(AGG_CHECK_INTERVAL)
 	for {
 		select {
 		case <-t.C:
 			tx := a.db.NewTx()
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-				allAggregated, err := tx.SelectAlerts(models.QuerySelectAllAggregated)
-				if err != nil {
-					return fmt.Errorf("Agg: Unable to query aggregated: %v", err)
-				}
-				// group by agg-id
-				aggGroup := make(map[int64]models.Alerts)
-				for _, a := range allAggregated {
-					aggGroup[a.AggregatorId.Int64] = append(aggGroup[a.AggregatorId.Int64], a)
-				}
-				// check if every group needs clear/expiry
-				for aggId, alerts := range aggGroup {
-					aggAlert, err := tx.GetAlert(models.QuerySelectById, aggId)
-					if err != nil {
-						return fmt.Errorf("Agg: Unable to query agg alert: %v", err)
-					}
-					rule, ok := ah.Config.GetAggregationRuleConfig(aggAlert.Source)
-					if !ok {
-						glog.Errorf("Agg: Cant find rule : %s", aggAlert.Source)
-						continue
-					}
-					var status string
-					if alerts.AllCleared() {
-						glog.V(2).Infof("Agg : Agg Alert %d has now cleared", aggId)
-						status = "CLEARED"
-					}
-					if alerts.AllExpired() && rule.Alert.Config.AutoExpire != nil && *rule.Alert.Config.AutoExpire {
-						status = "EXPIRED"
-						glog.V(2).Infof("Agg : Agg Alert %d has now expired", aggId)
-					}
-					if status != "" {
-						aggAlert.Status = models.StatusMap[status]
-						if err := tx.UpdateAlert(aggAlert); err != nil {
-							return fmt.Errorf("Agg: Unable to update agg status: %v", err)
-						}
-						ah.NotifyOutputs(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]}, rule.Alert.Config.Outputs)
-					}
-				}
-				return nil
-			})
-			if err != nil {
+			if err := a.checkExpired(ctx, tx); err != nil {
 				glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
 			}
 		case <-ctx.Done():

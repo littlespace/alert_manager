@@ -94,6 +94,9 @@ func (g *dcCktGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 		glog.V(2).Infof("Ckt Agg: Did not find a dc link alert, skip grouping")
 		return groupedAlerts
 	}
+	if len(entities) == 0 {
+		return groupedAlerts
+	}
 	glog.V(4).Infof("Ckt Agg: Now grouping %d alerts", len(alerts))
 	groups := group(g.grouperFunc(), entities)
 	//TODO : group by device
@@ -107,5 +110,5 @@ func (g *dcCktGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 
 func init() {
 	g := &dcCktGrouper{name: "dc_circuit_down"}
-	addGrouper(g)
+	AddGrouper(g)
 }

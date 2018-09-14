@@ -11,7 +11,7 @@ type Grouper interface {
 
 var AllGroupers = make(map[string]Grouper)
 
-func addGrouper(grp Grouper) {
+func AddGrouper(grp Grouper) {
 	AllGroupers[grp.Name()] = grp
 }
 

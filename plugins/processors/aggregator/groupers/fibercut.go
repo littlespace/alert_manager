@@ -42,6 +42,7 @@ func (g *fibercutGrouper) origAlerts(alerts []*models.Alert, group []interface{}
 }
 
 func (g *fibercutGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
+	var groupedAlerts [][]*models.Alert
 	var ckts []interface{}
 	for _, alert := range alerts {
 		if !alert.Metadata.Valid || alert.Status != models.Status_ACTIVE {
@@ -55,10 +56,12 @@ func (g *fibercutGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 		p.AlertId = alert.Id
 		ckts = append(ckts, p)
 	}
+	if len(ckts) == 0 {
+		return groupedAlerts
+	}
 	glog.V(4).Infof("Fibercut Agg: Now grouping %d alerts", len(alerts))
 	groups := group(g.grouperFunc(), ckts)
 
-	var groupedAlerts [][]*models.Alert
 	for _, group := range groups {
 		orig := g.origAlerts(alerts, group)
 		groupedAlerts = append(groupedAlerts, orig)
@@ -68,5 +71,5 @@ func (g *fibercutGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 
 func init() {
 	g := &fibercutGrouper{name: "fibercut"}
-	addGrouper(g)
+	AddGrouper(g)
 }

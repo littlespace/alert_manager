@@ -32,7 +32,7 @@ aggregation_rules:
     alert:
       name: Neteng_Aggregated BGP Down
       config:
-        source: aggregated
+        source: bgp_session
         severity: WARN
         tags: [ neteng, bgp ]
         auto_expire: true  ## aggregated alert will expire only when all component alerts expire

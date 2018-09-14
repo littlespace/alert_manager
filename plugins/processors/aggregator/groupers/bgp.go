@@ -55,6 +55,9 @@ func (g *bgpGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 		p.AlertId = alert.Id
 		peers = append(peers, p)
 	}
+	if len(peers) == 0 {
+		return groupedAlerts
+	}
 	glog.V(4).Infof("Bgp Agg: Now grouping %d alerts", len(alerts))
 	groups := group(g.grouperFunc(), peers)
 	//TODO : group by device
@@ -68,5 +71,5 @@ func (g *bgpGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 
 func init() {
 	g := &bgpGrouper{name: "bgp_session"}
-	addGrouper(g)
+	AddGrouper(g)
 }
