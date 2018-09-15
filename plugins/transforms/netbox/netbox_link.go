@@ -33,7 +33,6 @@ func (i *NetboxInterface) parse(ifaceData map[string]interface{}) error {
 		return fmt.Errorf("Link is not connected or inactive")
 	}
 	i.Description = ifaceData["rblx_description"].(string)
-	i.Role = "dc"
 	if ifaceData["is_lag"].(bool) {
 		i.Type = "agg"
 	} else {
@@ -45,11 +44,13 @@ func (i *NetboxInterface) parse(ifaceData map[string]interface{}) error {
 	}
 	i.PeerDevice = ifaceData["peer_name"].(string)
 	i.PeerIntf = ifaceData["peer_int"].(string)
-	if ifaceData["peer_is_lag"].(bool) {
+	if ifaceData["peer_is_lag"].(bool) && i.Type == "phy" {
 		i.PeerAgg = ifaceData["peer_lag_name"].(string)
 	}
 	if ifaceData["peer_role"].(string) == "border-router" {
 		i.Role = "bb"
+	} else {
+		i.Role = "dc"
 	}
 	return nil
 }
@@ -69,7 +70,7 @@ func (i *NetboxInterface) query(n *Netbox, alert *models.Alert) error {
 	iface := result["interfaces"].(map[string]interface{})
 	ifaceData, ok := iface[alert.Entity]
 	if !ok {
-		return fmt.Errorf("Unable to get interface data from netbox")
+		return fmt.Errorf("Interface not found in result data")
 	}
 
 	return i.parse(ifaceData.(map[string]interface{}))
@@ -96,7 +97,7 @@ func (c *NetboxCircuit) query(n *Netbox, alert *models.Alert) error {
 	ifc := result["interfaces"].(map[string]interface{})
 	ifaceD, ok := ifc[alert.Entity]
 	if !ok {
-		return fmt.Errorf("Unable to get interface data from netbox")
+		return fmt.Errorf("Interface not found in result data")
 	}
 	ifaceData := ifaceD.(map[string]interface{})
 	err = iface.parse(ifaceData)

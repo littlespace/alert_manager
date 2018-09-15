@@ -40,7 +40,7 @@ var (
 	QuerySelectByDevice     = querySelect + " WHERE name=$1 AND entity=$2 AND device=$3 AND status=1 FOR UPDATE"
 	QuerySelectTags         = "SELECT tags from alerts WHERE id=$1"
 	QuerySelectExpired      = querySelect + ` WHERE
-    status=1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after`
+    status=1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after FOR UPDATE`
 	QuerySelectAllAggregated = querySelect + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
 )
 

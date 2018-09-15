@@ -27,6 +27,7 @@ type Netbox struct {
 	Priority    int
 	Register    string
 	client      Clienter
+	err         error // stores any error encountered while applying the transform
 }
 
 func (n *Netbox) Name() string {
@@ -75,9 +76,10 @@ func (n *Netbox) query(query string) ([]byte, error) {
 	return body, err
 }
 
-func (n *Netbox) Apply(alert *models.Alert) error {
+func (n *Netbox) apply(alert *models.Alert) {
 	if !alert.Device.Valid {
-		return fmt.Errorf("Unable to get device from alert: field empty !")
+		n.err = fmt.Errorf("Unable to get device from alert: field empty !")
+		return
 	}
 	var m meta
 	switch alert.Scope {
@@ -90,14 +92,26 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 	case "bgp_peer":
 		m = &BgpPeer{}
 	default:
-		return fmt.Errorf("Scope %s is not defined in netbox", alert.Scope)
+		n.err = fmt.Errorf("Scope %s is not defined in netbox", alert.Scope)
+		return
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			n.err = fmt.Errorf("PANIC while applying netbox transform: %v", r)
+		}
+	}()
+	n.err = m.query(n, alert)
+	if n.err != nil {
+		return
+	}
+	n.err = alert.AddMeta(m)
+}
 
-	err := m.query(n, alert)
-	if err != nil {
-		return err
-	}
-	return alert.AddMeta(m)
+func (n *Netbox) Apply(alert *models.Alert) error {
+	n.apply(alert)
+	lastErr := n.err
+	n.err = nil
+	return lastErr
 }
 
 func init() {

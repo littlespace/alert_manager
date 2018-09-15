@@ -23,6 +23,8 @@ alert_config:
       tags: [ neteng, bb, device ]
       severity: WARN
       outputs: [ slack ]
+      auto_expire: true
+      expire_after: 1h
       escalation_rules:
         - after: 10m
           escalate_to: CRITICAL
@@ -56,6 +58,8 @@ alert_config:
       source: observium
       tags: [ neteng, bb, link ]
       severity: INFO
+      auto_expire: true
+      expire_after: 1h
       aggregation_rules:
         - fibercut
 
@@ -65,6 +69,8 @@ alert_config:
       source: observium
       tags: [ neteng, bb, link ]
       severity: INFO
+      auto_expire: true
+      expire_after: 1h
       aggregation_rules:
         - fibercut
 
@@ -74,6 +80,8 @@ alert_config:
       source: observium
       tags: [ neteng, dc, link ]
       severity: INFO
+      auto_expire: true
+      expire_after: 1h
       aggregation_rules:
         - dc_circuit_down
         - bgp_session
@@ -84,6 +92,8 @@ alert_config:
       source: observium
       tags: [ neteng, bgp ]
       severity: INFO
+      auto_expire: true
+      expire_after: 1h
       aggregation_rules:
         - dc_circuit_down
         - bgp_session
