@@ -9,7 +9,7 @@
   "evalMatches": [
     {
       "metric": "input_errors",
-      "tags": {"device": "br1-sjc1", "interface": "et-0/0/3:0"},
+      "tags": {"device": "dev1.tst1", "interface": "et-0/0/3:0"},
       "value": 1222
     }
   ]

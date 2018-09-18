@@ -13,8 +13,7 @@ type bgpGrouper struct {
 // grouperFunc defines the condition for two bgp peers to be considered same to be grouped together
 func (g bgpGrouper) grouperFunc() groupingFunc {
 	return func(i, j interface{}) bool {
-		return (i.(BgpPeer).LocalDevice == j.(BgpPeer).RemoteDevice && i.(BgpPeer).RemoteDevice == j.(BgpPeer).LocalDevice) ||
-			(i.(BgpPeer).LocalDevice == j.(BgpPeer).LocalDevice && i.(BgpPeer).RemoteDevice == j.(BgpPeer).RemoteDevice)
+		return (i.(BgpPeer).LocalDevice == j.(BgpPeer).RemoteDevice && i.(BgpPeer).RemoteDevice == j.(BgpPeer).LocalDevice)
 	}
 }
 

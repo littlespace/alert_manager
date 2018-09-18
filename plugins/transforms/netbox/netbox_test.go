@@ -320,7 +320,8 @@ type mockClient struct{}
 func (m *mockClient) Do(req *http.Request) (*http.Response, error) {
 	body := testDatas[req.URL.String()]
 	return &http.Response{
-		Body: ioutil.NopCloser(bytes.NewBuffer(body)),
+		Body:       ioutil.NopCloser(bytes.NewBuffer(body)),
+		StatusCode: http.StatusOK,
 	}, nil
 }
 

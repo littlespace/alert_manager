@@ -13,14 +13,16 @@ type fibercutGrouper struct {
 // grouperFunc defines the condition for circuit endpoints to be considered same to be grouped together
 func (g fibercutGrouper) grouperFunc() groupingFunc {
 	return func(i, j interface{}) bool {
-		return (
-		// same provider
-		i.(Circuit).Provider == j.(Circuit).Provider ||
+		var match bool
+		if i.(Circuit).Provider != "" && j.(Circuit).Provider != "" {
+			match = match || i.(Circuit).Provider == j.(Circuit).Provider
+		}
+		return (match ||
 			// 2 ends of same circuit
 			i.(Circuit).ASide == j.(Circuit).ZSide ||
 			// phy member of lag
-			i.(Circuit).ASide.Device == j.(Circuit).ASide.Device && i.(Circuit).ASide.Interface == j.(Circuit).ASide.Agg ||
-			i.(Circuit).ASide.Device == j.(Circuit).ZSide.Device && i.(Circuit).ASide.Interface == j.(Circuit).ZSide.Agg)
+			i.(Circuit).ASide.Device == j.(Circuit).ASide.Device && (i.(Circuit).ASide.Interface == j.(Circuit).ASide.Agg || i.(Circuit).ASide.Agg == j.(Circuit).ASide.Interface))
+
 	}
 }
 
