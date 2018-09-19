@@ -70,7 +70,7 @@ func Run(config *Config) {
 	// start all the processors/outputs
 	for name, processor := range Processors {
 		glog.Infof("Starting processor: %s", name)
-		go processor.Start(ctx, db)
+		go processor.Start(ctx, handler)
 	}
 	for name, output := range Outputs {
 		glog.Infof("Starting output: %s", name)

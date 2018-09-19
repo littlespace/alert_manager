@@ -1,9 +1,9 @@
 package groupers
 
 import (
-	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/types"
 )
 
 type fibercutGrouper struct {
@@ -14,14 +14,14 @@ type fibercutGrouper struct {
 func (g fibercutGrouper) grouperFunc() groupingFunc {
 	return func(i, j interface{}) bool {
 		var match bool
-		if i.(Circuit).Provider != "" && j.(Circuit).Provider != "" {
-			match = match || i.(Circuit).Provider == j.(Circuit).Provider
+		if i.(types.Circuit).Provider != "" && j.(types.Circuit).Provider != "" {
+			match = match || i.(types.Circuit).Provider == j.(types.Circuit).Provider
 		}
 		return (match ||
 			// 2 ends of same circuit
-			i.(Circuit).ASide == j.(Circuit).ZSide ||
+			(i.(types.Circuit).ASide.Device.Name == j.(types.Circuit).ZSide.Device.Name && i.(types.Circuit).ASide.Interface == j.(types.Circuit).ZSide.Interface) ||
 			// phy member of lag
-			i.(Circuit).ASide.Device == j.(Circuit).ASide.Device && (i.(Circuit).ASide.Interface == j.(Circuit).ASide.Agg || i.(Circuit).ASide.Agg == j.(Circuit).ASide.Interface))
+			(i.(types.Circuit).ASide.Device.Name == j.(types.Circuit).ASide.Device.Name && (i.(types.Circuit).ASide.Interface == j.(types.Circuit).ASide.Agg || i.(types.Circuit).ASide.Agg == j.(types.Circuit).ASide.Interface)))
 
 	}
 }
@@ -34,7 +34,7 @@ func (g *fibercutGrouper) origAlerts(alerts []*models.Alert, group []interface{}
 	var orig []*models.Alert
 	for _, p := range group {
 		for _, a := range alerts {
-			if a.Id == p.(Circuit).AlertId {
+			if a.Id == p.(types.Circuit).AlertId {
 				orig = append(orig, a)
 				break
 			}
@@ -50,8 +50,8 @@ func (g *fibercutGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 		if !alert.Metadata.Valid || alert.Status != models.Status_ACTIVE {
 			continue
 		}
-		p := Circuit{}
-		if err := json.Unmarshal([]byte(alert.Metadata.String), &p); err != nil {
+		p := types.Circuit{}
+		if err := alert.LoadMeta(&p); err != nil {
 			glog.Errorf("Fibercut Agg: Unable to unmarshal metadata: %v", err)
 			continue
 		}

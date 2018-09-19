@@ -1,9 +1,9 @@
 package groupers
 
 import (
-	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/types"
 )
 
 type bgpGrouper struct {
@@ -13,7 +13,7 @@ type bgpGrouper struct {
 // grouperFunc defines the condition for two bgp peers to be considered same to be grouped together
 func (g bgpGrouper) grouperFunc() groupingFunc {
 	return func(i, j interface{}) bool {
-		return (i.(BgpPeer).LocalDevice == j.(BgpPeer).RemoteDevice && i.(BgpPeer).RemoteDevice == j.(BgpPeer).LocalDevice)
+		return (i.(types.BgpPeer).LocalDevice.Name == j.(types.BgpPeer).RemoteDevice.Name && i.(types.BgpPeer).RemoteDevice.Name == j.(types.BgpPeer).LocalDevice.Name)
 	}
 }
 
@@ -25,7 +25,7 @@ func (g *bgpGrouper) origAlerts(alerts []*models.Alert, group []interface{}) []*
 	var orig []*models.Alert
 	for _, p := range group {
 		for _, a := range alerts {
-			if a.Id == p.(BgpPeer).AlertId {
+			if a.Id == p.(types.BgpPeer).AlertId {
 				orig = append(orig, a)
 				break
 			}
@@ -46,8 +46,8 @@ func (g *bgpGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 			glog.V(2).Infof("Bgp Agg: Found non bgp alert, skip grouping")
 			return groupedAlerts
 		}
-		p := BgpPeer{}
-		if err := json.Unmarshal([]byte(alert.Metadata.String), &p); err != nil {
+		p := types.BgpPeer{}
+		if err := alert.LoadMeta(&p); err != nil {
 			glog.Errorf("Bgp Agg: Unable to unmarshal metadata: %v", err)
 			continue
 		}

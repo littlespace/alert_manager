@@ -1,9 +1,9 @@
 package groupers
 
 import (
-	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/types"
 )
 
 type dcCktGrouper struct {
@@ -15,24 +15,24 @@ type dcCktGrouper struct {
 func (g dcCktGrouper) grouperFunc() groupingFunc {
 	return func(i, j interface{}) bool {
 		switch i := i.(type) {
-		case Circuit:
+		case types.Circuit:
 			switch j := j.(type) {
-			case Circuit:
+			case types.Circuit:
 				return i.ASide == j.ZSide && j.ASide == i.ZSide
-			case BgpPeer:
+			case types.BgpPeer:
 
-				m := (j.LocalInterface == i.ASide.Interface && j.LocalDevice == i.ASide.Device) && (j.RemoteInterface == i.ZSide.Interface && j.RemoteDevice == i.ZSide.Device)
-				n := (j.LocalInterface == i.ZSide.Interface && j.LocalDevice == i.ZSide.Device) && (j.RemoteInterface == i.ASide.Interface && j.RemoteDevice == i.ASide.Device)
+				m := (j.LocalInterface == i.ASide.Interface && j.LocalDevice.Name == i.ASide.Device.Name) && (j.RemoteInterface == i.ZSide.Interface && j.RemoteDevice.Name == i.ZSide.Device.Name)
+				n := (j.LocalInterface == i.ZSide.Interface && j.LocalDevice.Name == i.ZSide.Device.Name) && (j.RemoteInterface == i.ASide.Interface && j.RemoteDevice.Name == i.ASide.Device.Name)
 				return m || n
 			}
-		case BgpPeer:
+		case types.BgpPeer:
 			switch j := j.(type) {
-			case Circuit:
-				m := (i.LocalInterface == j.ASide.Interface && i.LocalDevice == j.ASide.Device) && (i.RemoteInterface == j.ZSide.Interface && i.RemoteDevice == j.ZSide.Device)
-				n := (i.LocalInterface == j.ZSide.Interface && i.LocalDevice == j.ZSide.Device) && (i.RemoteInterface == j.ASide.Interface && i.RemoteDevice == j.ASide.Device)
+			case types.Circuit:
+				m := (i.LocalInterface == j.ASide.Interface && i.LocalDevice.Name == j.ASide.Device.Name) && (i.RemoteInterface == j.ZSide.Interface && i.RemoteDevice.Name == j.ZSide.Device.Name)
+				n := (i.LocalInterface == j.ZSide.Interface && i.LocalDevice.Name == j.ZSide.Device.Name) && (i.RemoteInterface == j.ASide.Interface && i.RemoteDevice.Name == j.ASide.Device.Name)
 				return m || n
-			case BgpPeer:
-				return (i.LocalDevice == j.RemoteDevice && i.RemoteDevice == j.LocalDevice) || (i.LocalDevice == j.LocalDevice && i.RemoteDevice == j.RemoteDevice)
+			case types.BgpPeer:
+				return (i.LocalDevice.Name == j.RemoteDevice.Name && i.RemoteDevice.Name == j.LocalDevice.Name) || (i.LocalDevice.Name == j.LocalDevice.Name && i.RemoteDevice.Name == j.RemoteDevice.Name)
 			}
 		}
 		return false
@@ -49,9 +49,9 @@ func (g *dcCktGrouper) origAlerts(alerts []*models.Alert, group []interface{}) [
 	innerfor:
 		for _, a := range alerts {
 			var cond bool
-			if c, ok := p.(Circuit); ok {
+			if c, ok := p.(types.Circuit); ok {
 				cond = a.Id == c.AlertId
-			} else if b, ok := p.(BgpPeer); ok {
+			} else if b, ok := p.(types.BgpPeer); ok {
 				cond = a.Id == b.AlertId
 			}
 			if cond {
@@ -73,16 +73,16 @@ func (g *dcCktGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 		}
 		allBgp = allBgp && alert.HasTags("bgp")
 		if alert.HasTags("bgp") {
-			p := BgpPeer{}
-			if err := json.Unmarshal([]byte(alert.Metadata.String), &p); err != nil {
+			p := types.BgpPeer{}
+			if err := alert.LoadMeta(&p); err != nil {
 				glog.Errorf("Ckt Agg: Unable to unmarshal metadata: %v", err)
 				continue
 			}
 			p.AlertId = alert.Id
 			entities = append(entities, p)
 		} else {
-			c := Circuit{}
-			if err := json.Unmarshal([]byte(alert.Metadata.String), &c); err != nil {
+			c := types.Circuit{}
+			if err := alert.LoadMeta(&c); err != nil {
 				glog.Errorf("Ckt Agg: Unable to unmarshal metadata: %v", err)
 				continue
 			}

@@ -83,23 +83,6 @@ func NewSuppRuleForEntity(device, entity, creator, reason, duration string) Supp
 	return rule
 }
 
-func QueryParams(params map[string]string) string {
-	query := " WHERE "
-	var fields []string
-	for field, _ := range params {
-		fields = append(fields, field)
-	}
-	i := 0
-	for field, value := range params {
-		query = query + fmt.Sprintf("%s=%s", field, value)
-		i++
-		if i != len(fields) {
-			query = query + " OR "
-		}
-	}
-	return QuerySelectActive + query
-}
-
 type SuppRules []SuppressionRule
 
 func (s SuppRules) Find(params map[string]string) (SuppressionRule, bool) {
@@ -109,17 +92,17 @@ func (s SuppRules) Find(params map[string]string) (SuppressionRule, bool) {
 			switch k {
 			case "Device":
 				if rule.Device.Valid {
-					m, _ := regexp.MatchString(v, rule.Device.String)
+					m, _ := regexp.MatchString(rule.Device.String, v)
 					match = match || m
 				}
 			case "Entity":
 				if rule.Entity.Valid {
-					m, _ := regexp.MatchString(v, rule.Entity.String)
+					m, _ := regexp.MatchString(rule.Entity.String, v)
 					match = match || m
 				}
 			case "Alert":
 				if rule.AlertName.Valid {
-					m, _ := regexp.MatchString(v, rule.AlertName.String)
+					m, _ := regexp.MatchString(rule.AlertName.String, v)
 					match = match || m
 				}
 			}
@@ -135,4 +118,11 @@ func (tx *Tx) SelectRules(query string) (SuppRules, error) {
 	var rules SuppRules
 	err := tx.Select(&rules, query)
 	return rules, err
+}
+
+func (tx *Tx) NewRule(rule *SuppressionRule) (int64, error) {
+	var newId int64
+	stmt, err := tx.PrepareNamed(QueryInsertRule)
+	err = stmt.Get(&newId, rule)
+	return newId, err
 }

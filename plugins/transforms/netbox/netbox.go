@@ -10,10 +10,6 @@ import (
 	"net/http"
 )
 
-type meta interface {
-	query(n *Netbox, alert *models.Alert) error
-}
-
 type Clienter interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -22,6 +18,7 @@ type Client struct {
 	*http.Client
 }
 
+// Netbox transform pulls info from netbox and applies it to alert meta and other fields
 type Netbox struct {
 	Addr, Token string
 	Priority    int
@@ -84,26 +81,24 @@ func (n *Netbox) apply(alert *models.Alert) {
 		n.err = fmt.Errorf("Unable to get device from alert: field empty !")
 		return
 	}
-	var m meta
+	var m interface{}
 	switch alert.Scope {
 	case "device":
-		m = &NetboxDevice{}
+		m, n.err = queryDevice(n, alert)
 	case "phy_interface", "agg_interface":
-		m = &NetboxInterface{}
+		m, n.err = queryInterface(n, alert)
 	case "link":
-		m = &NetboxCircuit{}
+		m, n.err = queryCircuit(n, alert)
 	case "bgp_peer":
-		m = &BgpPeer{}
+		m, n.err = queryBgpPeer(n, alert)
 	default:
 		n.err = fmt.Errorf("Scope %s is not defined in netbox", alert.Scope)
-		return
 	}
 	defer func() {
 		if r := recover(); r != nil {
 			n.err = fmt.Errorf("PANIC while applying netbox transform: %v", r)
 		}
 	}()
-	n.err = m.query(n, alert)
 	if n.err != nil {
 		return
 	}

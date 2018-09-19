@@ -2,12 +2,12 @@ package alert_manager
 
 import (
 	"context"
-	"github.com/mayuresh82/alert_manager/internal/models"
+	ah "github.com/mayuresh82/alert_manager/handler"
 )
 
 type Processor interface {
 	Name() string
-	Start(ctx context.Context, db models.Dbase)
+	Start(ctx context.Context, h *ah.AlertHandler)
 }
 
 type Output interface {

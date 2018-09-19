@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/golang/glog"
 	"strings"
 	"time"
@@ -238,6 +239,13 @@ func (a *Alert) AddMeta(meta interface{}) error {
 	}
 	a.Metadata = sql.NullString{string(m), true}
 	return nil
+}
+
+func (a *Alert) LoadMeta(into interface{}) error {
+	if !a.Metadata.Valid {
+		return fmt.Errorf("Alert metadata is not valid")
+	}
+	return json.Unmarshal([]byte(a.Metadata.String), into)
 }
 
 type Alerts []Alert

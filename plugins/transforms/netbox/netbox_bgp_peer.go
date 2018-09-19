@@ -3,20 +3,11 @@ package netbox
 import (
 	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/types"
 	"net"
 	"regexp"
 	"strings"
 )
-
-type BgpPeer struct {
-	Type            string `json:"bgp_type"`
-	LocalIp         string `json:"local_ip"`
-	LocalDevice     string `json:"local_device"`
-	LocalInterface  string `json:"local_interface"`
-	RemoteIp        string `json:"remote_ip"`
-	RemoteDevice    string `json:"remote_device"`
-	RemoteInterface string `json:"remote_interface"`
-}
 
 // helper func that increments a net.IP
 func inc(ip net.IP) {
@@ -37,13 +28,13 @@ func queryIfaceResults(n *Netbox, ip string) ([]interface{}, error) {
 	return n.getResults(body)
 }
 
-func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {
-	d := &NetboxDevice{}
-	err := d.query(n, alert)
+func queryBgpPeer(n *Netbox, alert *models.Alert) (*types.BgpPeer, error) {
+	d, err := queryDevice(n, alert)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	p.LocalDevice = d.Device
+	p := types.NewBgpPeer()
+	p.LocalDevice = d
 
 	// extract peer IP from entity
 	numBlock := "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
@@ -57,29 +48,33 @@ func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {
 		peerIp = regEx.FindString(alert.Entity)
 	}
 	if peerIp == "" {
-		return fmt.Errorf("Unable to extract peer-ip from alert entity")
+		return nil, fmt.Errorf("Unable to extract peer-ip from alert entity")
 	}
 
 	// query the peer IP from netbox
 	results, err := queryIfaceResults(n, peerIp)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(results) == 0 {
-		return fmt.Errorf("No results found for %s in netbox", peerIp)
+		return nil, fmt.Errorf("No results found for %s in netbox", peerIp)
 	}
 	result := results[0].(map[string]interface{})
 	iface := result["interface"].(map[string]interface{})
 	device := iface["device"].(map[string]interface{})
 	p.RemoteIp = peerIp
-	p.RemoteDevice = device["name"].(string)
+	d, err = parseDevice(n, device["name"].(string))
+	if err != nil {
+		return nil, fmt.Errorf("Unable to query remote device: %v", err)
+	}
+	p.RemoteDevice = d
 
 	p.RemoteInterface = iface["name"].(string)
 	p.RemoteInterface = strings.Replace(p.RemoteInterface, ".0", "", -1)
 	if p.RemoteInterface == "lo0" {
 		// the bgp session is ibgp
 		p.Type = "ibgp"
-		p.LocalIp = d.Ip
+		p.LocalIp = p.LocalDevice.Ip
 		p.LocalInterface = "lo0"
 	} else {
 		p.Type = "ebgp"
@@ -87,7 +82,7 @@ func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {
 		// find local IP
 		ip, ipnet, _ := net.ParseCIDR(remoteAddr)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// find the other IP in the subnet
 		for ipz := ip.Mask(ipnet.Mask); ipnet.Contains(ipz); inc(ipz) {
@@ -99,10 +94,10 @@ func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {
 		// get local interface
 		results, err = queryIfaceResults(n, p.LocalIp)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(results) == 0 {
-			return fmt.Errorf("No results found for %s in netbox", p.LocalIp)
+			return nil, fmt.Errorf("No results found for %s in netbox", p.LocalIp)
 		}
 		result = results[0].(map[string]interface{})
 		iface := result["interface"].(map[string]interface{})
@@ -110,5 +105,5 @@ func (p *BgpPeer) query(n *Netbox, alert *models.Alert) error {
 		p.LocalInterface = strings.Replace(p.LocalInterface, ".0", "", -1)
 	}
 
-	return nil
+	return p, nil
 }
