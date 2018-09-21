@@ -3,9 +3,7 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/golang/glog"
-	"strings"
 	"time"
 )
 
@@ -13,18 +11,18 @@ var (
 	QueryInsertNew = `INSERT INTO 
     alerts (
       name, description, entity, external_id, source, device, site, owner, team, tags, start_time, last_active,
-      agg_id, auto_expire, auto_clear, expire_after, severity, status, metadata, scope, is_aggregate
+      agg_id, auto_expire, auto_clear, expire_after, severity, status, labels, scope, is_aggregate
     ) VALUES (
       :name, :description, :entity, :external_id, :source, :device, :site, :owner, :team, :tags,
       :start_time, :last_active, :agg_id, :auto_expire, :auto_clear, :expire_after,
-      :severity, :status, :metadata, :scope, :is_aggregate
+      :severity, :status, :labels, :scope, :is_aggregate
     ) RETURNING id`
 
 	QueryUpdateAlertById = `UPDATE alerts SET
     name=:name, description=:description, entity=:entity, external_id=:external_id, source=:source,
     device=:device, site=:site, owner=:owner, team=:team, tags=:tags, start_time=:start_time,
     last_active=:last_active, agg_id=:agg_id, auto_expire=:auto_expire, auto_clear=:auto_clear,
-    expire_after=:expire_after, severity=:severity, status=:status, metadata=:metadata, scope=:scope,
+    expire_after=:expire_after, severity=:severity, status=:status, labels=:labels, scope=:scope,
     is_aggregate=:is_aggregate
       WHERE id=:id`
 
@@ -95,17 +93,17 @@ type Alert struct {
 	Site         sql.NullString
 	Owner        sql.NullString
 	Team         sql.NullString
-	Tags         sql.NullString // TODO maybe store in separate table
-	StartTime    MyTime         `db:"start_time"`
-	LastActive   MyTime         `db:"last_active"`
-	AutoExpire   bool           `db:"auto_expire"`
-	AutoClear    bool           `db:"auto_clear"`
-	AggregatorId sql.NullInt64  `db:"agg_id"`
-	IsAggregate  bool           `db:"is_aggregate"`
-	ExpireAfter  sql.NullInt64  `db:"expire_after"`
+	Tags         interface{}
+	StartTime    MyTime        `db:"start_time"`
+	LastActive   MyTime        `db:"last_active"`
+	AutoExpire   bool          `db:"auto_expire"`
+	AutoClear    bool          `db:"auto_clear"`
+	AggregatorId sql.NullInt64 `db:"agg_id"`
+	IsAggregate  bool          `db:"is_aggregate"`
+	ExpireAfter  sql.NullInt64 `db:"expire_after"`
 	Severity     AlertSeverity
 	Status       AlertStatus
-	Metadata     sql.NullString // json encoded metadata
+	Labels       Labels // json encoded k-v labels
 }
 
 // custom Marshaler interface for Alert
@@ -114,7 +112,8 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		Id                                       int64
 		ExternalId                               string `json:"external_id"`
 		Name, Description, Entity, Source, Scope string
-		Device, Site, Owner, Team, Tags          string
+		Device, Site, Owner, Team                string
+		Tags                                     []string
 		StartTime                                int64 `json:"start_time"`
 		LastActive                               int64 `json:"last_active"`
 		AggregatorId                             int64 `json:"agg_id"`
@@ -133,7 +132,7 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		Site:         a.Site.String,
 		Owner:        a.Owner.String,
 		Team:         a.Team.String,
-		Tags:         a.Tags.String,
+		Tags:         a.Tags.([]string),
 		StartTime:    a.StartTime.Unix(),
 		LastActive:   a.LastActive.Unix(),
 		AggregatorId: a.AggregatorId.Int64,
@@ -159,6 +158,7 @@ func NewAlert(name, description, entity, source, scope string, extId string, sta
 		AutoClear:   true,
 		AutoExpire:  false,
 		IsAggregate: isAgg,
+		Labels:      make(Labels),
 	}
 }
 
@@ -171,21 +171,15 @@ func (a *Alert) AddSite(site string) {
 }
 
 func (a *Alert) AddTags(tags ...string) {
-	t := []string{}
-	t = append(t, tags...)
-	tagString := strings.Join(t, ",")
-	a.Tags = sql.NullString{tagString, true}
+	t := []string(tags)
+	a.Tags = ToStringArray(t)
 }
 
 func (a *Alert) HasTags(tags ...string) bool {
 	hasTags := true
-	if !a.Tags.Valid {
-		return false
-	}
-	t := strings.Split(a.Tags.String, ",")
 	for _, tag := range tags {
 		var found bool
-		for _, tt := range t {
+		for _, tt := range a.Tags.([]string) {
 			if tt == tag {
 				found = true
 				break
@@ -229,23 +223,6 @@ func (a *Alert) SetAggId(id int64) {
 func (a *Alert) Clear() {
 	glog.V(2).Infof("Clearing out alert %d", a.Id)
 	a.Status = Status_CLEARED
-}
-
-func (a *Alert) AddMeta(meta interface{}) error {
-	// store alert meta as json encoded string
-	m, err := json.Marshal(meta)
-	if err != nil {
-		return err
-	}
-	a.Metadata = sql.NullString{string(m), true}
-	return nil
-}
-
-func (a *Alert) LoadMeta(into interface{}) error {
-	if !a.Metadata.Valid {
-		return fmt.Errorf("Alert metadata is not valid")
-	}
-	return json.Unmarshal([]byte(a.Metadata.String), into)
 }
 
 type Alerts []Alert

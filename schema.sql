@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS alerts (
   site VARCHAR(16),
   owner VARCHAR(16),
   team VARCHAR(16),
-  tags VARCHAR(128),
+  tags VARCHAR(64)[] DEFAULT array[]::varchar[] NOT NULL,
   start_time BIGINT NOT NULL,
   agg_id INT,
   auto_expire BOOLEAN NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS alerts (
   expire_after INT,
   severity SMALLINT NOT NULL,
   status SMALLINT NOT NULL,
-  metadata JSON,
+  label JSON,
   last_active BIGINT NOT NULL,
   scope VARCHAR(16));
 

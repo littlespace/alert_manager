@@ -41,6 +41,9 @@ func (p *GrafanaParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 	if d.RuleName == "" || d.Message == "" {
 		return nil, fmt.Errorf("Invalid alert data received")
 	}
+	if len(d.EvalMatches) == 0 {
+		return nil, fmt.Errorf("Invalid data received in alert")
+	}
 	metricText := fmt.Sprintf("\nMetric: %v, Value: %v\n", d.EvalMatches[0].Metric, d.EvalMatches[0].Value)
 	l := &listener.WebHookAlertData{
 		Id:      strconv.FormatInt(int64(d.RuleId), 10),

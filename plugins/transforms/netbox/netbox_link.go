@@ -3,10 +3,17 @@ package netbox
 import (
 	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
-	"github.com/mayuresh82/alert_manager/types"
 )
 
 const queryURL = "/api/rblx/device/dm/v1/"
+
+// swap swaps two keys in a map
+func swap(in map[string]interface{}, first, second string) map[string]interface{} {
+	tmp := in[first]
+	in[first] = in[second]
+	in[second] = tmp
+	return in
+}
 
 func getResult(n *Netbox, url string) (map[string]interface{}, error) {
 	body, err := n.query(url)
@@ -16,37 +23,38 @@ func getResult(n *Netbox, url string) (map[string]interface{}, error) {
 	return n.getResult(body)
 }
 
-func parseIface(i *types.Interface, ifaceData map[string]interface{}) error {
+func ifaceLabels(ifaceData map[string]interface{}) (models.Labels, error) {
 	if len(ifaceData) == 0 {
-		return fmt.Errorf("Interface not found in result data")
+		return nil, fmt.Errorf("Interface not found in result data")
 	}
 	if !ifaceData["is_connected"].(bool) {
-		return fmt.Errorf("Link is not connected or inactive")
+		return nil, fmt.Errorf("Link is not connected or inactive")
 	}
-	i.Description = ifaceData["rblx_description"].(string)
+	labels := make(models.Labels)
+	labels["Description"] = ifaceData["rblx_description"]
 	if ifaceData["is_lag"].(bool) {
-		i.Type = "agg"
+		labels["Type"] = "agg"
 	} else {
-		i.Type = "phy"
+		labels["Type"] = "phy"
 		if ifaceData["lag"] != nil {
 			lag := ifaceData["lag"].(map[string]interface{})
-			i.Agg = lag["name"].(string)
+			labels["Agg"] = lag["name"]
 		}
 	}
-	i.PeerDevice = ifaceData["peer_name"].(string)
-	i.PeerIntf = ifaceData["peer_int"].(string)
-	if ifaceData["peer_is_lag"].(bool) && i.Type == "phy" {
-		i.PeerAgg = ifaceData["peer_lag_name"].(string)
+	labels["PeerDevice"] = ifaceData["peer_name"]
+	labels["PeerIntf"] = ifaceData["peer_int"]
+	if ifaceData["peer_is_lag"].(bool) && labels["Type"] == "phy" {
+		labels["PeerAgg"] = ifaceData["peer_lag_name"]
 	}
 	if ifaceData["peer_role"].(string) == "border-router" {
-		i.Role = "bb"
+		labels["Role"] = "bb"
 	} else {
-		i.Role = "dc"
+		labels["Role"] = "dc"
 	}
-	return nil
+	return labels, nil
 }
 
-func queryInterface(n *Netbox, alert *models.Alert) (*types.Interface, error) {
+func InterfaceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=%s", alert.Device.String, alert.Entity)
 	result, err := getResult(n, url)
 	if err != nil {
@@ -56,18 +64,22 @@ func queryInterface(n *Netbox, alert *models.Alert) (*types.Interface, error) {
 	site := result["site_data"].(map[string]interface{})
 	alert.AddSite(site["name"].(string))
 
-	i := types.NewInterface(alert.Device.String, alert.Entity)
 	iface := result["interfaces"].(map[string]interface{})
 	ifaceData, ok := iface[alert.Entity]
 	if !ok {
 		return nil, fmt.Errorf("Interface not found in result data")
 	}
-
-	return i, parseIface(i, ifaceData.(map[string]interface{}))
+	labels, err := ifaceLabels(ifaceData.(map[string]interface{}))
+	if err != nil {
+		return nil, err
+	}
+	labels["LabelType"] = "Interface"
+	labels["Device"] = alert.Device.String
+	labels["Interface"] = alert.Entity
+	return labels, nil
 }
 
-func queryCircuit(n *Netbox, alert *models.Alert) (*types.Circuit, error) {
-	iface := types.NewInterface(alert.Device.String, alert.Entity)
+func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=%s", alert.Device.String, alert.Entity)
 	result, err := getResult(n, url)
 	if err != nil {
@@ -83,49 +95,58 @@ func queryCircuit(n *Netbox, alert *models.Alert) (*types.Circuit, error) {
 		return nil, fmt.Errorf("Interface not found in result data")
 	}
 	ifaceData := ifaceD.(map[string]interface{})
-	err = parseIface(iface, ifaceData)
+	iLabels, err := ifaceLabels(ifaceData)
 	if err != nil {
 		return nil, err
 	}
-	c := types.NewCircuit()
-	c.Role = iface.Role
+	iLabels["Device"] = alert.Device.String
+	iLabels["Interface"] = alert.Entity
 
-	d, err := parseDevice(n, iface.Device)
+	labels := make(models.Labels)
+	labels["LabelType"] = "Circuit"
+
+	labels["Role"] = iLabels["Role"]
+
+	dLabels, err := deviceLabels(n, iLabels["Device"].(string))
 	if err != nil {
 		return nil, fmt.Errorf("Unable to query Device: %v", err)
 	}
-	c.ASide.Device = d
-	c.ASide.Interface = iface.Interface
-	c.ASide.Agg = iface.Agg
+	labels["ASideDeviceName"] = dLabels["Name"]
+	labels["ASideDeviceIp"] = dLabels["Ip"]
+	labels["ASideDeviceStatus"] = dLabels["Status"]
+	labels["ASideInterface"] = iLabels["Interface"]
+	labels["ASideAgg"] = iLabels["Agg"]
 
-	d, err = parseDevice(n, iface.PeerDevice)
+	peerDevice := iLabels["PeerDevice"].(string)
+	dLabels, err = deviceLabels(n, peerDevice)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to query Device: %v", err)
+		return nil, fmt.Errorf("Unable to query peer Device: %s, %v", peerDevice, err)
 	}
-	c.ZSide.Device = d
-	c.ZSide.Interface = iface.PeerIntf
-	c.ZSide.Agg = iface.PeerAgg
-	if iface.Type == "agg" {
+	labels["ZSideDeviceName"] = dLabels["Name"]
+	labels["ZSideDeviceIp"] = dLabels["Ip"]
+	labels["ZSideDeviceStatus"] = dLabels["Status"]
+	labels["ZSideInterface"] = iLabels["PeerIntf"]
+	labels["ZSideAgg"] = iLabels["PeerAgg"]
+
+	if iLabels["Type"].(string) == "agg" {
 		// we dont know a/z info for aggs
-		return c, nil
+		return labels, nil
 	}
-	if c.Role == "dc" {
-		return c, nil
+	if labels["Role"].(string) == "dc" {
+		return labels, nil
 	}
 	term := ifaceData["circuit_termination"].(map[string]interface{})
 	if term["term_side"].(string) == "Z" {
-		tmp := c.ZSide.Device
-		c.ZSide.Device = c.ASide.Device
-		c.ZSide.Interface = iface.Interface
-		c.ZSide.Agg = iface.Agg
-		c.ASide.Device = tmp
-		c.ASide.Interface = iface.PeerIntf
-		c.ASide.Agg = iface.PeerAgg
+		labels = swap(labels, "ASideDeviceName", "ZSideDeviceName")
+		labels = swap(labels, "ASideDeviceIp", "ZSideDeviceIp")
+		labels = swap(labels, "ASideDeviceStatus", "ZSideDeviceStatus")
+		labels = swap(labels, "ASideInterface", "ZSideInterface")
+		labels = swap(labels, "ASideAgg", "ZSideAgg")
 	}
-	c.CktId = ifaceData["circuit_id"].(string)
+	labels["CktId"] = ifaceData["circuit_id"]
 	ckt := ifaceData["circuit"].(map[string]interface{})
 	provider := ckt["provider"].(map[string]interface{})
-	c.Provider = provider["slug"].(string)
+	labels["Provider"] = provider["slug"]
 
-	return c, nil
+	return labels, nil
 }

@@ -3,7 +3,6 @@ package groupers
 import (
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
-	"github.com/mayuresh82/alert_manager/types"
 )
 
 type fibercutGrouper struct {
@@ -12,16 +11,16 @@ type fibercutGrouper struct {
 
 // grouperFunc defines the condition for circuit endpoints to be considered same to be grouped together
 func (g fibercutGrouper) grouperFunc() groupingFunc {
-	return func(i, j interface{}) bool {
+	return func(i, j models.Labels) bool {
 		var match bool
-		if i.(types.Circuit).Provider != "" && j.(types.Circuit).Provider != "" {
-			match = match || i.(types.Circuit).Provider == j.(types.Circuit).Provider
+		if i["Provider"] != "" && j["Provider"] != "" {
+			match = match || i["Provider"] == j["Provider"]
 		}
 		return (match ||
 			// 2 ends of same circuit
-			(i.(types.Circuit).ASide.Device.Name == j.(types.Circuit).ZSide.Device.Name && i.(types.Circuit).ASide.Interface == j.(types.Circuit).ZSide.Interface) ||
+			(i["ASideDeviceName"] == j["ZSideDeviceName"] && i["ASideInterface"] == j["ZSideInterface"]) ||
 			// phy member of lag
-			(i.(types.Circuit).ASide.Device.Name == j.(types.Circuit).ASide.Device.Name && (i.(types.Circuit).ASide.Interface == j.(types.Circuit).ASide.Agg || i.(types.Circuit).ASide.Agg == j.(types.Circuit).ASide.Interface)))
+			(i["ASideDeviceName"] == j["ASideDeviceName"] && (i["ASideInterface"] == j["ASideAgg"] || i["ASideAgg"] == j["ASideInterface"])))
 
 	}
 }
@@ -30,11 +29,11 @@ func (g *fibercutGrouper) Name() string {
 	return g.name
 }
 
-func (g *fibercutGrouper) origAlerts(alerts []*models.Alert, group []interface{}) []*models.Alert {
+func (g *fibercutGrouper) origAlerts(alerts []*models.Alert, group []models.Labels) []*models.Alert {
 	var orig []*models.Alert
 	for _, p := range group {
 		for _, a := range alerts {
-			if a.Id == p.(types.Circuit).AlertId {
+			if a.Id == p["AlertId"].(int64) {
 				orig = append(orig, a)
 				break
 			}
@@ -45,24 +44,19 @@ func (g *fibercutGrouper) origAlerts(alerts []*models.Alert, group []interface{}
 
 func (g *fibercutGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
 	var groupedAlerts [][]*models.Alert
-	var ckts []interface{}
+	var labels []models.Labels
 	for _, alert := range alerts {
-		if !alert.Metadata.Valid || alert.Status != models.Status_ACTIVE {
+		if len(alert.Labels) == 0 || alert.Status != models.Status_ACTIVE {
 			continue
 		}
-		p := types.Circuit{}
-		if err := alert.LoadMeta(&p); err != nil {
-			glog.Errorf("Fibercut Agg: Unable to unmarshal metadata: %v", err)
-			continue
-		}
-		p.AlertId = alert.Id
-		ckts = append(ckts, p)
+		alert.Labels["AlertId"] = alert.Id
+		labels = append(labels, alert.Labels)
 	}
-	if len(ckts) == 0 {
+	if len(labels) == 0 {
 		return groupedAlerts
 	}
 	glog.V(4).Infof("Fibercut Agg: Now grouping %d alerts", len(alerts))
-	groups := group(g.grouperFunc(), ckts)
+	groups := group(g.grouperFunc(), labels)
 
 	for _, group := range groups {
 		orig := g.origAlerts(alerts, group)

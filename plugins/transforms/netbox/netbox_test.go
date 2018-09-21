@@ -2,7 +2,7 @@ package netbox
 
 import (
 	"bytes"
-	"encoding/json"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -11,10 +11,11 @@ import (
 )
 
 var testDatas = map[string][]byte{
-	"/api/rblx/device/dm/v1/br1-sjc1?interfaces=lo0.0": []byte(`
+	"/api/rblx/device/dm/v1/dev1-bb1?interfaces=lo0.0": []byte(`
   {
-    "name": "br1-sjc1",
+    "name": "dev1-bb1",
     "primary_ip": "12.8.1.1/32",
+    "status": "Active",
     "interfaces": {
         "lo0.0": {
             "id": 42419,
@@ -35,7 +36,7 @@ var testDatas = map[string][]byte{
     },
     "site_data": {
         "id": 8,
-        "name": "sjc1",
+        "name": "bb1",
         "region": {
             "id": 8,
             "name": "US_WEST"
@@ -43,10 +44,11 @@ var testDatas = map[string][]byte{
     },
     "region": "US_WEST"
   }`),
-	"/api/rblx/device/dm/v1/bs1-ash1?interfaces=lo0.0": []byte(`
+	"/api/rblx/device/dm/v1/dev2-bb1?interfaces=lo0.0": []byte(`
   {
-    "name": "bs1-ash1",
-    "primary_ip": "10.1.1.1/32",
+    "name": "dev2-bb1",
+    "primary_ip": "13.8.1.1/32",
+    "status": "Active",
     "interfaces": {
         "lo0.0": {
             "id": 42419,
@@ -67,7 +69,40 @@ var testDatas = map[string][]byte{
     },
     "site_data": {
         "id": 8,
-        "name": "ash1",
+        "name": "bb1",
+        "region": {
+            "id": 8,
+            "name": "US_WEST"
+        }
+    },
+    "region": "US_WEST"
+  }`),
+	"/api/rblx/device/dm/v1/dev1-dc1?interfaces=lo0.0": []byte(`
+  {
+    "name": "dev1-dc1",
+    "primary_ip": "10.1.1.1/32",
+    "status": "Active",
+    "interfaces": {
+        "lo0.0": {
+            "id": 42419,
+            "mtu": null,
+            "mgmt_only": false,
+            "description": "",
+            "lag": null,
+            "is_lag": false,
+            "is_connected": false,
+            "peer_name": null,
+            "peer_role": null,
+            "peer_int": null,
+            "peer_is_lag": false,
+            "link_is_active": false,
+            "speed": null,
+            "rblx_description": null
+        }
+    },
+    "site_data": {
+        "id": 8,
+        "name": "dc1",
         "region": {
             "id": 8,
             "name": "US_EAST"
@@ -75,10 +110,44 @@ var testDatas = map[string][]byte{
     },
     "region": "US_EAST"
   }`),
-	"/api/rblx/device/dm/v1/bs1-ash1?interfaces=et-0/0/47": []byte(`
+	"/api/rblx/device/dm/v1/dev2-dc1?interfaces=lo0.0": []byte(`
+  {
+    "name": "dev2-dc1",
+    "primary_ip": "10.1.1.2/32",
+    "status": "Active",
+    "interfaces": {
+        "lo0.0": {
+            "id": 42419,
+            "mtu": null,
+            "mgmt_only": false,
+            "description": "",
+            "lag": null,
+            "is_lag": false,
+            "is_connected": false,
+            "peer_name": null,
+            "peer_role": null,
+            "peer_int": null,
+            "peer_is_lag": false,
+            "link_is_active": false,
+            "speed": null,
+            "rblx_description": null
+        }
+    },
+    "site_data": {
+        "id": 8,
+        "name": "dc1",
+        "region": {
+            "id": 8,
+            "name": "US_EAST"
+        }
+    },
+    "region": "US_EAST"
+  }`),
+	"/api/rblx/device/dm/v1/dev1-dc1?interfaces=et-0/0/47": []byte(`
   {  
-    "name": "bs1-ash1",
+    "name": "dev1-dc1",
     "primary_ip": "10.1.1.1/32",
+    "status": "Active",
     "interfaces": {
         "et-0/0/47": {
             "id": 106171,
@@ -86,7 +155,7 @@ var testDatas = map[string][]byte{
             "lag": null,
             "is_lag": false,
             "is_connected": true,
-            "peer_name": "ps11-c1-ash1",
+            "peer_name": "dev2-dc1",
             "peer_role": "pod-switch",
             "peer_int": "et-0/0/31",
             "peer_is_lag": false,
@@ -98,18 +167,18 @@ var testDatas = map[string][]byte{
                     "name": "et-0/0/31",
                     "device": {
                         "id": 4945,
-                        "name": "ps11-c1-ash1",
+                        "name": "dev2-dc1",
                         "role": "pod-switch"
                     }
                 },
                 "status": true
             },
-            "rblx_description": "et-0/0/31.ps11-c1-ash1"
+            "rblx_description": "et-0/0/31.dev2-dc1"
         }
     },
     "site_data": {
         "id": 8,
-        "name": "ash1",
+        "name": "dc1",
         "region": {
             "id": 8,
             "name": "US_EAST"
@@ -117,10 +186,11 @@ var testDatas = map[string][]byte{
     },
     "region": "US_EAST"
   }`),
-	"/api/rblx/device/dm/v1/br1-sjc1?interfaces=et-0/0/3:0": []byte(`
+	"/api/rblx/device/dm/v1/dev1-bb1?interfaces=et-0/0/3:0": []byte(`
   {
-    "name": "br1-sjc1",
+    "name": "dev1-bb1",
     "primary_ip": "12.8.1.1/32",
+    "status": "Active",
     "interfaces": {
         "et-0/0/3:0": {
             "id": 43649,
@@ -129,7 +199,7 @@ var testDatas = map[string][]byte{
             },
             "is_lag": false,
             "is_connected": true,
-            "peer_name": "br1-ord1",
+            "peer_name": "dev2-bb1",
             "peer_role": "border-router",
             "peer_int": "et-0/0/3:0",
             "peer_is_lag": true,
@@ -158,7 +228,7 @@ var testDatas = map[string][]byte{
                     "name": "et-0/0/3:0",
                     "device": {
                         "id": 959,
-                        "name": "br1-ord1",
+                        "name": "dev2-bb1",
                         "role": "border-router"
                     },
                     "circuit_connection": {
@@ -175,7 +245,7 @@ var testDatas = map[string][]byte{
     },
     "site_data": {
         "id": 8,
-        "name": "sjc1",
+        "name": "bb1",
         "region": {
             "id": 8,
             "name": "US_WEST"
@@ -204,8 +274,8 @@ var testDatas = map[string][]byte{
                   "id": 106102,
                   "device": {
                       "id": 4945,
-                      "name": "ps11-c1-ash1",
-                      "display_name": "ps11-c1-ash1"
+                      "name": "dev2-dc1",
+                      "display_name": "dev2-dc1"
                   },
                   "name": "et-0/0/31.0",
                   "enabled": true,
@@ -246,8 +316,8 @@ var testDatas = map[string][]byte{
                   "id": 106278,
                   "device": {
                       "id": 5140,
-                      "name": "bs1-ash1",
-                      "display_name": "bs1-ash1"
+                      "name": "dev1-dc1",
+                      "display_name": "dev1-dc1"
                   },
                   "name": "et-0/0/47.0",
                   "enabled": true,
@@ -288,8 +358,8 @@ var testDatas = map[string][]byte{
                   "id": 106278,
                   "device": {
                       "id": 5140,
-                      "name": "br1-ord1",
-                      "display_name": "br1-ord1"
+                      "name": "dev2-bb1",
+                      "display_name": "dev2-bb1"
                   },
                   "name": "lo0.0",
                   "form_factor": {
@@ -326,125 +396,105 @@ func (m *mockClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestNetboxDevice(t *testing.T) {
-	a := tu.MockAlert(1, "Test", "", "br1-sjc1", "ent1", "src1", "device", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-bb1", "ent1", "src1", "device", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a.Site.String, "sjc1")
-	d := NetboxDevice{}
-	if err := json.Unmarshal([]byte(a.Metadata.String), &d); err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, d, NetboxDevice{Device: "br1-sjc1", Ip: "12.8.1.1", Site: "sjc1", Region: "US_WEST"})
+	assert.Equal(t, a.Site.String, "bb1")
+	exp := models.Labels{"LabelType": "Device", "Name": "dev1-bb1", "Ip": "12.8.1.1", "Site": "bb1", "Region": "US_WEST", "Status": "Active"}
+	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }
 
 func TestNetboxIntf(t *testing.T) {
-	a := tu.MockAlert(1, "Test", "", "bs1-ash1", "et-0/0/47", "src1", "phy_interface", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "phy_interface", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a.Site.String, "ash1")
-	d := NetboxInterface{}
-	if err := json.Unmarshal([]byte(a.Metadata.String), &d); err != nil {
-		t.Fatal(err)
+	assert.Equal(t, a.Site.String, "dc1")
+	exp := models.Labels{
+		"LabelType":   "Interface",
+		"Device":      "dev1-dc1",
+		"Interface":   "et-0/0/47",
+		"Description": "et-0/0/31.dev2-dc1",
+		"Role":        "dc",
+		"Type":        "phy",
+		"PeerDevice":  "dev2-dc1",
+		"PeerIntf":    "et-0/0/31",
 	}
-	assert.Equal(
-		t, d,
-		NetboxInterface{
-			Device:      "bs1-ash1",
-			Interface:   "et-0/0/47",
-			Description: "et-0/0/31.ps11-c1-ash1",
-			Role:        "dc",
-			Type:        "phy",
-			PeerDevice:  "ps11-c1-ash1",
-			PeerIntf:    "et-0/0/31",
-		})
+	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }
 
 func TestNetboxLink(t *testing.T) {
-	a := tu.MockAlert(1, "Test", "", "bs1-ash1", "et-0/0/47", "src1", "link", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "link", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a.Site.String, "ash1")
-	c := NetboxCircuit{}
-	if err := json.Unmarshal([]byte(a.Metadata.String), &c); err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(
-		t, c,
-		NetboxCircuit{
-			ASide: struct{ Device, Interface, Agg string }{Device: "bs1-ash1", Interface: "et-0/0/47"},
-			ZSide: struct{ Device, Interface, Agg string }{Device: "ps11-c1-ash1", Interface: "et-0/0/31"},
-			Role:  "dc",
-		})
+	assert.Equal(t, a.Site.String, "dc1")
+	assert.Equal(t, a.Labels["ASideDeviceName"], "dev1-dc1")
+	assert.Equal(t, a.Labels["ASideInterface"], "et-0/0/47")
+	assert.Equal(t, a.Labels["ZSideDeviceName"], "dev2-dc1")
+	assert.Equal(t, a.Labels["ZSideInterface"], "et-0/0/31")
 
-	a = tu.MockAlert(1, "Test", "", "br1-sjc1", "et-0/0/3:0", "src1", "link", "1", "WARN", []string{}, nil)
+	a = tu.MockAlert(1, "Test", "", "dev1-bb1", "et-0/0/3:0", "src1", "link", "1", "WARN", []string{}, nil)
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a.Site.String, "sjc1")
-	c = NetboxCircuit{}
-	if err := json.Unmarshal([]byte(a.Metadata.String), &c); err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(
-		t, c,
-		NetboxCircuit{
-			ASide:    struct{ Device, Interface, Agg string }{Device: "br1-ord1", Interface: "et-0/0/3:0", Agg: "ae1"},
-			ZSide:    struct{ Device, Interface, Agg string }{Device: "br1-sjc1", Interface: "et-0/0/3:0", Agg: "ae1"},
-			Role:     "bb",
-			CktId:    "XXXX-000062-1",
-			Provider: "telia",
-		})
+	assert.Equal(t, a.Site.String, "bb1")
+	assert.Equal(t, a.Labels["ASideDeviceName"], "dev2-bb1")
+	assert.Equal(t, a.Labels["ASideInterface"], "et-0/0/3:0")
+	assert.Equal(t, a.Labels["ZSideDeviceName"], "dev1-bb1")
+	assert.Equal(t, a.Labels["ZSideInterface"], "et-0/0/3:0")
+	assert.Equal(t, a.Labels["Role"], "bb")
+	assert.Equal(t, a.Labels["CktId"], "XXXX-000062-1")
+	assert.Equal(t, a.Labels["Provider"], "telia")
 }
 
 func TestNetboxBgp(t *testing.T) {
 	// ebgp peer
-	a := tu.MockAlert(1, "Test", "", "bs1-ash1", "AS65101 10.1.1.121", "src1", "bgp_peer", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "AS65101 10.1.1.121", "src1", "bgp_peer", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a.Site.String, "ash1")
-	b := BgpPeer{}
-	if err := json.Unmarshal([]byte(a.Metadata.String), &b); err != nil {
-		t.Fatal(err)
+	assert.Equal(t, a.Site.String, "dc1")
+	exp := models.Labels{
+		"LabelType":          "Bgp",
+		"Type":               "ebgp",
+		"LocalIp":            "10.1.1.120",
+		"LocalDeviceName":    "dev1-dc1",
+		"LocalDeviceIp":      "10.1.1.1",
+		"LocalInterface":     "et-0/0/47",
+		"LocalDeviceStatus":  "Active",
+		"RemoteIp":           "10.1.1.121",
+		"RemoteDeviceName":   "dev2-dc1",
+		"RemoteInterface":    "et-0/0/31",
+		"RemoteDeviceIp":     "10.1.1.2",
+		"RemoteDeviceStatus": "Active",
 	}
-	assert.Equal(
-		t, b,
-		BgpPeer{
-			Type:            "ebgp",
-			LocalIp:         "10.1.1.120",
-			LocalDevice:     "bs1-ash1",
-			LocalInterface:  "et-0/0/47",
-			RemoteIp:        "10.1.1.121",
-			RemoteDevice:    "ps11-c1-ash1",
-			RemoteInterface: "et-0/0/31",
-		})
+	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 
 	// ibgp peer
-	a = tu.MockAlert(1, "Test", "", "br1-sjc1", "AS22697 13.8.1.1", "src1", "bgp_peer", "1", "WARN", []string{}, nil)
+	a = tu.MockAlert(1, "Test", "", "dev1-bb1", "AS22697 13.8.1.1", "src1", "bgp_peer", "1", "WARN", []string{}, nil)
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a.Site.String, "sjc1")
-	b = BgpPeer{}
-	if err := json.Unmarshal([]byte(a.Metadata.String), &b); err != nil {
-		t.Fatal(err)
+	assert.Equal(t, a.Site.String, "bb1")
+	exp = models.Labels{
+		"LabelType":          "Bgp",
+		"Type":               "ibgp",
+		"LocalIp":            "12.8.1.1",
+		"LocalDeviceIp":      "12.8.1.1",
+		"LocalDeviceName":    "dev1-bb1",
+		"LocalDeviceStatus":  "Active",
+		"LocalInterface":     "lo0",
+		"RemoteIp":           "13.8.1.1",
+		"RemoteDeviceName":   "dev2-bb1",
+		"RemoteDeviceIp":     "13.8.1.1",
+		"RemoteInterface":    "lo0",
+		"RemoteDeviceStatus": "Active",
 	}
-	assert.Equal(
-		t, b,
-		BgpPeer{
-			Type:            "ibgp",
-			LocalIp:         "12.8.1.1",
-			LocalDevice:     "br1-sjc1",
-			LocalInterface:  "lo0",
-			RemoteIp:        "13.8.1.1",
-			RemoteDevice:    "br1-ord1",
-			RemoteInterface: "lo0",
-		})
+	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }

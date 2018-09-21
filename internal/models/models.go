@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"io/ioutil"
 	"net"
 	"time"
@@ -115,3 +116,46 @@ func (t *MyTime) Scan(src interface{}) error {
 	*t = MyTime{time.Unix(ns.Int64, 0)}
 	return nil
 }
+
+type Labels map[string]interface{}
+
+func (l Labels) Value() (driver.Value, error) {
+	d, err := json.Marshal(l)
+	if err != nil {
+		return nil, err
+	}
+	return driver.Value(string(d)), nil
+}
+
+func (l *Labels) Scan(src interface{}) error {
+	if src == nil {
+		return fmt.Errorf("Labels.Scan: column is not nullable")
+	}
+	var source []byte
+	switch src.(type) {
+	case []byte:
+		source = src.([]byte)
+	case string:
+		source = []byte(src.(string))
+	default:
+		return fmt.Errorf("Labels.Scan: Incompatible source type")
+	}
+	return json.Unmarshal(source, l)
+}
+
+func (l Labels) Equal(other Labels) bool {
+	allEq := true
+	if len(l) != len(other) {
+		return false
+	}
+	for k, v := range l {
+		if o, ok := other[k]; !ok {
+			allEq = false
+		} else if v != o {
+			allEq = false
+		}
+	}
+	return allEq
+}
+
+var ToStringArray = func(x []string) interface{} { return pq.Array(x) }

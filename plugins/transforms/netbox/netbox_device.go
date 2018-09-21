@@ -3,13 +3,12 @@ package netbox
 import (
 	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
-	"github.com/mayuresh82/alert_manager/types"
 	"net"
 )
 
 const queryUrl = "/api/rblx/device/dm/v1/"
 
-func parseDevice(n *Netbox, device string) (*types.Device, error) {
+func deviceLabels(n *Netbox, device string) (models.Labels, error) {
 	url := n.Addr + queryUrl + fmt.Sprintf("%s?interfaces=lo0.0", device)
 	body, err := n.query(url)
 	if err != nil {
@@ -19,22 +18,23 @@ func parseDevice(n *Netbox, device string) (*types.Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	d := types.NewDevice()
-	d.Name = result["name"].(string)
+	labels := make(models.Labels)
+	labels["LabelType"] = "Device"
+	labels["Name"] = result["name"]
 	ip, _, _ := net.ParseCIDR(result["primary_ip"].(string))
-	d.Ip = ip.String()
+	labels["Ip"] = ip.String()
 	site := result["site_data"].(map[string]interface{})
-	d.Site = site["name"].(string)
-	d.Region = result["region"].(string)
-	d.Status = result["status"].(string)
-	return d, nil
+	labels["Site"] = site["name"]
+	labels["Region"] = result["region"]
+	labels["Status"] = result["status"]
+	return labels, nil
 }
 
-func queryDevice(n *Netbox, alert *models.Alert) (*types.Device, error) {
-	device, err := parseDevice(n, alert.Device.String)
+func DeviceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
+	labels, err := deviceLabels(n, alert.Device.String)
 	if err != nil {
 		return nil, err
 	}
-	alert.AddSite(device.Site)
-	return device, nil
+	alert.AddSite(labels["Site"].(string))
+	return labels, nil
 }
