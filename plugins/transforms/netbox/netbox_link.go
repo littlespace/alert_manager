@@ -128,12 +128,25 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	labels["ZSideInterface"] = iLabels["PeerIntf"]
 	labels["ZSideAgg"] = iLabels["PeerAgg"]
 
-	if iLabels["Type"].(string) == "agg" {
-		// we dont know a/z info for aggs
-		return labels, nil
-	}
 	if labels["Role"].(string) == "dc" {
 		return labels, nil
+	}
+
+	if iLabels["Type"].(string) == "agg" {
+		// pull a/z, provider info from children
+		children := ifaceData["childs"].(map[string]interface{})
+		for c, v := range children {
+			v := v.(map[string]interface{})
+			if !v["is_connected"].(bool) {
+				continue
+			}
+			ifaceD, ok := ifc[c]
+			if !ok {
+				return nil, fmt.Errorf("Child Interface %s not found in result data", c)
+			}
+			ifaceData = ifaceD.(map[string]interface{})
+			break
+		}
 	}
 	term := ifaceData["circuit_termination"].(map[string]interface{})
 	if term["term_side"].(string) == "Z" {

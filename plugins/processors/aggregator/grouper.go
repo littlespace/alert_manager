@@ -34,6 +34,11 @@ func (g *Grouper) addAlert(name string, alert *models.Alert) {
 	if len(g.recvBuffers[name]) == 0 {
 		go g.startWindow(name)
 	}
+	for _, a := range g.recvBuffers[name] {
+		if a.Id == alert.Id {
+			return
+		}
+	}
 	g.recvBuffers[name] = append(g.recvBuffers[name], alert)
 }
 

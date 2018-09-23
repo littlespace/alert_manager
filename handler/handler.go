@@ -48,6 +48,11 @@ var ListenChan = make(chan *AlertEvent)
 var DefaultOutput string
 
 func NotifyOutputs(event *AlertEvent, outputs []string) {
+	// check if notification has already been sent
+	// TODO add initial notification delay check, and subequent notify remiders
+	if event.Alert.LastActive != event.Alert.StartTime {
+		return
+	}
 	outputs = append(outputs, DefaultOutput)
 	for _, output := range outputs {
 		if outChan, ok := Outputs[output]; ok {
@@ -206,6 +211,8 @@ func (h *AlertHandler) checkExistingActive(tx models.Txn, alert *models.Alert) b
 	if err != nil {
 		glog.Errorf("Failed update last active: %v", err)
 	}
+	// Send to interested parties
+	h.notifyReceivers(existingAlert, EventType_ACTIVE)
 	return err == nil
 }
 

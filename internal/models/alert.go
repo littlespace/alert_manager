@@ -144,6 +144,10 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 }
 
 func NewAlert(name, description, entity, source, scope string, extId string, startTime time.Time, sev string, isAgg bool) *Alert {
+	// sanity checks - if alert > 10 min old, set start time to now
+	if time.Now().Sub(startTime) > time.Duration(10*time.Minute) {
+		startTime = time.Now()
+	}
 	return &Alert{
 		Status:      Status_ACTIVE,
 		ExternalId:  extId,
@@ -153,7 +157,7 @@ func NewAlert(name, description, entity, source, scope string, extId string, sta
 		Source:      source,
 		Scope:       scope,
 		StartTime:   MyTime{startTime},
-		LastActive:  MyTime{time.Now()},
+		LastActive:  MyTime{startTime},
 		Severity:    SevMap[sev],
 		AutoClear:   true,
 		AutoExpire:  false,

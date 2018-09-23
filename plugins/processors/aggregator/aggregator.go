@@ -220,6 +220,10 @@ func (a *Aggregator) Start(ctx context.Context, h *ah.AlertHandler) {
 	for {
 		select {
 		case event := <-a.Notif:
+			// check if alert has already been agg'd
+			if event.Alert.AggregatorId.Int64 != 0 {
+				break
+			}
 			config, ok := ah.Config.GetAlertConfig(event.Alert.Name)
 			if !ok {
 				glog.Errorf("Alert config for %s not found", event.Alert.Name)

@@ -16,6 +16,9 @@ func (g fibercutGrouper) grouperFunc() groupingFunc {
 		if i["Provider"] != "" && j["Provider"] != "" {
 			match = match || i["Provider"] == j["Provider"]
 		}
+		if i["CktId"] != "" && j["CktId"] != "" {
+			match = match || i["CktId"] == j["CktId"]
+		}
 		return (match ||
 			// 2 ends of same circuit
 			(i["ASideDeviceName"] == j["ZSideDeviceName"] && i["ASideInterface"] == j["ZSideInterface"]) ||
