@@ -18,19 +18,16 @@ CREATE TABLE IF NOT EXISTS alerts (
   expire_after INT,
   severity SMALLINT NOT NULL,
   status SMALLINT NOT NULL,
-  label JSON,
+  labels JSON,
   last_active BIGINT NOT NULL,
   scope VARCHAR(16));
 
 CREATE TABLE IF NOT EXISTS suppression_rules (
   id SERIAL PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
-  alert_name VARCHAR(64),
-  device VARCHAR(16),
-  entity VARCHAR(64),
-  site VARCHAR(16),
-  region VARCHAR(16),
+  entities JSON NOT NULL,
+  rtype SMALLINT  NOT NULL,
   created_at BIGINT NOT NULL,
   duration INT NOT NULL,
-  reason varchar(128) NOT NULL,
+  reason TEXT,
   creator varchar(64) NOT NULL);

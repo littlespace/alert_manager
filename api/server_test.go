@@ -69,6 +69,10 @@ func (t *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, err
 		Id:     args[0].(int64)}, nil
 }
 
+func (t *MockTx) NewSuppRule(r *models.SuppressionRule) (int64, error) {
+	return 1, nil
+}
+
 func (tx *MockTx) Commit() error {
 	return nil
 }

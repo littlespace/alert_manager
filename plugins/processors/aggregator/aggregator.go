@@ -162,8 +162,8 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 
 // StartPoll does grouping based on periodic querying the db for matching alerts.
 // Only one of this or Start() must be used to fix the grouping method.
-func (a *Aggregator) StartPoll(ctx context.Context, h *ah.AlertHandler) {
-	a.db = h.Db
+func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
+	a.db = db
 	go a.handleExpiry(ctx)
 	for _, alert := range ah.Config.GetConfiguredAlerts() {
 		if len(alert.Config.AggregationRules) == 0 {
@@ -181,7 +181,7 @@ func (a *Aggregator) StartPoll(ctx context.Context, h *ah.AlertHandler) {
 				select {
 				case <-t.C:
 					var alerts []*models.Alert
-					tx := h.Db.NewTx()
+					tx := a.db.NewTx()
 					err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 						return tx.InSelect(models.QuerySelectByNames, &alerts, a.grouper.subscribed(g.Name()))
 					})
@@ -206,9 +206,9 @@ func (a *Aggregator) StartPoll(ctx context.Context, h *ah.AlertHandler) {
 
 // Start does grouping by subscribing to alerts from the handler and grouping based
 // on configured time windows.
-func (a *Aggregator) Start(ctx context.Context, h *ah.AlertHandler) {
+func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 	//a.StartPoll(ctx, h)
-	a.db = h.Db
+	a.db = db
 	go a.handleGrouped(ctx)
 	go a.handleExpiry(ctx)
 	// subscribe to alerts that have agg rules defined

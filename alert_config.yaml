@@ -1,109 +1,51 @@
+# alert_config defines non default config for expected alerts coming in. An alert
+# does not need to be defined here for it to be accepted by alert manager. Such an
+# alert will get all default values
 alert_config:
-  - name: Neteng BB Input Errors Test
+  - name: BB Input Errors Test
     config:
+      # scope can be used to identifthe labels to be attached to the alert
       scope: phy_interface
+      # the external source of the alert
       source: grafana
+      # descriptive tags used for grouping, searching etc.
       tags: [ neteng, bb, test ]
+      # override the severity of the original alert
       severity: INFO
+      # auto expire the alert if no new update is received after a period of time
+      # default: never expires
       auto_expire: true
       expire_after: 15m
+      # auto clear the alert if a "clear" notification is received externally
+      # default: true
+      auto_clear: false
+      # set of outputs to send the alert notification to
       outputs: [ slack ]
+      # esc rules define how long an alert can remain unactioned(or unacknowledged)
+      # before the severity gets bumped up. For e.g this can ultimately page the oncall
       escalation_rules:
         - after: 5m
           escalate_to: WARN
         - after: 10m
           escalate_to: CRITICAL
           send_to: [ victorops ]
-      # for: 15m # alert only if it keeps firing for 15 min
-
-  - name: Neteng Device Unreachable
-    config:
-      scope: device
-      source: observium 
-      tags: [ neteng, bb, device ]
-      severity: WARN
-      outputs: [ slack ]
-      auto_expire: true
-      expire_after: 1h
-      escalation_rules:
-        - after: 10m
-          escalate_to: CRITICAL
-          send_to: [ victorops ]
-
-  - name: Neteng BB Util Out
-    config:
-      scope: phy_interface
-      source: kapacitor
-      severity: WARN
-      tags: [ neteng, bb, util ]
-      auto_expire: true # false by default
-      expire_after: 2h
-      outputs: [ slack ]
-  
-  - name: Neteng Transit Util Out
-    config:
-      scope: phy_interface
-      source: grafana
-      tags: [ neteng, pt, util ]
-      severity: CRITICAL
-      auto_clear: false # true by default
-      outputs: [ slack, email]
-      escalation_rules:
-        - after: 15m
-          escalate_to: CRITICAL
-  
-  - name: Neteng BB Link Down
-    config:
-      scope: link
-      source: observium
-      tags: [ neteng, bb, link ]
-      severity: INFO
-      auto_expire: true
-      expire_after: 1h
+      # aggregation rules to associate with the alert, these are defined below
       aggregation_rules:
-        - fibercut
+        - rule1
+        - rule2
 
-  - name: Neteng BB Agg Link Down
-    config:
-      scope: link
-      source: observium
-      tags: [ neteng, bb, link ]
-      severity: INFO
-      auto_expire: true
-      expire_after: 1h
-      aggregation_rules:
-        - fibercut
-
-  - name: Neteng DC Link Down
-    config:
-      scope: link
-      source: observium
-      tags: [ neteng, dc, link ]
-      severity: INFO
-      auto_expire: true
-      expire_after: 1h
-      aggregation_rules:
-        - dc_circuit_down
-        - bgp_session
-
-  - name: Neteng BGP Down
-    config:
-      scope: bgp_peer
-      source: observium
-      tags: [ neteng, bgp ]
-      severity: INFO
-      auto_expire: true
-      expire_after: 1h
-      aggregation_rules:
-        - dc_circuit_down
-        - bgp_session
-
+# agg rules are written as "alert processors" (see README ). They define grouping
+# conditions for a set of alerts and config for the resulting aggregated alert.
 aggregation_rules:
-  - name: fibercut
+  - name: rule1
+    # how long to wait and accumulate alerts before grouping can be performed
     window: 5m
+    # how often to poll the DB for matching alerts if the poll method is used
+    # (see README)
     poll_interval: 5m
+    # the config for the aggregated alert
     alert:
-      name: Neteng_Aggregated FiberCut
+      name: Aggregated Test Alert
       config:
         source: fibercut
         severity: WARN
@@ -114,26 +56,30 @@ aggregation_rules:
             escalate_to: CRITICAL
             send_to: [ victorops ] 
 
-  - name: bgp_session
-    window: 5m
-    poll_interval: 5m
-    alert:
-      name: Neteng_Aggregated BGP Down
-      config:
-        source: bgp_session
-        severity: WARN
-        tags: [ neteng, agg, bgp ]
-        auto_expire: true  ## aggregated alert will expire only when all component alerts expire
-        outputs: [ slack ]
-
-  - name: dc_circuit_down
-    window: 5m
-    poll_interval: 5m
-    alert:
-      name: Neteng_Aggregated DC Link Down
-      config:
-        source: dc_circuit_down
-        severity: WARN
-        tags: [ neteng, agg, dc, link ]
-        auto_expire: true
-        outputs: [ slack ]
+# supp rules are a set of persistent rules that match specified alert labels and
+# suppress the alerts. The labels are all custom defined inside the transforms
+# (see README for transforms )
+suppression_rules:
+    - name: Offline devices
+      duration: 5m  # how long to suppress alerts that match this rule
+      reason: Suppress alerts to/from an offline device
+      type: device
+      # label k-v values to match
+      matches:
+        DeviceStatus: Offline
+    
+# inhibit rules let you mute certain alerts when certain other alerts are 
+# already present. (not implemented yet )
+#inhibit_rules:
+#    - name: Device down
+       # match labels that the source alerts should have. In this case, a
+       # Device Down Alert will match on the label "name"
+#      source-matches:
+#        - alert: Device Down Alert
+#          match: [ Name ]
+      # labels that target alerts should have that matched the source.
+#      target-matches:
+#        - alert: Protocol Down
+#          match: [ LocalDeviceName, RemoteDeviceName ]
+#        - alert: Link Down
+#          match: [ ASideDeviceName, ZSideDeviceName ]

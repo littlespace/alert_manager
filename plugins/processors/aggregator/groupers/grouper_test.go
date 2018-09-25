@@ -75,7 +75,7 @@ var testDatas = map[string]struct {
 				4, "Neteng BB Link Down", "", "dev4", "if4", "src", "scp", "4", "WARN", []string{"bb", "link"},
 				models.Labels{"LabelType": "Circuit", "ASideDeviceName": "dev4", "ASideInterface": "if4", "ASideAgg": "ae4", "ZSideDeviceName": "dev3", "ZSideInterface": "if3", "ZSideAgg": "ae3", "Role": "bb", "Provider": "level3"}),
 			tu.MockAlert(
-				5, "Neteng BB Link Down", "", "dev4", "ae4", "src", "scp", "5", "WARN", []string{"bb", "link"},
+				5, "Neteng BB Agg Link Down", "", "dev4", "ae4", "src", "scp", "5", "WARN", []string{"bb", "link"},
 				models.Labels{"LabelType": "Circuit", "ASideDeviceName": "dev4", "ASideInterface": "ae4", "ASideAgg": ""}),
 		},
 		grouped: [][]int64{
