@@ -13,10 +13,10 @@ type fibercutGrouper struct {
 func (g fibercutGrouper) grouperFunc() groupingFunc {
 	return func(i, j models.Labels) bool {
 		var match bool
-		if i["Provider"] != "" && j["Provider"] != "" {
+		if i["Provider"] != nil && j["Provider"] != nil {
 			match = match || i["Provider"] == j["Provider"]
 		}
-		if i["CktId"] != "" && j["CktId"] != "" {
+		if i["CktId"] != nil && j["CktId"] != nil {
 			match = match || i["CktId"] == j["CktId"]
 		}
 		return (match ||

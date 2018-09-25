@@ -33,14 +33,17 @@ var (
 	querySelect             = "SELECT * from alerts"
 	QuerySelectByNames      = querySelect + " WHERE name IN (?) AND status=1 AND agg_id IS NULL FOR UPDATE"
 	QuerySelectById         = querySelect + " WHERE id=$1 FOR UPDATE"
+	QuerySelectByIds        = querySelect + " WHERE id IN (?) FOR UPDATE"
 	QuerySelectByStatus     = querySelect + " WHERE status IN (?) FOR UPDATE"
-	QuerySelectNoOwner      = querySelect + " WHERE owner is NULL AND status=1 FOR UPDATE"
-	QuerySelectByNameEntity = querySelect + " WHERE name=$1 AND entity=$2 AND status=1 FOR UPDATE"
-	QuerySelectByDevice     = querySelect + " WHERE name=$1 AND entity=$2 AND device=$3 AND status=1 FOR UPDATE"
+	QuerySelectNoOwner      = querySelect + " WHERE owner is NULL AND status IN (1,2) FOR UPDATE"
+	QuerySelectByNameEntity = querySelect + " WHERE name=$1 AND entity=$2 AND status IN (1,2) FOR UPDATE"
+	QuerySelectByDevice     = querySelect + " WHERE name=$1 AND entity=$2 AND device=$3 AND status IN (1,2) FOR UPDATE"
 	QuerySelectTags         = "SELECT tags from alerts WHERE id=$1"
 	QuerySelectExpired      = querySelect + ` WHERE
     status=1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after FOR UPDATE`
 	QuerySelectAllAggregated = querySelect + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
+	QuerySelectSuppressed    = querySelect + ` WHERE status=2 AND id in (
+    select (entities->>'alert_id')::int from suppression_rules where rtype = 1)`
 )
 
 type AlertSeverity int
@@ -108,12 +111,15 @@ type Alert struct {
 
 // custom Marshaler interface for Alert
 func (a Alert) MarshalJSON() ([]byte, error) {
+	if a.Tags == nil {
+		a.Tags = []string{}
+	}
 	tmp := struct {
 		Id                                       int64
 		ExternalId                               string `json:"external_id"`
 		Name, Description, Entity, Source, Scope string
 		Device, Site, Owner, Team                string
-		Tags                                     []string
+		Tags                                     interface{}
 		StartTime                                int64 `json:"start_time"`
 		LastActive                               int64 `json:"last_active"`
 		AggregatorId                             int64 `json:"agg_id"`
@@ -132,7 +138,7 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		Site:         a.Site.String,
 		Owner:        a.Owner.String,
 		Team:         a.Team.String,
-		Tags:         a.Tags.([]string),
+		Tags:         a.Tags,
 		StartTime:    a.StartTime.Unix(),
 		LastActive:   a.LastActive.Unix(),
 		AggregatorId: a.AggregatorId.Int64,
@@ -201,11 +207,11 @@ func (a *Alert) SetAutoExpire(duration time.Duration) {
 
 func (a *Alert) Suppress(suppressFor time.Duration) {
 	a.Status = Status_SUPPRESSED
-	glog.V(2).Infof("Suppressing %s for %v", a.Name, suppressFor)
+	glog.V(2).Infof("Suppressing %d:%s for %v", a.Id, a.Name, suppressFor)
 }
 
 func (a *Alert) Unsuppress() {
-	glog.V(2).Infof("Un-suppressing %s", a.Name)
+	glog.V(2).Infof("Un-suppressing %d:%s", a.Id, a.Name)
 	a.Status = Status_ACTIVE
 }
 
@@ -265,6 +271,9 @@ func (tx *Tx) UpdateAlert(alert *Alert) error {
 func (tx *Tx) NewAlert(alert *Alert) (int64, error) {
 	var newId int64
 	stmt, err := tx.PrepareNamed(QueryInsertNew)
+	if err != nil {
+		return newId, err
+	}
 	err = stmt.Get(&newId, alert)
 	return newId, err
 }

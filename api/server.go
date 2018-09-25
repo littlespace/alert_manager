@@ -271,7 +271,13 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 				http.Error(w, fmt.Sprintf("Invalid duration: %s", err.Error()), http.StatusBadRequest)
 				return fmt.Errorf("Invalid duration: %s", err.Error())
 			}
-			err = s.handler.Suppress(ctx, tx, alert, duration)
+			rule := models.NewSuppRule(
+				models.Labels{"alert_id": alert.Id},
+				"alert",
+				"Alert suppressed via API",
+				"alert manager",
+				duration)
+			err = s.handler.Suppress(ctx, tx, alert, rule)
 		case "clear":
 			err = s.handler.Clear(ctx, tx, alert)
 		case "ack":

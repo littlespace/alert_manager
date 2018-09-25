@@ -36,9 +36,18 @@ type AggregationRuleConfig struct {
 	Alert        AlertConfig
 }
 
+type SuppressionRuleConfig struct {
+	Name     string
+	Duration time.Duration
+	Reason   string
+	Type     string
+	Matches  map[string]interface{}
+}
+
 type configs struct {
 	AlertConfig            []AlertConfig           `yaml:"alert_config"`
 	AggregationRuleConfigs []AggregationRuleConfig `yaml:"aggregation_rules"`
+	SuppressionRuleConfigs []SuppressionRuleConfig `yaml:"suppression_rules"`
 }
 
 func readConfig(file string) (configs, error) {
@@ -61,6 +70,7 @@ type ConfigHandler struct {
 	file         string
 	alertConfigs map[string]AlertConfig
 	aggRules     map[string]AggregationRuleConfig
+	suppRules    map[string]SuppressionRuleConfig
 	sync.Mutex
 }
 
@@ -69,6 +79,7 @@ func NewConfigHandler(file string) *ConfigHandler {
 		file:         file,
 		alertConfigs: make(map[string]AlertConfig),
 		aggRules:     make(map[string]AggregationRuleConfig),
+		suppRules:    make(map[string]SuppressionRuleConfig),
 	}
 	c.LoadConfig()
 	return c
@@ -79,6 +90,9 @@ var Config *ConfigHandler
 func (c *ConfigHandler) LoadConfig() {
 	c.Lock()
 	defer c.Unlock()
+	if c.file == "" {
+		return
+	}
 	glog.Infof("Loading configs from file: %s", c.file)
 	configs, err := readConfig(c.file)
 	if err != nil {
@@ -90,6 +104,9 @@ func (c *ConfigHandler) LoadConfig() {
 	for _, rule := range configs.AggregationRuleConfigs {
 		c.aggRules[rule.Name] = rule
 		c.alertConfigs[rule.Alert.Name] = rule.Alert
+	}
+	for _, rule := range configs.SuppressionRuleConfigs {
+		c.suppRules[rule.Name] = rule
 	}
 }
 
@@ -108,6 +125,16 @@ func (c *ConfigHandler) GetAggRules() []AggregationRuleConfig {
 	defer c.Unlock()
 	rules := []AggregationRuleConfig{}
 	for _, rule := range c.aggRules {
+		rules = append(rules, rule)
+	}
+	return rules
+}
+
+func (c *ConfigHandler) GetSuppressionRules() []SuppressionRuleConfig {
+	c.Lock()
+	defer c.Unlock()
+	rules := []SuppressionRuleConfig{}
+	for _, rule := range c.suppRules {
 		rules = append(rules, rule)
 	}
 	return rules

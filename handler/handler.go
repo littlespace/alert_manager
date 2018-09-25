@@ -83,6 +83,8 @@ func NewHandler(db models.Dbase) *AlertHandler {
 }
 
 func (h *AlertHandler) loadSuppRules(ctx context.Context) {
+	h.Lock()
+	defer h.Unlock()
 	glog.V(2).Infof("Updating suppression rules")
 	tx := h.Db.NewTx()
 	var (
@@ -99,6 +101,46 @@ func (h *AlertHandler) loadSuppRules(ctx context.Context) {
 		glog.Errorf("Unable to select rules from db: %v", err)
 	}
 	h.suppRules = rules
+
+	// load persistent rules from config
+	for _, rule := range Config.GetSuppressionRules() {
+		for k, v := range rule.Matches {
+			ents := models.Labels{k: v}
+			r := models.NewSuppRule(ents, rule.Type, rule.Reason, "alert manager", rule.Duration)
+			r.DontExpire = true
+			h.suppRules = append(h.suppRules, r)
+		}
+	}
+}
+
+func (h *AlertHandler) handleUnsupressOnStart(ctx context.Context) {
+	h.Lock()
+	defer h.Unlock()
+	tx := h.Db.NewTx()
+	var suppressedAlerts []*models.Alert
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		return tx.InSelect(models.QuerySelectSuppressed, &suppressedAlerts)
+	})
+	if err != nil {
+		glog.Errorf("Unable to query suppressed alerts: %v", err)
+	}
+	for _, alert := range suppressedAlerts {
+		var secondsLeft time.Duration
+		for _, rule := range h.suppRules {
+			if rule.Rtype != models.SuppType_ALERT {
+				continue
+			}
+			a, ok := rule.Entities["alert_id"]
+			if !ok {
+				continue
+			}
+			if alert.Id == int64(a.(float64)) {
+				secondsLeft = rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
+				break
+			}
+		}
+		go h.unSuppWait(ctx, alert, secondsLeft)
+	}
 }
 
 // Start needs to be called in a go-routine
@@ -120,6 +162,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 			}
 		}
 	}()
+	go h.handleUnsupressOnStart(ctx)
 	// start listening for alerts
 	for {
 		select {
@@ -148,29 +191,47 @@ func (h *AlertHandler) Start(ctx context.Context) {
 }
 
 func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
-	if h.checkExistingActive(tx, alert) {
+	if alert.Id == 0 && h.checkExisting(tx, alert) {
 		return nil
 	}
 	// add transforms
 	h.applyTransforms(alert)
-	// new alert
-	newId, err := tx.NewAlert(alert)
-	if err != nil {
-		return fmt.Errorf("Unable to insert new alert: %v", err)
-	}
-	alert.Id = newId
-	glog.V(2).Infof("Received alert with ID: %v", alert.Id)
 
-	// check if alert matches an existing suppression rule
-	filters := map[string]string{"Entity": alert.Entity, "Alert": alert.Name}
-	if alert.Device.Valid {
-		filters["Device"] = alert.Device.String
+	// new alert
+	if alert.Id == 0 {
+		newId, err := tx.NewAlert(alert)
+		if err != nil {
+			return fmt.Errorf("Unable to insert new alert: %v", err)
+		}
+		alert.Id = newId
+		glog.V(2).Infof("Received alert with ID: %v", alert.Id)
 	}
-	// TODO Add other filters for site, region etc.
-	if rule, ok := h.suppRules.Find(filters); ok {
+
+	// check if alert matches an existing suppression rule based on alert labels
+	if rule, ok := h.suppRules.Find(alert.Labels); ok {
 		glog.V(2).Infof("Found matching suppression rule: %v", rule)
 		secondsLeft := rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
-		return h.Suppress(ctx, tx, alert, secondsLeft)
+		if rule.DontExpire {
+			secondsLeft = time.Duration(rule.Duration) * time.Second
+		}
+		if secondsLeft > 0 {
+			rule := models.NewSuppRule(
+				models.Labels{"alert_id": alert.Id},
+				"alert",
+				fmt.Sprintf("Alert suppressed due to matching suppression rule %s", rule.Name),
+				"alert manager",
+				secondsLeft)
+			h.suppRules = append(h.suppRules, rule)
+			return h.Suppress(ctx, tx, alert, rule)
+		} else {
+			// rule has expired, remove from cache
+			for i := 0; i < len(h.suppRules); i++ {
+				if h.suppRules[i].Id == rule.Id {
+					h.suppRules = append(h.suppRules[:i], h.suppRules[i+1:]...)
+					break
+				}
+			}
+		}
 	}
 
 	// Send to interested parties
@@ -196,7 +257,7 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 	return nil
 }
 
-func (h *AlertHandler) checkExistingActive(tx models.Txn, alert *models.Alert) bool {
+func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 	existingAlert, err := h.GetExisting(tx, alert)
 	if err != nil {
 		glog.V(2).Infof("No existing alert found for %s:%s", alert.Name, alert.Entity)
@@ -212,7 +273,7 @@ func (h *AlertHandler) checkExistingActive(tx models.Txn, alert *models.Alert) b
 		glog.Errorf("Failed update last active: %v", err)
 	}
 	// Send to interested parties
-	h.notifyReceivers(existingAlert, EventType_ACTIVE)
+	h.notifyReceivers(existingAlert, EventMap[existingAlert.Status.String()])
 	return err == nil
 }
 
@@ -355,27 +416,41 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 	return existing, nil
 }
 
-func (h *AlertHandler) Suppress(ctx context.Context, tx models.Txn, alert *models.Alert, duration time.Duration) error {
+func (h *AlertHandler) Suppress(ctx context.Context, tx models.Txn, alert *models.Alert, rule models.SuppressionRule) error {
+	duration := time.Duration(rule.Duration) * time.Second
 	alert.Suppress(duration)
 	if err := tx.UpdateAlert(alert); err != nil {
 		return err
 	}
+	_, err := tx.NewSuppRule(&rule)
+	if err != nil {
+		return fmt.Errorf("Unable to save supp rule: %v", err)
+	}
 	h.notifyReceivers(alert, EventType_SUPPRESSED)
-	go func() {
-		<-time.NewTimer(duration).C
-		alert.Unsuppress()
-		// need a new tx here because the closure wont be active any more
-		tx := h.Db.NewTx()
-		models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-			if err := tx.UpdateAlert(alert); err != nil {
-				glog.Errorf("Failed up update status: %v", err)
-				return err
-			}
-			h.notifyReceivers(alert, EventType_ACTIVE)
-			return nil
-		})
-	}()
+	go h.unSuppWait(ctx, alert, duration)
 	return nil
+}
+
+func (h *AlertHandler) unSuppWait(ctx context.Context, alert *models.Alert, duration time.Duration) {
+	time.Sleep(duration)
+	tx := h.Db.NewTx()
+	models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		existing, err := h.GetExisting(tx, alert)
+		if err != nil {
+			return err
+		}
+		if existing.Status != models.Status_SUPPRESSED {
+			glog.V(4).Infof("Alert %s has cleared or expired, not unsuppressing")
+			return nil
+		}
+		alert.Unsuppress()
+		if err := tx.UpdateAlert(alert); err != nil {
+			glog.Errorf("Failed up update status: %v", err)
+			return err
+		}
+		ListenChan <- &AlertEvent{Type: EventType_ACTIVE, Alert: alert}
+		return nil
+	})
 }
 
 func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert) error {

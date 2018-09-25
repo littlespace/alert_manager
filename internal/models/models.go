@@ -58,6 +58,7 @@ type Txn interface {
 	GetAlert(query string, args ...interface{}) (*Alert, error)
 	SelectAlerts(query string) (Alerts, error)
 	SelectRules(query string) (SuppRules, error)
+	NewSuppRule(rule *SuppressionRule) (int64, error)
 	Rollback() error
 	Commit() error
 }

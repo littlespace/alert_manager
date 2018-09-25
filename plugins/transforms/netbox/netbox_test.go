@@ -416,6 +416,7 @@ func TestNetboxIntf(t *testing.T) {
 	exp := models.Labels{
 		"LabelType":   "Interface",
 		"Device":      "dev1-dc1",
+		"Status":      "Active",
 		"Interface":   "et-0/0/47",
 		"Description": "et-0/0/31.dev2-dc1",
 		"Role":        "dc",

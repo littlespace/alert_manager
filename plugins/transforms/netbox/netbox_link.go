@@ -75,6 +75,7 @@ func InterfaceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	}
 	labels["LabelType"] = "Interface"
 	labels["Device"] = alert.Device.String
+	labels["Status"] = result["status"]
 	labels["Interface"] = alert.Entity
 	return labels, nil
 }

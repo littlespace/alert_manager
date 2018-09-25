@@ -15,7 +15,7 @@ import (
 
 // global flags
 var (
-	alertConfig = flag.String("alert-config", "alert_config.yaml", "full path to alert defintion file")
+	alertConfig = flag.String("alert-config", "", "full path to alert defintion file")
 	schemaFile  = flag.String("schema", "schema.sql", "full path to DB schema file")
 )
 
@@ -40,8 +40,7 @@ func AddOutput(o Output) {
 func Run(config *Config) {
 	db := models.NewDB(config.Db.Addr, config.Db.Username, config.Db.Password, config.Db.DbName, *schemaFile, config.Db.Timeout)
 	defer db.Close()
-	ah.DefaultOutput = config.Agent.DefaultOutput
-	handler := ah.NewHandler(db)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -60,6 +59,8 @@ func Run(config *Config) {
 	}()
 
 	// start the handler
+	ah.DefaultOutput = config.Agent.DefaultOutput
+	handler := ah.NewHandler(db)
 	go handler.Start(ctx)
 
 	// start all the listeners
@@ -70,7 +71,7 @@ func Run(config *Config) {
 	// start all the processors/outputs
 	for name, processor := range Processors {
 		glog.Infof("Starting processor: %s", name)
-		go processor.Start(ctx, handler)
+		go processor.Start(ctx, db)
 	}
 	for name, output := range Outputs {
 		glog.Infof("Starting output: %s", name)
