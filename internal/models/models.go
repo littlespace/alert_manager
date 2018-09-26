@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
 	"io/ioutil"
 	"net"
 	"time"
