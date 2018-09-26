@@ -158,5 +158,3 @@ func (l Labels) Equal(other Labels) bool {
 	}
 	return allEq
 }
-
-var ToStringArray = func(x []string) interface{} { return pq.Array(x) }

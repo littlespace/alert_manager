@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/golang/glog"
+	"github.com/lib/pq"
 	"time"
 )
 
@@ -96,7 +97,7 @@ type Alert struct {
 	Site         sql.NullString
 	Owner        sql.NullString
 	Team         sql.NullString
-	Tags         interface{}
+	Tags         pq.StringArray
 	StartTime    MyTime        `db:"start_time"`
 	LastActive   MyTime        `db:"last_active"`
 	AutoExpire   bool          `db:"auto_expire"`
@@ -111,15 +112,12 @@ type Alert struct {
 
 // custom Marshaler interface for Alert
 func (a Alert) MarshalJSON() ([]byte, error) {
-	if a.Tags == nil {
-		a.Tags = []string{}
-	}
 	tmp := struct {
 		Id                                       int64
 		ExternalId                               string `json:"external_id"`
 		Name, Description, Entity, Source, Scope string
 		Device, Site, Owner, Team                string
-		Tags                                     interface{}
+		Tags                                     pq.StringArray
 		StartTime                                int64 `json:"start_time"`
 		LastActive                               int64 `json:"last_active"`
 		AggregatorId                             int64 `json:"agg_id"`
@@ -182,14 +180,14 @@ func (a *Alert) AddSite(site string) {
 
 func (a *Alert) AddTags(tags ...string) {
 	t := []string(tags)
-	a.Tags = ToStringArray(t)
+	a.Tags = pq.StringArray(t)
 }
 
 func (a *Alert) HasTags(tags ...string) bool {
 	hasTags := true
 	for _, tag := range tags {
 		var found bool
-		for _, tt := range a.Tags.([]string) {
+		for _, tt := range a.Tags {
 			if tt == tag {
 				found = true
 				break

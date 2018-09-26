@@ -14,9 +14,9 @@ func (g bgpGrouper) grouperFunc() groupingFunc {
 	return func(i, j models.Labels) bool {
 		return (
 		// two ends of the same session
-		i["LocalDeviceName"].(string) == j["RemoteDeviceName"].(string) && i["RemoteDeviceName"].(string) == j["LocalDeviceName"].(string) ||
+		i["LocalDeviceName"] == j["RemoteDeviceName"] && i["RemoteDeviceName"] == j["LocalDeviceName"] ||
 			// two sessions from/to same device
-			i["LocalDeviceName"].(string) == j["LocalDeviceName"].(string) && i["RemoteDeviceName"].(string) == j["RemoteDeviceName"].(string))
+			i["LocalDeviceName"] == j["LocalDeviceName"] && i["RemoteDeviceName"] == j["RemoteDeviceName"])
 	}
 }
 
