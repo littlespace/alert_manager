@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
@@ -99,8 +100,15 @@ func (s *Server) Start(ctx context.Context) {
 	router.HandleFunc("/api/alerts/{id}", s.GetAlert).Methods("GET")
 	router.HandleFunc("/api/alerts/{id}", s.Validate(s.UpdateAlert)).Methods("PATCH")
 	router.HandleFunc("/api/alerts/{id}/{action}", s.Validate(s.ActionAlert)).Methods("PATCH")
+
+	// CORS specific headers
+	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
+	allowedMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH"})
+
+	// set up the router
 	srv := &http.Server{
-		Handler: router,
+		Handler: handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
 		Addr:    s.addr,
 		// set some sane timeouts
 		WriteTimeout: 10 * time.Second,
@@ -168,6 +176,7 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	glog.V(2).Infof("Successfully authenticated user: %s", user.Username)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(JwtToken{Token: tokenString})
 }
 
@@ -202,6 +211,7 @@ func (s *Server) GetAlerts(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	s.statGets.Add(1)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(alerts)
 }
 
@@ -216,6 +226,7 @@ func (s *Server) GetAlert(w http.ResponseWriter, req *http.Request) {
 			return err
 		}
 		s.statError.Add(1)
+		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(alert)
 		return nil
 	})
@@ -299,5 +310,6 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	s.statPatches.Add(1)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(alert)
 }

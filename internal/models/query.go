@@ -59,7 +59,12 @@ func (q Query) Run(tx Txn) (Alerts, error) {
 			values = append(values, v)
 		}
 	}
-	err := tx.InSelect(sql, &alerts, values)
+	var err error
+	if len(values) > 0 {
+		err = tx.InSelect(sql, &alerts, values)
+	} else {
+		err = tx.InSelect(sql, &alerts)
+	}
 	if err != nil {
 		return alerts, err
 	}
