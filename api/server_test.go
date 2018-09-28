@@ -50,6 +50,7 @@ func (tx *MockTx) InSelect(query string, to interface{}, arg ...interface{}) err
 				continue
 			}
 			for _, ar := range arg {
+				ar := ar.([]interface{})[0]
 				if ar.(string) == strconv.Itoa(int(a.Id)) {
 					*to = append(*to, a)
 				}

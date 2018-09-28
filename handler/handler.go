@@ -440,7 +440,7 @@ func (h *AlertHandler) unSuppWait(ctx context.Context, alert *models.Alert, dura
 			return err
 		}
 		if existing.Status != models.Status_SUPPRESSED {
-			glog.V(4).Infof("Alert %s has cleared or expired, not unsuppressing")
+			glog.V(4).Infof("Alert %d has cleared or expired, not unsuppressing", existing.Id)
 			return nil
 		}
 		alert.Unsuppress()
