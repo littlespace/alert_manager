@@ -61,7 +61,7 @@ func (t *MockTx) InSelect(query string, to interface{}, arg ...interface{}) erro
 	return nil
 }
 
-func (t *MockTx) SelectAlerts(query string) (models.Alerts, error) {
+func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts, error) {
 	return models.Alerts{*mockAlerts["bgp_1"], *mockAlerts["bgp_2"]}, nil
 }
 

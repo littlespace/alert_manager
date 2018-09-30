@@ -117,29 +117,33 @@ func (h *AlertHandler) handleUnsupressOnStart(ctx context.Context) {
 	h.Lock()
 	defer h.Unlock()
 	tx := h.Db.NewTx()
-	var suppressedAlerts []*models.Alert
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		return tx.InSelect(models.QuerySelectSuppressed, &suppressedAlerts)
+		suppressedAlerts, err := tx.SelectAlerts(models.QuerySelectSuppressed)
+		if err != nil {
+			return err
+		}
+		for _, alert := range suppressedAlerts {
+			var secondsLeft time.Duration
+			for _, rule := range h.suppRules {
+				if rule.Rtype != models.SuppType_ALERT {
+					continue
+				}
+				a, ok := rule.Entities["alert_id"]
+				if !ok {
+					continue
+				}
+				if alert.Id == int64(a.(float64)) {
+					secondsLeft = rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
+					break
+				}
+			}
+			a := alert
+			go h.unSuppWait(ctx, &a, secondsLeft)
+		}
+		return nil
 	})
 	if err != nil {
 		glog.Errorf("Unable to query suppressed alerts: %v", err)
-	}
-	for _, alert := range suppressedAlerts {
-		var secondsLeft time.Duration
-		for _, rule := range h.suppRules {
-			if rule.Rtype != models.SuppType_ALERT {
-				continue
-			}
-			a, ok := rule.Entities["alert_id"]
-			if !ok {
-				continue
-			}
-			if alert.Id == int64(a.(float64)) {
-				secondsLeft = rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
-				break
-			}
-		}
-		go h.unSuppWait(ctx, alert, secondsLeft)
 	}
 }
 

@@ -77,7 +77,7 @@ func (t *MockTx) InSelect(query string, to interface{}, arg ...interface{}) erro
 	return nil
 }
 
-func (t *MockTx) SelectAlerts(query string) (models.Alerts, error) {
+func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts, error) {
 	switch query {
 	case models.QuerySelectExpired:
 		return models.Alerts{*mockAlerts["existing_a3"]}, nil

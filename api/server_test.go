@@ -33,7 +33,8 @@ func (tx *MockTx) InQuery(query string, arg ...interface{}) error {
 	return nil
 }
 
-func (tx *MockTx) InSelect(query string, to interface{}, arg ...interface{}) error {
+func (tx *MockTx) SelectAlerts(query string, arg ...interface{}) (models.Alerts, error) {
+	var alerts models.Alerts
 	for i := 1; i <= 2; i++ {
 		a := models.Alert{
 			Id:          int64(i),
@@ -44,20 +45,17 @@ func (tx *MockTx) InSelect(query string, to interface{}, arg ...interface{}) err
 			Source:      "src",
 			Scope:       "scp",
 		}
-		if to, ok := to.(*models.Alerts); ok {
-			if len(arg) == 0 {
-				*to = append(*to, a)
-				continue
-			}
-			for _, ar := range arg {
-				ar := ar.([]interface{})[0]
-				if ar.(string) == strconv.Itoa(int(a.Id)) {
-					*to = append(*to, a)
-				}
+		if len(arg) == 0 {
+			alerts = append(alerts, a)
+			continue
+		}
+		for _, ar := range arg {
+			if ar.(string) == strconv.Itoa(int(a.Id)) {
+				alerts = append(alerts, a)
 			}
 		}
 	}
-	return nil
+	return alerts, nil
 }
 
 func (tx *MockTx) UpdateAlert(alert *models.Alert) error {

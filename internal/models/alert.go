@@ -34,16 +34,16 @@ var (
 	querySelect             = "SELECT * from alerts"
 	QuerySelectByNames      = querySelect + " WHERE name IN (?) AND status=1 AND agg_id IS NULL FOR UPDATE"
 	QuerySelectById         = querySelect + " WHERE id=$1 FOR UPDATE"
-	QuerySelectByIds        = querySelect + " WHERE id IN (?) FOR UPDATE"
-	QuerySelectByStatus     = querySelect + " WHERE status IN (?) FOR UPDATE"
-	QuerySelectNoOwner      = querySelect + " WHERE owner is NULL AND status=1 FOR UPDATE"
+	QuerySelectByIds        = querySelect + " WHERE id IN (?) ORDER BY id FOR UPDATE"
+	QuerySelectByStatus     = querySelect + " WHERE status IN (?) ORDER BY id FOR UPDATE"
+	QuerySelectNoOwner      = querySelect + " WHERE owner is NULL AND status=1 ORDER BY id FOR UPDATE"
 	QuerySelectByNameEntity = querySelect + " WHERE name=$1 AND entity=$2 AND status IN (1,2) FOR UPDATE"
 	QuerySelectByDevice     = querySelect + " WHERE name=$1 AND entity=$2 AND device=$3 AND status IN (1,2) FOR UPDATE"
 	QuerySelectTags         = "SELECT tags from alerts WHERE id=$1"
 	QuerySelectExpired      = querySelect + ` WHERE
-    status IN (1,2) AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after FOR UPDATE`
+    status IN (1,2) AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after ORDER BY id FOR UPDATE`
 	QuerySelectAllAggregated = querySelect + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
-	QuerySelectSuppressed    = querySelect + ` WHERE status=2 AND id in (
+	QuerySelectSuppressed    = querySelect + ` WHERE status=2 AND id IN (
     select (entities->>'alert_id')::int from suppression_rules where rtype = 1)`
 )
 
@@ -278,14 +278,16 @@ func (tx *Tx) NewAlert(alert *Alert) (int64, error) {
 
 func (tx *Tx) GetAlert(query string, args ...interface{}) (*Alert, error) {
 	alert := &Alert{}
+	query = tx.Rebind(query)
 	if err := tx.Get(alert, query, args...); err != nil {
 		return nil, err
 	}
 	return alert, nil
 }
 
-func (tx *Tx) SelectAlerts(query string) (Alerts, error) {
+func (tx *Tx) SelectAlerts(query string, args ...interface{}) (Alerts, error) {
 	var alerts Alerts
-	err := tx.Select(&alerts, query)
+	query = tx.Rebind(query)
+	err := tx.Select(&alerts, query, args...)
 	return alerts, err
 }

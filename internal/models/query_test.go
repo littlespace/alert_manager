@@ -24,7 +24,10 @@ func (tx *MockTx) InQuery(query string, arg ...interface{}) error {
 }
 
 func (tx *MockTx) InSelect(query string, to interface{}, arg ...interface{}) error {
-	for i := 1; i <= 10; i++ {
+	if len(arg) == 0 {
+		return nil
+	}
+	for i, _ := range arg[0].([]interface{}) {
 		a := Alert{
 			Id:          int64(i),
 			Name:        "mock",
@@ -38,6 +41,21 @@ func (tx *MockTx) InSelect(query string, to interface{}, arg ...interface{}) err
 		}
 	}
 	return nil
+}
+
+func (tx *MockTx) SelectAlerts(query string, args ...interface{}) (Alerts, error) {
+	var alerts Alerts
+	for i := 1; i <= 10; i++ {
+		alerts = append(alerts, Alert{
+			Id:          int64(i),
+			Name:        "mock",
+			Description: "test",
+			Entity:      "e1",
+			Source:      "src",
+			Scope:       "scp",
+		})
+	}
+	return alerts, nil
 }
 
 var testDatas = map[string]Querier{
@@ -125,4 +143,16 @@ func TestSelectQueryRun(t *testing.T) {
 		ids = append(ids, a.Id)
 	}
 	assert.ElementsMatch(t, ids, []int64{6, 7, 8, 9, 10})
+
+	q = Query{
+		Params: []Param{
+			Param{Field: "id", Values: []string{"1", "2", "3"}, Op: Op_IN},
+		},
+	}
+	assert.Equal(t, q.toSQL(), "SELECT * from alerts WHERE id IN (?)")
+	alerts, err = q.Run(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(alerts), 3)
 }
