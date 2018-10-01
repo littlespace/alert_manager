@@ -22,7 +22,7 @@ const (
 	EventType_ESCALATED  EventType = 6
 
 	EXPIRY_CHECK_INTERVAL     = 5 * time.Minute
-	ESCALATION_CHECK_INTERVAL = 2 * time.Minute
+	ESCALATION_CHECK_INTERVAL = 3 * time.Minute
 	SUPPRULE_UPDATE_INTERVAL  = 10 * time.Minute
 )
 
