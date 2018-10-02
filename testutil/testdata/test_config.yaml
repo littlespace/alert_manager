@@ -37,3 +37,16 @@ aggregation_rules:
         tags: [ neteng, bgp ]
         auto_expire: true  ## aggregated alert will expire only when all component alerts expire
         outputs: [ slack ]
+
+inhibit_rules:
+    - name: Device down
+      source_match:
+        alert: Neteng Device Down
+        label: Name
+      target_matches:
+        - alert: Neteng BGP Down
+          label: RemoteDeviceName
+        - alert: Neteng DC Link Down
+          label: ZSideDeviceName
+        - alert: Neteng BB Link Down
+          label: ZSideDeviceName

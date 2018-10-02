@@ -44,10 +44,24 @@ type SuppressionRuleConfig struct {
 	Matches  map[string]interface{}
 }
 
+type InhibitRuleConfig struct {
+	Name     string
+	Delay    time.Duration
+	SrcMatch struct {
+		Alert string
+		Label string
+	} `yaml:"source_match"`
+	TargetMatches []struct {
+		Alert string
+		Label string
+	} `yaml:"target_matches"`
+}
+
 type configs struct {
 	AlertConfig            []AlertConfig           `yaml:"alert_config"`
 	AggregationRuleConfigs []AggregationRuleConfig `yaml:"aggregation_rules"`
 	SuppressionRuleConfigs []SuppressionRuleConfig `yaml:"suppression_rules"`
+	InhibitRuleConfigs     []InhibitRuleConfig     `yaml:"inhibit_rules"`
 }
 
 func readConfig(file string) (configs, error) {
@@ -71,6 +85,7 @@ type ConfigHandler struct {
 	alertConfigs map[string]AlertConfig
 	aggRules     map[string]AggregationRuleConfig
 	suppRules    map[string]SuppressionRuleConfig
+	inhibitRules map[string]InhibitRuleConfig
 	sync.Mutex
 }
 
@@ -80,6 +95,7 @@ func NewConfigHandler(file string) *ConfigHandler {
 		alertConfigs: make(map[string]AlertConfig),
 		aggRules:     make(map[string]AggregationRuleConfig),
 		suppRules:    make(map[string]SuppressionRuleConfig),
+		inhibitRules: make(map[string]InhibitRuleConfig),
 	}
 	c.LoadConfig()
 	return c
@@ -107,6 +123,9 @@ func (c *ConfigHandler) LoadConfig() {
 	}
 	for _, rule := range configs.SuppressionRuleConfigs {
 		c.suppRules[rule.Name] = rule
+	}
+	for _, rule := range configs.InhibitRuleConfigs {
+		c.inhibitRules[rule.Name] = rule
 	}
 }
 
@@ -140,6 +159,16 @@ func (c *ConfigHandler) GetSuppressionRules() []SuppressionRuleConfig {
 	return rules
 }
 
+func (c *ConfigHandler) GetInhibitRules() []InhibitRuleConfig {
+	c.Lock()
+	defer c.Unlock()
+	rules := []InhibitRuleConfig{}
+	for _, rule := range c.inhibitRules {
+		rules = append(rules, rule)
+	}
+	return rules
+}
+
 func (c *ConfigHandler) GetAlertConfig(name string) (AlertConfig, bool) {
 	c.Lock()
 	defer c.Unlock()
@@ -151,5 +180,12 @@ func (c *ConfigHandler) GetAggregationRuleConfig(name string) (AggregationRuleCo
 	c.Lock()
 	defer c.Unlock()
 	rule, ok := c.aggRules[name]
+	return rule, ok
+}
+
+func (c *ConfigHandler) GetInhibitRuleConfig(name string) (InhibitRuleConfig, bool) {
+	c.Lock()
+	defer c.Unlock()
+	rule, ok := c.inhibitRules[name]
 	return rule, ok
 }
