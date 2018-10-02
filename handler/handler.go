@@ -272,7 +272,9 @@ func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 	if existingAlert.AggregatorId.Valid {
 		toUpdate = append(toUpdate, existingAlert.AggregatorId.Int64)
 	}
-	err = tx.InQuery(models.QueryUpdateLastActive, models.MyTime{time.Now()}, toUpdate)
+	newLastActive := models.MyTime{time.Now()}
+	existingAlert.LastActive = newLastActive
+	err = tx.InQuery(models.QueryUpdateLastActive, newLastActive, toUpdate)
 	if err != nil {
 		glog.Errorf("Failed update last active: %v", err)
 	}

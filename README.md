@@ -10,8 +10,10 @@ Alert manager is a modular plugin based system that allows writing different plu
 
 1. [Listener module](#listeners) Listens to and parses alerts from external sources using a webhook receiver
 2. [Transforms](#transforms) Applies a set of generic k-v labels (also called metadata) to an alert (but technically, can alter an alert's parameters in any way) which are the basis of performing advanced functions such as grouping and muting.
-3. [Processors](#processors) Processors "subscribe" to specific alerts and process them in any way that is defined in the code. Most common example is the aggregator which contains logic to group similar alerts based on labels.
+3. [Processors](#processors) Processors "subscribe" to specific alerts and process them in any way that is defined in the code. Most common example is the aggregator which contains logic to group similar alerts based on labels. Incoming alerts are sent to all the registered processors at the same time, so the processors need to ensure they correctly handle them and processing actions dont collide. 
 4. [Outputs](#outputs) A set of output plugins that are used for notification.
+
+Alerts that are sent to registered processors are NOT sent to registered outputs. Its upto the processor to decide and send the alerts to the right outputs if required.
 
 ## Installation
 
@@ -28,7 +30,7 @@ Current install method is via a docker container (docker pull mayuresh82/alert_m
 Alert manager requires an instance of a postgres database to store alerts. You can either use a standalone instance or a dockerized install and the params are specified in the config file.
 Currently, the postgres DB needs to created and present already.
 
-You need to specify three things at the CLI args:
+You need to specify two things at the CLI args:
 1. A bare minimum config.toml will specify at least the db params and the default agent output to use for notifications. See the example config.toml
 2. The sql schema file supplied with this codebase
 
@@ -50,7 +52,7 @@ The format of the webhook url is:
 ```
 http://<host>:<port>/listener/alert?source=<source>
 ```
-The source query identifies the source of the alert, and is used to find a matching parser
+The source query identifies the source of the alert, and is used to find a matching parser. The webhook listener supports http basic authentication.
 
 
 ## Transforms
@@ -63,3 +65,5 @@ A transform is an intermediate stage whose main purpose is to associate metadata
 A processor is used to process a set of alerts before sending them to the final notification output. Currently supported processors:
 - [Aggregator](./plugins/processors/aggregator) : used to perform alert grouping/aggregation based on custom labels added by transforms. 
 An aggregator works based on aggregation rules which are described by writing [groupers](./plugins/processors/aggregator/groupers). Each grouper takes in a set of alert labels and groups them together based on a grouping function, which defines the condition for two label sets to be considered same to be grouped together. A single alert is then generated for each group of labels based on the alert config defined in the yaml spec.
+
+- [Inhibitor](./plugins/processors/inhibitor) : used to silence/suppress target alerts when specific source alerts with matching labels also exist. The inhibit rules are defined in the alert config, and specify the source matches and target matches ( see sample alert config for example ).
