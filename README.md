@@ -46,7 +46,7 @@ For verbose logging:
 ```
 
 ## Listeners
-Currently a generic webhook listener is supported that receives alerts from any sources capable of sending alert data to a webhook endpoint. The webhook listener has parsers defined for decoding the json body of the alert message received externally. Currently supported [parsers](./listener/webhook/parsers)  are Grafana, Observium and Kapacitor. New parsers can be easily added.
+Currently a generic webhook listener is supported that receives alerts from any sources capable of sending alert data to a webhook endpoint. The webhook listener has parsers defined for decoding the json body of the alert message received externally. Currently supported [parsers](./listener/parsers)  are Grafana, Observium and Kapacitor. New parsers can be easily added.
 
 The format of the webhook url is:
 ```

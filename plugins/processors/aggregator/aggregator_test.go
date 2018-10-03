@@ -109,7 +109,7 @@ func TestAlertGrouping(t *testing.T) {
 }
 
 func TestAggExpiry(t *testing.T) {
-	a := &Aggregator{}
+	a := &Aggregator{statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	ctx := context.Background()
 	tx := &MockTx{}
 

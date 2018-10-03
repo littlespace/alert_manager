@@ -28,8 +28,9 @@ type Counter struct {
 
 // gauge is any arbitrary value
 type Gauge struct {
-	name   string
-	values map[time.Time]int64
+	name    string
+	values  map[time.Time]int64
+	lastVal int64
 
 	sync.Mutex
 }
@@ -84,11 +85,18 @@ func (c *Counter) toDatapoint() *reporting.Datapoint {
 func (g *Gauge) Set(value int64) {
 	g.Lock()
 	defer g.Unlock()
-	g.values[time.Now()] = value
+	g.lastVal = value
+	g.values[time.Now()] = g.lastVal
 }
 
 func (g *Gauge) Add(value int64) {
-	glog.Errorf("Cannot add a gauge type")
+	g.Lock()
+	defer g.Unlock()
+
+	// add to the last datapoint in the series
+	newVal := g.lastVal + value
+	g.values[time.Now()] = newVal
+	g.lastVal = newVal
 }
 
 func (g *Gauge) Reset() {
@@ -106,6 +114,13 @@ func (g *Gauge) toDatapoint() []*reporting.Datapoint {
 			Measurement: measurement,
 			Fields:      map[string]interface{}{g.name: v},
 			TimeStamp:   ts,
+		})
+	}
+	if len(dp) == 0 {
+		dp = append(dp, &reporting.Datapoint{
+			Measurement: measurement,
+			Fields:      map[string]interface{}{g.name: g.lastVal},
+			TimeStamp:   time.Now(),
 		})
 	}
 	return dp

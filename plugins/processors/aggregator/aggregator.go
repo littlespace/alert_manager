@@ -7,6 +7,7 @@ import (
 	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/internal/stats"
 	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
 	"time"
 )
@@ -82,6 +83,9 @@ type Aggregator struct {
 	Notif   chan *ah.AlertEvent
 	grouper *Grouper
 	db      models.Dbase
+
+	statAggsActive stats.Stat
+	statError      stats.Stat
 }
 
 func (a *Aggregator) Name() string {
@@ -95,7 +99,9 @@ func (a *Aggregator) handleGrouped(ctx context.Context) {
 			tx := a.db.NewTx()
 			if err := group.saveAgg(ctx, tx); err != nil {
 				glog.Errorf("Agg: Unable to save Agg alert: %v", err)
+				a.statError.Add(1)
 			}
+			a.statAggsActive.Add(1)
 		case <-ctx.Done():
 			return
 		}
@@ -138,6 +144,7 @@ func (a *Aggregator) checkExpired(ctx context.Context, tx models.Txn) error {
 				if err := tx.UpdateAlert(aggAlert); err != nil {
 					return fmt.Errorf("Agg: Unable to update agg status: %v", err)
 				}
+				a.statAggsActive.Add(-1)
 				ah.NotifyOutputs(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]}, rule.Alert.Config.Outputs)
 			}
 		}
@@ -152,6 +159,7 @@ func (a *Aggregator) handleExpiry(ctx context.Context) {
 		case <-t.C:
 			tx := a.db.NewTx()
 			if err := a.checkExpired(ctx, tx); err != nil {
+				a.statError.Add(1)
 				glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
 			}
 		case <-ctx.Done():
@@ -250,8 +258,10 @@ func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 
 func init() {
 	agg := &Aggregator{
-		Notif:   make(chan *ah.AlertEvent),
-		grouper: &Grouper{recvBuffers: make(map[string][]*models.Alert), subs: make(map[string][]string)},
+		Notif:          make(chan *ah.AlertEvent),
+		grouper:        &Grouper{recvBuffers: make(map[string][]*models.Alert), subs: make(map[string][]string)},
+		statAggsActive: stats.NewGauge("processors.aggregator.aggs_active"),
+		statError:      stats.NewCounter("processors.aggregator.errors"),
 	}
 	am.AddProcessor(agg)
 }

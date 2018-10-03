@@ -69,17 +69,17 @@ suppression_rules:
         DeviceStatus: Offline
     
 # inhibit rules let you mute certain alerts when certain other alerts are 
-# already present. (not implemented yet )
-#inhibit_rules:
-#    - name: Device down
-       # match labels that the source alerts should have. In this case, a
-       # Device Down Alert will match on the label "name"
-#      source-matches:
-#        - alert: Device Down Alert
-#          match: [ Name ]
-      # labels that target alerts should have that matched the source.
-#      target-matches:
-#        - alert: Protocol Down
-#          match: [ LocalDeviceName, RemoteDeviceName ]
-#        - alert: Link Down
-#          match: [ ASideDeviceName, ZSideDeviceName ]
+# already present based on matching tags.
+inhibit_rules:
+    - name: Device down
+      # match labels that the source alerts should have. In this case, a
+      # Device Down Alert will match on the label "name"
+      source-matches:
+        - alert: Device Down Alert
+          match: [ Name ]
+     # labels that target alerts should have that matched the source.
+      target-matches:
+        - alert: Protocol Down
+          match: [ LocalDeviceName, RemoteDeviceName ]
+        - alert: Link Down
+          match: [ ASideDeviceName, ZSideDeviceName ]

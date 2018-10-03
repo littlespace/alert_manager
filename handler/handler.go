@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/internal/stats"
 	"regexp"
 	"sort"
 	"sync"
@@ -70,13 +71,18 @@ type AlertHandler struct {
 	// cache of suppression rules
 	suppRules models.SuppRules
 
+	statTransformError stats.Stat
+	statDbError        stats.Stat
+
 	sync.Mutex
 }
 
 // NewHandler returns a new alert handler which uses the supplied db
 func NewHandler(db models.Dbase) *AlertHandler {
 	h := &AlertHandler{
-		Db: db,
+		Db:                 db,
+		statTransformError: stats.NewCounter("handler.transform_errors"),
+		statDbError:        stats.NewCounter("handler.db_errors"),
 	}
 	h.loadSuppRules(context.Background())
 	return h
@@ -99,6 +105,7 @@ func (h *AlertHandler) loadSuppRules(ctx context.Context) {
 	})
 	if err != nil {
 		glog.Errorf("Unable to select rules from db: %v", err)
+		h.statDbError.Add(1)
 	}
 	h.suppRules = rules
 
@@ -144,6 +151,7 @@ func (h *AlertHandler) handleUnsupressOnStart(ctx context.Context) {
 	})
 	if err != nil {
 		glog.Errorf("Unable to query suppressed alerts: %v", err)
+		h.statDbError.Add(1)
 	}
 }
 
@@ -205,6 +213,7 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	if alert.Id == 0 {
 		newId, err := tx.NewAlert(alert)
 		if err != nil {
+			h.statDbError.Add(1)
 			return fmt.Errorf("Unable to insert new alert: %v", err)
 		}
 		alert.Id = newId
@@ -256,6 +265,7 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 	}
 	err = h.Clear(ctx, tx, existingAlert)
 	if err != nil {
+		h.statDbError.Add(1)
 		return fmt.Errorf("Cant clear existing alert %d: %v", existingAlert.Id, err)
 	}
 	return nil
@@ -276,6 +286,7 @@ func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 	existingAlert.LastActive = newLastActive
 	err = tx.InQuery(models.QueryUpdateLastActive, newLastActive, toUpdate)
 	if err != nil {
+		h.statDbError.Add(1)
 		glog.Errorf("Failed update last active: %v", err)
 	}
 	// Send to interested parties
@@ -298,6 +309,7 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 		glog.V(2).Infof("Applying Transform: %s to alert %s", xform.Name(), alert.Name)
 		if err := xform.Apply(alert); err != nil {
 			glog.Errorf("Failed to apply transform %s to alert %s: %v", xform.Name(), alert.Name, err)
+			h.statTransformError.Add(1)
 		}
 	}
 }
@@ -351,6 +363,7 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 	})
 	if err != nil {
 		glog.Errorf("Failed to update expired alerts: %v", err)
+		h.statDbError.Add(1)
 	}
 }
 
@@ -400,6 +413,7 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 	})
 	if err != nil {
 		glog.Errorf("Failed to escalate alerts : %v", err)
+		h.statDbError.Add(1)
 	}
 }
 
@@ -426,10 +440,12 @@ func (h *AlertHandler) Suppress(ctx context.Context, tx models.Txn, alert *model
 	duration := time.Duration(rule.Duration) * time.Second
 	alert.Suppress(duration)
 	if err := tx.UpdateAlert(alert); err != nil {
+		h.statDbError.Add(1)
 		return err
 	}
 	_, err := tx.NewSuppRule(&rule)
 	if err != nil {
+		h.statDbError.Add(1)
 		return fmt.Errorf("Unable to save supp rule: %v", err)
 	}
 	h.notifyReceivers(alert, EventType_SUPPRESSED)
@@ -452,6 +468,7 @@ func (h *AlertHandler) unSuppWait(ctx context.Context, alert *models.Alert, dura
 		alert.Unsuppress()
 		if err := tx.UpdateAlert(alert); err != nil {
 			glog.Errorf("Failed up update status: %v", err)
+			h.statDbError.Add(1)
 			return err
 		}
 		ListenChan <- &AlertEvent{Type: EventType_ACTIVE, Alert: alert}
@@ -462,6 +479,7 @@ func (h *AlertHandler) unSuppWait(ctx context.Context, alert *models.Alert, dura
 func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
 	alert.Clear()
 	if err := tx.UpdateAlert(alert); err != nil {
+		h.statDbError.Add(1)
 		return err
 	}
 	h.notifyReceivers(alert, EventType_CLEARED)
@@ -472,6 +490,7 @@ func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.A
 func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *models.Alert, name, teamName string) error {
 	alert.SetOwner(name, teamName)
 	if err := tx.UpdateAlert(alert); err != nil {
+		h.statDbError.Add(1)
 		return err
 	}
 	// Notify all the receivers

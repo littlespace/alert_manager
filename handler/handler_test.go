@@ -115,7 +115,7 @@ func (t *mockTransform) Apply(a *models.Alert) error {
 func TestHandlerAlertActive(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
-	h := NewHandler(m)
+	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.suppRules = models.SuppRules{}
 	ctx := context.Background()
 
@@ -152,7 +152,7 @@ func TestHandlerAlertActive(t *testing.T) {
 func TestHandlerAlertClear(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
-	h := NewHandler(m)
+	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.suppRules = models.SuppRules{}
 	ctx := context.Background()
 
@@ -180,7 +180,7 @@ func TestHandlerAlertClear(t *testing.T) {
 
 func TestHandlerAlertExpiry(t *testing.T) {
 	m := &MockDb{}
-	h := NewHandler(m)
+	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.suppRules = models.SuppRules{}
 	ctx := context.Background()
 
@@ -197,7 +197,7 @@ func TestHandlerAlertExpiry(t *testing.T) {
 
 func TestHandlerAlertEscalate(t *testing.T) {
 	m := &MockDb{}
-	h := NewHandler(m)
+	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.suppRules = models.SuppRules{}
 	ctx := context.Background()
 

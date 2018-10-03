@@ -31,16 +31,32 @@ func isPresent(g *Gauge, value int64) bool {
 
 func TestGauge(t *testing.T) {
 	g := NewGauge("test")
-	g.Add(10) // should do nothing
-	assert.Equal(t, isPresent(g, 10), false)
 	g.Set(10)
-	g.Set(20)
 	g.Set(-5)
-	assert.Equal(t, len(g.values), 3)
+	assert.Equal(t, len(g.values), 2)
 	assert.Equal(t, isPresent(g, 10), true)
 	assert.Equal(t, isPresent(g, -5), true)
+	assert.Equal(t, int(g.lastVal), -5)
+
+	g.Add(10)
+	assert.Equal(t, len(g.values), 3)
+	assert.Equal(t, int(g.lastVal), 5)
+
+	g.Add(-2)
+	assert.Equal(t, len(g.values), 4)
+	assert.Equal(t, int(g.lastVal), 3)
+
 	dps := g.toDatapoint()
-	assert.Equal(t, len(dps), 3)
+	assert.Equal(t, len(dps), 4)
 	g.Reset()
 	assert.Equal(t, len(g.values), 0)
+
+	g.Add(32)
+	assert.Equal(t, len(g.values), 1)
+	assert.Equal(t, int(g.lastVal), 35)
+
+	g.Set(15)
+	g.Reset()
+	g.Add(5)
+	assert.Equal(t, int(g.lastVal), 20)
 }

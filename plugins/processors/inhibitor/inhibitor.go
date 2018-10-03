@@ -6,6 +6,7 @@ import (
 	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/internal/stats"
 	"sync"
 	"time"
 )
@@ -14,6 +15,9 @@ type Inhibitor struct {
 	Notif    chan *ah.AlertEvent
 	db       models.Dbase
 	alertBuf map[string][]*models.Alert
+
+	statAlertsInhibited stats.Stat
+	statError           stats.Stat
 
 	sync.Mutex
 }
@@ -94,12 +98,15 @@ func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig) {
 			if err != nil {
 				return err
 			}
+			i.statAlertsInhibited.Add(1)
 		}
 		return nil
 	})
 	if err != nil {
 		glog.Errorf("Inhibitor: Unable to apply rule %s: %v", rule.Name, err)
+		i.statError.Add(1)
 	}
+	i.notify()
 	i.Lock()
 	i.alertBuf[rule.Name] = i.alertBuf[rule.Name][:0]
 	i.Unlock()
@@ -144,8 +151,10 @@ func (i *Inhibitor) Start(ctx context.Context, db models.Dbase) {
 
 func init() {
 	inh := &Inhibitor{
-		Notif:    make(chan *ah.AlertEvent),
-		alertBuf: make(map[string][]*models.Alert),
+		Notif:               make(chan *ah.AlertEvent),
+		alertBuf:            make(map[string][]*models.Alert),
+		statAlertsInhibited: stats.NewCounter("processors.inhibitor.alerts_inhibited"),
+		statError:           stats.NewCounter("processors.inhibitor.errors"),
 	}
 	am.AddProcessor(inh)
 }
