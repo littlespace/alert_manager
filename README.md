@@ -30,9 +30,7 @@ Current install method is via a docker container (docker pull mayuresh82/alert_m
 Alert manager requires an instance of a postgres database to store alerts. You can either use a standalone instance or a dockerized install and the params are specified in the config file.
 Currently, the postgres DB needs to created and present already.
 
-You need to specify two things at the CLI args:
-1. A bare minimum config.toml will specify at least the db params and the default agent output to use for notifications. See the example config.toml
-2. The sql schema file supplied with this codebase
+The only option to be specified as a CLI arg is a  bare minimum config.toml will specify at least the db params and the default agent output to use for notifications. See the example config.toml
 
 Specifying An alert_config containing at least one alert definition is optional.
 

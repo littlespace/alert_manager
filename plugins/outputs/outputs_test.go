@@ -4,15 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
-func TestOutputs(t *testing.T) {
+func TestOutputSlack(t *testing.T) {
 	var body []byte
 	var err error
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,4 +59,49 @@ func TestOutputs(t *testing.T) {
 		}
 	}
 	assert.Equal(t, res["channel"].(string), "#test")
+}
+
+type mockEmailer struct {
+	subject, body string
+}
+
+func (m *mockEmailer) send(addr, username, pwd, from, subject, body string, recipents []string) error {
+	m.subject = subject
+	m.body = body
+	return nil
+}
+
+var mockTpl = `
+  {{.Header}} {{.EventType}} {{.AlertSeverity}}
+  {{- range .AlertParams }}
+  {{.Name}}: {{.Value}}
+  {{- end}}
+`
+
+var renderedTpl = `
+  [CRITICAL][ACTIVE] Test Alert ACTIVE CRITICAL
+  Name: Test Alert
+  Description: Test Desc
+  Entity: testent
+  StartTime: 2006-01-02 14:04:05 -0800 PST
+`
+
+func TestOutputEmail(t *testing.T) {
+	emailer := &mockEmailer{}
+	n := &EmailNotifier{Emailer: emailer, rawTpl: mockTpl}
+	event := &ah.AlertEvent{
+		Type: ah.EventType_ACTIVE,
+		Alert: &models.Alert{
+			Id:          1,
+			Severity:    models.Sev_CRITICAL,
+			Status:      models.Status_ACTIVE,
+			Name:        "Test Alert",
+			Description: "Test Desc",
+			Entity:      "testent",
+			StartTime:   models.MyTime{time.Unix(1136239445, 0)},
+		},
+	}
+	n.start(event)
+	assert.Equal(t, emailer.subject, "Alert Manager: [ACTIVE] Test Alert: [testent]")
+	assert.Equal(t, emailer.body, renderedTpl)
 }

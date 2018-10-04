@@ -8,6 +8,7 @@ import (
 	"github.com/golang/glog"
 	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -88,7 +89,11 @@ func (n *SlackNotifier) post(data []byte) {
 	}
 	if resp.StatusCode != http.StatusOK {
 		//n.statsPostError.Add(1)
-		glog.Errorf("Output: Unable to post to slack: Got HTTP %d", resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			body = []byte{}
+		}
+		glog.Errorf("Output: Unable to post to slack: Got HTTP %d: %v", resp.StatusCode, string(body))
 	}
 	//n.statPostsSent.Add(1)
 }

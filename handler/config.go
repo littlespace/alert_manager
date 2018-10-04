@@ -18,6 +18,7 @@ type AlertConfig struct {
 		Source           string
 		AutoExpire       *bool         `yaml:"auto_expire"`
 		AutoClear        *bool         `yaml:"auto_clear"`
+		NotifyOnClear    bool          `yaml:"notify_on_clear"`
 		ExpireAfter      time.Duration `yaml:"expire_after"`
 		Outputs          []string
 		AggregationRules []string `yaml:"aggregation_rules"`

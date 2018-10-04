@@ -26,6 +26,14 @@
   version = "v3.2.0"
 
 [[projects]]
+  digest = "1:e37eb23cfd852df9c65b5dee28456595d7b12479421221a088b6ea7ad95a3570"
+  name = "github.com/go-mail/mail"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "63235f23494bf20d713a585bce40b2a0675c2f77"
+  version = "2.2.0"
+
+[[projects]]
   branch = "master"
   digest = "1:1ba1d79f2810270045c328ae5d674321db34e3aae468eb4233883b473c5c0467"
   name = "github.com/golang/glog"
@@ -104,6 +112,14 @@
   version = "v1.2.2"
 
 [[projects]]
+  branch = "v3"
+  digest = "1:7388652e2215a3f45d341d58766ed58317971030eb1cbd75f005f96ace8e9196"
+  name = "gopkg.in/alexcesaro/quotedprintable.v3"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2caba252f4dc53eaf6b553000885530023f54623"
+
+[[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -117,6 +133,7 @@
   input-imports = [
     "github.com/BurntSushi/toml",
     "github.com/dgrijalva/jwt-go",
+    "github.com/go-mail/mail",
     "github.com/golang/glog",
     "github.com/gorilla/handlers",
     "github.com/gorilla/mux",

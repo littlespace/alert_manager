@@ -1,3 +1,6 @@
+package template
+
+var Schema = `
 CREATE TABLE IF NOT EXISTS alerts (
   id SERIAL PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
@@ -31,3 +34,4 @@ CREATE TABLE IF NOT EXISTS suppression_rules (
   duration INT NOT NULL,
   reason TEXT,
   creator varchar(64) NOT NULL);
+`

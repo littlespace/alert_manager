@@ -114,30 +114,19 @@ func TestAggExpiry(t *testing.T) {
 	tx := &MockTx{}
 
 	// test no change
-	mockAlerts["bgp_1"].Status = models.Status_CLEARED
+	mockAlerts["bgp_1"].Status = models.Status_EXPIRED
 	if err := a.checkExpired(ctx, tx); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "ACTIVE")
 
-	// test all cleared
-	mockAlerts["bgp_2"].Status = models.Status_CLEARED
-	if err := a.checkExpired(ctx, tx); err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "CLEARED")
-	event := <-notif
-	assert.Equal(t, event.Type, ah.EventType_CLEARED)
-	assert.Equal(t, event.Alert.Id, mockAlerts["agg_bgp_12"].Id)
-
 	// test all expired
-	mockAlerts["bgp_1"].Status = models.Status_EXPIRED
 	mockAlerts["bgp_2"].Status = models.Status_EXPIRED
 	if err := a.checkExpired(ctx, tx); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "EXPIRED")
-	event = <-notif
+	event := <-notif
 	assert.Equal(t, event.Type, ah.EventType_EXPIRED)
 	assert.Equal(t, event.Alert.Id, mockAlerts["agg_bgp_12"].Id)
 }

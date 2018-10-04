@@ -19,6 +19,8 @@ alert_config:
       # auto clear the alert if a "clear" notification is received externally
       # default: true
       auto_clear: false
+      # notify on clear (default : False)
+      notify_on_clear: true
       # set of outputs to send the alert notification to
       outputs: [ slack ]
       # esc rules define how long an alert can remain unactioned(or unacknowledged)

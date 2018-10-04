@@ -36,6 +36,15 @@ var EventMap = map[string]EventType{
 	"ESCALATED":  EventType_ESCALATED,
 }
 
+func (e EventType) String() string {
+	for str, ev := range EventMap {
+		if e == ev {
+			return str
+		}
+	}
+	return "UNKNOWN"
+}
+
 // AlertEvent signifies a type of action on an alert
 type AlertEvent struct {
 	Alert *models.Alert
@@ -51,8 +60,17 @@ var DefaultOutput string
 func NotifyOutputs(event *AlertEvent, outputs []string) {
 	// check if notification has already been sent
 	// TODO add initial notification delay check, and subequent notify remiders
-	if event.Alert.LastActive != event.Alert.StartTime {
+	if event.Type == EventType_ACTIVE && event.Alert.LastActive != event.Alert.StartTime {
 		return
+	}
+	if event.Type == EventType_CLEARED {
+		var notifyOnClear bool
+		if alertConfig, ok := Config.GetAlertConfig(event.Alert.Name); ok {
+			notifyOnClear = alertConfig.Config.NotifyOnClear
+		}
+		if !notifyOnClear {
+			return
+		}
 	}
 	outputs = append(outputs, DefaultOutput)
 	for _, output := range outputs {

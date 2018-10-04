@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/jmoiron/sqlx"
-	"io/ioutil"
+	tpl "github.com/mayuresh82/alert_manager/template"
 	"net"
 	"time"
 )
@@ -28,7 +28,7 @@ func (d *DB) NewTx() Txn {
 	return &Tx{tx}
 }
 
-func NewDB(addr, username, password, dbName, schemaFile string, timeout int) Dbase {
+func NewDB(addr, username, password, dbName string, timeout int) Dbase {
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
 		glog.Fatalf("Invalid DB addr: %s", addr)
@@ -41,11 +41,7 @@ func NewDB(addr, username, password, dbName, schemaFile string, timeout int) Dba
 	if err != nil {
 		glog.Fatalf("Cant open DB: %v", err)
 	}
-	schema, err := ioutil.ReadFile(schemaFile)
-	if err != nil {
-		glog.Fatalf("Unable to read schema file")
-	}
-	db.MustExec(string(schema))
+	db.MustExec(tpl.Schema)
 	return &DB{db}
 }
 
