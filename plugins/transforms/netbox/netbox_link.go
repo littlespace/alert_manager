@@ -3,6 +3,7 @@ package netbox
 import (
 	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"net"
 )
 
 const queryURL = "/api/rblx/device/dm/v1/"
@@ -108,18 +109,15 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 
 	labels["Role"] = iLabels["Role"]
 
-	dLabels, err := deviceLabels(n, iLabels["Device"].(string))
-	if err != nil {
-		return nil, fmt.Errorf("Unable to query Device: %v", err)
-	}
-	labels["ASideDeviceName"] = dLabels["Name"]
-	labels["ASideDeviceIp"] = dLabels["Ip"]
-	labels["ASideDeviceStatus"] = dLabels["Status"]
+	labels["ASideDeviceName"] = result["name"]
+	ip, _, _ := net.ParseCIDR(result["primary_ip"].(string))
+	labels["ASideDeviceIp"] = ip.String()
+	labels["ASideDeviceStatus"] = result["status"]
 	labels["ASideInterface"] = iLabels["Interface"]
 	labels["ASideAgg"] = iLabels["Agg"]
 
 	peerDevice := iLabels["PeerDevice"].(string)
-	dLabels, err = deviceLabels(n, peerDevice)
+	dLabels, err := deviceLabels(n, peerDevice)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to query peer Device: %s, %v", peerDevice, err)
 	}
