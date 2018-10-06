@@ -314,7 +314,7 @@ SOFTWARE.
         <div class="content">
           <table class="main" width="100%" cellpadding="0" cellspacing="0">
             <tr>
-              {{ if eq .EventType "ACTIVE" }}
+              {{ if ne .EventType "CLEARED"  }}
               {{ if eq .AlertSeverity "CRITICAL" }}
               <td class="alert alert-critical">
                 {{ else if eq .AlertSeverity "WARN" }}
