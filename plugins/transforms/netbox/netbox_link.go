@@ -44,6 +44,10 @@ func ifaceLabels(ifaceData map[string]interface{}) (models.Labels, error) {
 	}
 	labels["PeerDevice"] = ifaceData["peer_name"]
 	labels["PeerIntf"] = ifaceData["peer_int"]
+	if labels["PeerDevice"] == nil || labels["PeerIntf"] == nil {
+		labels["Role"] = "peering"
+		return labels, nil
+	}
 	if ifaceData["peer_is_lag"].(bool) && labels["Type"] == "phy" {
 		labels["PeerAgg"] = ifaceData["peer_lag_name"]
 	}
@@ -116,16 +120,18 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	labels["ASideInterface"] = iLabels["Interface"]
 	labels["ASideAgg"] = iLabels["Agg"]
 
-	peerDevice := iLabels["PeerDevice"].(string)
-	dLabels, err := deviceLabels(n, peerDevice)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to query peer Device: %s, %v", peerDevice, err)
+	if iLabels["PeerDevice"] != nil {
+		peerDevice := iLabels["PeerDevice"].(string)
+		dLabels, err := deviceLabels(n, peerDevice)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to query peer Device: %s, %v", peerDevice, err)
+		}
+		labels["ZSideDeviceName"] = dLabels["Name"]
+		labels["ZSideDeviceIp"] = dLabels["Ip"]
+		labels["ZSideDeviceStatus"] = dLabels["Status"]
+		labels["ZSideInterface"] = iLabels["PeerIntf"]
+		labels["ZSideAgg"] = iLabels["PeerAgg"]
 	}
-	labels["ZSideDeviceName"] = dLabels["Name"]
-	labels["ZSideDeviceIp"] = dLabels["Ip"]
-	labels["ZSideDeviceStatus"] = dLabels["Status"]
-	labels["ZSideInterface"] = iLabels["PeerIntf"]
-	labels["ZSideAgg"] = iLabels["PeerAgg"]
 
 	if labels["Role"].(string) == "dc" {
 		return labels, nil

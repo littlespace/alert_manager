@@ -81,6 +81,11 @@ func (n *Netbox) apply(alert *models.Alert) {
 		n.err = fmt.Errorf("Unable to get device from alert: field empty !")
 		return
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			n.err = fmt.Errorf("PANIC while applying netbox transform: %v", r)
+		}
+	}()
 	var l models.Labels
 	switch alert.Scope {
 	case "device":
@@ -94,11 +99,6 @@ func (n *Netbox) apply(alert *models.Alert) {
 	default:
 		n.err = fmt.Errorf("Scope %s is not defined in netbox", alert.Scope)
 	}
-	defer func() {
-		if r := recover(); r != nil {
-			n.err = fmt.Errorf("PANIC while applying netbox transform: %v", r)
-		}
-	}()
 	if n.err != nil {
 		return
 	}
