@@ -89,7 +89,11 @@ func TestAlertGrouping(t *testing.T) {
 	grouper := &mockGrouper{name: "bgp_session"}
 
 	ag := alertGroup{groupedAlerts: group, grouper: grouper}
-	agg := ag.aggAlert()
+	agg, err := ag.saveAgg(context.Background(), &MockTx{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	assert.Equal(t, agg.Name, mockAlerts["agg_bgp_12"].Name)
 	assert.Equal(t, agg.Description, mockAlerts["agg_bgp_12"].Description)
 	assert.Equal(t, agg.Source, mockAlerts["agg_bgp_12"].Source)
@@ -97,15 +101,8 @@ func TestAlertGrouping(t *testing.T) {
 	assert.Equal(t, agg.Severity, mockAlerts["agg_bgp_12"].Severity)
 	assert.Equal(t, agg.IsAggregate, true)
 
-	if err := ag.saveAgg(context.Background(), &MockTx{}); err != nil {
-		t.Fatal(err)
-	}
 	assert.Equal(t, mockAlerts["bgp_1"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
 	assert.Equal(t, mockAlerts["bgp_2"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
-
-	event := <-notif
-	assert.Equal(t, event.Type, ah.EventType_ACTIVE)
-	assert.Equal(t, event.Alert.Id, mockAlerts["agg_bgp_12"].Id)
 }
 
 func TestAggExpiry(t *testing.T) {

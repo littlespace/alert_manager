@@ -49,9 +49,9 @@ func (ag alertGroup) aggAlert() *models.Alert {
 	return agg
 }
 
-func (ag alertGroup) saveAgg(ctx context.Context, tx models.Txn) error {
-	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		agg := ag.aggAlert()
+func (ag alertGroup) saveAgg(ctx context.Context, tx models.Txn) (*models.Alert, error) {
+	agg := ag.aggAlert()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		var newId int64
 		newId, err := tx.NewAlert(agg)
 		if err != nil {
@@ -67,14 +67,12 @@ func (ag alertGroup) saveAgg(ctx context.Context, tx models.Txn) error {
 		if err != nil {
 			return fmt.Errorf("Unable to update agg Ids: %v", err)
 		}
-		// send the aggAlert to the right output
-		rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.Name())
-		ah.NotifyOutputs(
-			&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE},
-			rule.Alert.Config.Outputs,
-		)
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	return agg, nil
 }
 
 var groupedChan = make(chan *alertGroup)
@@ -97,10 +95,14 @@ func (a *Aggregator) handleGrouped(ctx context.Context) {
 		select {
 		case group := <-groupedChan:
 			tx := a.db.NewTx()
-			if err := group.saveAgg(ctx, tx); err != nil {
+			agg, err := group.saveAgg(ctx, tx)
+			if err != nil {
 				glog.Errorf("Agg: Unable to save Agg alert: %v", err)
 				a.statError.Add(1)
+				break
 			}
+			notifier := ah.GetNotifier()
+			notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE})
 			a.statAggsActive.Add(1)
 		case <-ctx.Done():
 			return
@@ -145,7 +147,8 @@ func (a *Aggregator) checkExpired(ctx context.Context, tx models.Txn) error {
 					return fmt.Errorf("Agg: Unable to update agg status: %v", err)
 				}
 				a.statAggsActive.Add(-1)
-				ah.NotifyOutputs(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]}, rule.Alert.Config.Outputs)
+				notifier := ah.GetNotifier()
+				notifier.Notify(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]})
 			}
 		}
 		return nil

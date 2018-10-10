@@ -17,9 +17,12 @@ type AlertConfig struct {
 		Tags             []string
 		Source           string
 		AutoExpire       *bool         `yaml:"auto_expire"`
+		ExpireAfter      time.Duration `yaml:"expire_after"`
 		AutoClear        *bool         `yaml:"auto_clear"`
 		NotifyOnClear    bool          `yaml:"notify_on_clear"`
-		ExpireAfter      time.Duration `yaml:"expire_after"`
+		NotifyDelay      time.Duration `yaml:"notify_delay"`
+		NotifyRemind     time.Duration `yaml:"notify_remind"`
+		DisableNotify    bool          `yaml:"disable_notify"`
 		Outputs          []string
 		AggregationRules []string `yaml:"aggregation_rules"`
 		EscalationRules  []struct {

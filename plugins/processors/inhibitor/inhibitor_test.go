@@ -55,8 +55,6 @@ func (tx *MockTx) Commit() error {
 	return nil
 }
 
-var notif = make(chan *ah.AlertEvent, 1)
-
 func TestInhibit(t *testing.T) {
 	i := &Inhibitor{
 		Notif:               make(chan *ah.AlertEvent),
@@ -75,10 +73,6 @@ func TestInhibit(t *testing.T) {
 	i.checkRule(ctx, rule)
 	assert.Equal(t, mockAlerts["link_2"].Status, models.Status_ACTIVE)
 
-	event := <-notif
-	assert.Equal(t, event.Alert.Name, "Neteng DC Link Down")
-	assert.Equal(t, event.Alert.Id, int64(4))
-
 	assert.Equal(t, len(i.alertBuf["Device down"]), 0)
 
 	// test rule match
@@ -92,8 +86,6 @@ func TestInhibit(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	ah.DefaultOutput = "slack"
-	ah.Outputs["slack"] = notif
 	ah.Config = ah.NewConfigHandler("../../../testutil/testdata/test_config.yaml")
 	ah.Config.LoadConfig()
 	os.Exit(m.Run())

@@ -1,6 +1,16 @@
 package handler
 
-import "sync"
+import (
+	"github.com/mayuresh82/alert_manager/internal/models"
+	"sync"
+)
+
+type Transform interface {
+	Name() string
+	GetPriority() int
+	GetRegister() string
+	Apply(alert *models.Alert) error
+}
 
 var (
 	// Registered transforms

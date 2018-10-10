@@ -43,24 +43,6 @@ func (i *Inhibitor) addAlert(name string, alert *models.Alert) {
 	i.alertBuf[name] = append(i.alertBuf[name], alert)
 }
 
-func (i *Inhibitor) notify() {
-	for _, alerts := range i.alertBuf {
-		for _, a := range alerts {
-			if a.Status != models.Status_ACTIVE {
-				continue
-			}
-			event := &ah.AlertEvent{Alert: a, Type: ah.EventType_ACTIVE}
-			if alertConfig, ok := ah.Config.GetAlertConfig(a.Name); ok {
-				if len(alertConfig.Config.Outputs) > 0 {
-					ah.NotifyOutputs(event, alertConfig.Config.Outputs)
-				}
-			} else {
-				ah.NotifyOutputs(event, []string{})
-			}
-		}
-	}
-}
-
 func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig) {
 	time.Sleep(rule.Delay)
 	srcNames := []string{rule.SrcMatch.Alert}
@@ -106,7 +88,6 @@ func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig) {
 		glog.Errorf("Inhibitor: Unable to apply rule %s: %v", rule.Name, err)
 		i.statError.Add(1)
 	}
-	i.notify()
 	i.Lock()
 	i.alertBuf[rule.Name] = i.alertBuf[rule.Name][:0]
 	i.Unlock()
@@ -138,7 +119,10 @@ func (i *Inhibitor) Start(ctx context.Context, db models.Dbase) {
 					continue
 				}
 				// delay and group alerts before checking rules
-				if len(i.alertBuf[rule.Name]) == 0 {
+				i.Lock()
+				l := len(i.alertBuf[rule.Name])
+				i.Unlock()
+				if l == 0 {
 					go i.checkRule(ctx, rule)
 				}
 				i.addAlert(rule.Name, event.Alert)

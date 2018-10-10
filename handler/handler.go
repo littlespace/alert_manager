@@ -57,30 +57,6 @@ var ListenChan = make(chan *AlertEvent)
 // default output channel
 var DefaultOutput string
 
-func NotifyOutputs(event *AlertEvent, outputs []string) {
-	// check if notification has already been sent
-	// TODO add initial notification delay check, and subequent notify remiders
-	if event.Type == EventType_ACTIVE && event.Alert.LastActive != event.Alert.StartTime {
-		return
-	}
-	if event.Type == EventType_CLEARED {
-		var notifyOnClear bool
-		if alertConfig, ok := Config.GetAlertConfig(event.Alert.Name); ok {
-			notifyOnClear = alertConfig.Config.NotifyOnClear
-		}
-		if !notifyOnClear {
-			return
-		}
-	}
-	outputs = append(outputs, DefaultOutput)
-	for _, output := range outputs {
-		if outChan, ok := Outputs[output]; ok {
-			glog.V(2).Infof("Sending alert %s to %s", event.Alert.Name, output)
-			outChan <- event
-		}
-	}
-}
-
 // AlertHandler handles common alert operations such as expiry, suppression etc.
 // It also sends alerts to interested receivers
 type AlertHandler struct {
@@ -333,27 +309,27 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 }
 
 func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType) {
-	var isProcessed bool
 	gMu.Lock()
 	for alertName, recvChans := range Processors {
 		if match, _ := regexp.MatchString(alertName, alert.Name); match {
-			isProcessed = true
 			for _, recvChan := range recvChans {
 				recvChan <- &AlertEvent{Alert: alert, Type: eventType}
 			}
 		}
 	}
 	gMu.Unlock()
-	// if the alert is not subscribed to by any processor, send it directly to the outputs
-	if !isProcessed && eventType != EventType_SUPPRESSED {
-		event := &AlertEvent{Alert: alert, Type: eventType}
-		if alertConfig, ok := Config.GetAlertConfig(alert.Name); ok {
-			NotifyOutputs(event, alertConfig.Config.Outputs)
-		} else {
-			glog.V(2).Infof("No config defined for alert %s, sending to default: %s",
-				alert.Name, DefaultOutput)
-			NotifyOutputs(event, []string{})
+
+	// send the alert to the outputs. If the alert config or config outputs is undefined,
+	// the notifier will send it to the default output.
+	event := &AlertEvent{Alert: alert, Type: eventType}
+	notifier := GetNotifier()
+	notifier.Notify(event)
+	// send to influx for reporting
+	if influxOut, ok := Outputs["influx"]; ok {
+		if eventType == EventType_ACTIVE && alert.StartTime != alert.LastActive {
+			return
 		}
+		influxOut <- event
 	}
 }
 
@@ -413,10 +389,8 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 						return err
 					}
 					for _, s := range rule.SendTo {
-						for name, outChan := range Outputs {
-							if name == s {
-								outChan <- &AlertEvent{Alert: &alert, Type: EventType_ESCALATED}
-							}
+						if outChan, ok := Outputs[s]; ok {
+							outChan <- &AlertEvent{Alert: &alert, Type: EventType_ESCALATED}
 						}
 					}
 					break

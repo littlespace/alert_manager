@@ -33,7 +33,7 @@ func (n *VictorOpsNotifier) Name() string {
 func (n *VictorOpsNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
 	m := &victorOpsMsg{}
 	switch event.Type {
-	case ah.EventType_ACTIVE:
+	case ah.EventType_ACTIVE, ah.EventType_ESCALATED:
 		m.MessageType = "CRITICAL"
 	case ah.EventType_CLEARED:
 		m.MessageType = "RECOVERY"
