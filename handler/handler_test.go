@@ -116,7 +116,8 @@ func TestHandlerAlertActive(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.suppRules = models.SuppRules{}
+	h.Suppressor = &suppressor{db: m}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 3)
@@ -138,8 +139,8 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Equal(t, mockAlerts["existing_a1"].LastActive, nowTime)
 
 	// test new active alert - suppressed
-	h.suppRules = append(h.suppRules,
-		models.NewSuppRule(models.Labels{"suppress": "me"}, "alert", "", "", time.Duration(1*time.Minute)))
+	rule := models.NewSuppRule(models.Labels{"suppress": "me"}, "alert", "", "", time.Duration(1*time.Minute))
+	h.Suppressor.SaveRule(ctx, tx, rule)
 	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a2)
 	assert.Equal(t, int(a2.Id), 200)
@@ -153,7 +154,8 @@ func TestHandlerAlertClear(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.suppRules = models.SuppRules{}
+	h.Suppressor = &suppressor{db: m}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 1)
@@ -181,7 +183,8 @@ func TestHandlerAlertClear(t *testing.T) {
 func TestHandlerAlertExpiry(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.suppRules = models.SuppRules{}
+	h.Suppressor = &suppressor{db: m}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 1)
@@ -198,7 +201,8 @@ func TestHandlerAlertExpiry(t *testing.T) {
 func TestHandlerAlertEscalate(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.suppRules = models.SuppRules{}
+	h.Suppressor = &suppressor{db: m}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 2)

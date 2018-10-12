@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+	"time"
 )
 
 var mockAlerts = map[string]*models.Alert{
@@ -65,6 +66,14 @@ func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts,
 	return models.Alerts{*mockAlerts["bgp_1"], *mockAlerts["bgp_2"]}, nil
 }
 
+func (tx *MockTx) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
+	return 1, nil
+}
+
+func (tx *MockTx) SelectRules(query string) (models.SuppRules, error) {
+	return models.SuppRules{}, nil
+}
+
 type mockGrouper struct {
 	name string
 }
@@ -89,7 +98,7 @@ func TestAlertGrouping(t *testing.T) {
 	grouper := &mockGrouper{name: "bgp_session"}
 
 	ag := alertGroup{groupedAlerts: group, grouper: grouper}
-	agg, err := ag.saveAgg(context.Background(), &MockTx{})
+	agg, err := ag.saveAgg(&MockTx{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,23 +112,38 @@ func TestAlertGrouping(t *testing.T) {
 
 	assert.Equal(t, mockAlerts["bgp_1"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
 	assert.Equal(t, mockAlerts["bgp_2"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
+
+	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
+	ctx := context.Background()
+	supp := ah.GetSuppressor(&MockDb{})
+	// test notif
+	a.handleGrouped(ctx, &ag)
+	event := <-notif
+	assert.Equal(t, event.Alert.Status.String(), "ACTIVE")
+	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
+
+	// test suppressed
+	r := models.NewSuppRule(models.Labels{"alert_name": "Neteng_Aggregated BGP Down"}, "alert", "test", "test", 5*time.Minute)
+	supp.SaveRule(ctx, &MockTx{}, r)
+	if err := a.handleGrouped(ctx, &ag); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestAggExpiry(t *testing.T) {
-	a := &Aggregator{statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
+	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	ctx := context.Background()
-	tx := &MockTx{}
 
 	// test no change
 	mockAlerts["bgp_1"].Status = models.Status_EXPIRED
-	if err := a.checkExpired(ctx, tx); err != nil {
+	if err := a.checkExpired(ctx); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "ACTIVE")
 
 	// test all expired
 	mockAlerts["bgp_2"].Status = models.Status_EXPIRED
-	if err := a.checkExpired(ctx, tx); err != nil {
+	if err := a.checkExpired(ctx); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "EXPIRED")

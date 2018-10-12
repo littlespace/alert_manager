@@ -24,7 +24,12 @@ var (
     :name, :rtype, :entities, :created_at, :duration, :reason, :creator
     ) RETURNING id`
 
-	QuerySelectActive = "SELECT * FROM suppression_rules WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
+	QuerySelectActive     = "SELECT * FROM suppression_rules WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
+	QuerySelectAlertRules = `SELECT DISTINCT ON ((entities->>'alert_id')::int) *
+		FROM suppression_rules
+		WHERE  (entities->>'alert_id')::int IN (?) AND
+		rtype = 1 AND creator = 'alert_manager' 
+		ORDER BY ((entities->>'alert_id')::int), created_at DESC;`
 )
 
 type SuppressionRule struct {
@@ -37,6 +42,41 @@ type SuppressionRule struct {
 	Reason     string
 	Creator    string
 	DontExpire bool
+}
+
+type MatchCondition int
+
+const (
+	MatchCond_ALL MatchCondition = 1
+	MatchCond_ANY MatchCondition = 2
+)
+
+func (s SuppressionRule) Match(labels Labels, cond MatchCondition) bool {
+	switch cond {
+	case MatchCond_ALL:
+		for lk, lv := range labels {
+			ev, ok := s.Entities[lk]
+			if !ok || ev != lv {
+				return false
+			}
+		}
+		return true
+	case MatchCond_ANY:
+		for lk, lv := range labels {
+			ev, ok := s.Entities[lk]
+			if ok && ev == lv {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (s SuppressionRule) TimeLeft() time.Duration {
+	if s.DontExpire {
+		return time.Duration(s.Duration) * time.Second
+	}
+	return s.CreatedAt.Add(time.Duration(s.Duration) * time.Second).Sub(time.Now())
 }
 
 func NewSuppRule(entities Labels, rtype, reason, creator string, duration time.Duration) SuppressionRule {
@@ -52,20 +92,6 @@ func NewSuppRule(entities Labels, rtype, reason, creator string, duration time.D
 }
 
 type SuppRules []SuppressionRule
-
-func (s SuppRules) Find(labels Labels) (SuppressionRule, bool) {
-	// a match is successful when all entities in rule are matched in the alert labels
-	for _, rule := range s {
-		match := true
-		for ek, ev := range rule.Entities {
-			match = match && ev == labels[ek]
-		}
-		if match {
-			return rule, true
-		}
-	}
-	return SuppressionRule{}, false
-}
 
 func (tx *Tx) SelectRules(query string) (SuppRules, error) {
 	var rules SuppRules

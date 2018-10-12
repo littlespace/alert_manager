@@ -44,7 +44,10 @@ var (
     status IN (1,2) AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after ORDER BY id FOR UPDATE`
 	QuerySelectAllAggregated = querySelect + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
 	QuerySelectSuppressed    = querySelect + ` WHERE status=2 AND id IN (
-    select (entities->>'alert_id')::int from suppression_rules where rtype = 1)`
+    select (entities->>'alert_id')::int from suppression_rules where rtype = 1 AND
+    creator = 'alert_manager' AND
+    (cast(extract(epoch from now()) as integer) - created_at) < duration
+  )`
 )
 
 type AlertSeverity int

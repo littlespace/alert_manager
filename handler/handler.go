@@ -8,7 +8,6 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/stats"
 	"regexp"
 	"sort"
-	"sync"
 	"time"
 )
 
@@ -24,7 +23,6 @@ const (
 
 	EXPIRY_CHECK_INTERVAL     = 5 * time.Minute
 	ESCALATION_CHECK_INTERVAL = 3 * time.Minute
-	SUPPRULE_UPDATE_INTERVAL  = 10 * time.Minute
 )
 
 var EventMap = map[string]EventType{
@@ -61,114 +59,76 @@ var DefaultOutput string
 // It also sends alerts to interested receivers
 type AlertHandler struct {
 	// db handler
-	Db models.Dbase
-	// cache of suppression rules
-	suppRules models.SuppRules
+	Db         models.Dbase
+	Notifier   *notifier
+	Suppressor *suppressor
 
 	statTransformError stats.Stat
 	statDbError        stats.Stat
-
-	sync.Mutex
 }
 
 // NewHandler returns a new alert handler which uses the supplied db
 func NewHandler(db models.Dbase) *AlertHandler {
 	h := &AlertHandler{
 		Db:                 db,
+		Notifier:           GetNotifier(),
+		Suppressor:         GetSuppressor(db),
 		statTransformError: stats.NewCounter("handler.transform_errors"),
 		statDbError:        stats.NewCounter("handler.db_errors"),
 	}
-	h.loadSuppRules(context.Background())
 	return h
 }
 
-func (h *AlertHandler) loadSuppRules(ctx context.Context) {
-	h.Lock()
-	defer h.Unlock()
-	glog.V(2).Infof("Updating suppression rules")
-	tx := h.Db.NewTx()
-	var (
-		rules models.SuppRules
-		er    error
-	)
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		if rules, er = tx.SelectRules(models.QuerySelectActive + " LIMIT 50"); er != nil {
-			return er
-		}
-		return nil
-	})
-	if err != nil {
-		glog.Errorf("Unable to select rules from db: %v", err)
-		h.statDbError.Add(1)
-	}
-	h.suppRules = rules
-
-	// load persistent rules from config
-	for _, rule := range Config.GetSuppressionRules() {
-		for k, v := range rule.Matches {
-			ents := models.Labels{k: v}
-			r := models.NewSuppRule(ents, rule.Type, rule.Reason, "alert manager", rule.Duration)
-			r.DontExpire = true
-			h.suppRules = append(h.suppRules, r)
-		}
-	}
-}
-
-func (h *AlertHandler) handleUnsupressOnStart(ctx context.Context) {
-	h.Lock()
-	defer h.Unlock()
+func (h *AlertHandler) handleUnsuppressOnStart(ctx context.Context) {
 	tx := h.Db.NewTx()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		suppressedAlerts, err := tx.SelectAlerts(models.QuerySelectSuppressed)
-		if err != nil {
+		var suppressedAlerts []*models.Alert
+		if err := tx.InSelect(models.QuerySelectByStatus, &suppressedAlerts, []int64{2}); err != nil {
+			h.statDbError.Add(1)
 			return err
 		}
+		if len(suppressedAlerts) == 0 {
+			return nil
+		}
+		var suppIds []int64
+		idToAlerts := make(map[int64]*models.Alert)
 		for _, alert := range suppressedAlerts {
-			var secondsLeft time.Duration
-			for _, rule := range h.suppRules {
-				if rule.Rtype != models.SuppType_ALERT {
-					continue
-				}
-				a, ok := rule.Entities["alert_id"]
-				if !ok {
-					continue
-				}
-				if alert.Id == int64(a.(float64)) {
-					secondsLeft = rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
-					break
-				}
-			}
-			a := alert
-			go h.unSuppWait(ctx, &a, secondsLeft)
+			idToAlerts[alert.Id] = alert
+			suppIds = append(suppIds, alert.Id)
+		}
+		var alertRules models.SuppRules
+		if err := tx.InSelect(models.QuerySelectAlertRules, &alertRules, suppIds); err != nil {
+			h.statDbError.Add(1)
+			return err
+		}
+		for _, rule := range alertRules {
+			ruleAlertId := int64(rule.Entities["alert_id"].(float64))
+			go h.UnsuppWait(ctx, idToAlerts[ruleAlertId], rule.TimeLeft())
 		}
 		return nil
 	})
 	if err != nil {
 		glog.Errorf("Unable to query suppressed alerts: %v", err)
-		h.statDbError.Add(1)
 	}
 }
 
 // Start needs to be called in a go-routine
 func (h *AlertHandler) Start(ctx context.Context) {
 	go func() {
-		t1 := time.NewTicker(SUPPRULE_UPDATE_INTERVAL)
-		t2 := time.NewTicker(EXPIRY_CHECK_INTERVAL)
-		t3 := time.NewTicker(ESCALATION_CHECK_INTERVAL)
+		t1 := time.NewTicker(EXPIRY_CHECK_INTERVAL)
+		t2 := time.NewTicker(ESCALATION_CHECK_INTERVAL)
 		for {
 			select {
 			case <-t1.C:
-				h.loadSuppRules(ctx)
-			case <-t2.C:
 				h.handleExpiry(ctx)
-			case <-t3.C:
+			case <-t2.C:
 				h.handleEscalation(ctx)
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
-	go h.handleUnsupressOnStart(ctx)
+	go h.handleUnsuppressOnStart(ctx)
 	// start listening for alerts
 	for {
 		select {
@@ -215,30 +175,23 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	}
 
 	// check if alert matches an existing suppression rule based on alert labels
-	if rule, ok := h.suppRules.Find(alert.Labels); ok {
-		glog.V(2).Infof("Found matching suppression rule: %v", rule)
-		secondsLeft := rule.CreatedAt.Add(time.Duration(rule.Duration) * time.Second).Sub(time.Now())
-		if rule.DontExpire {
-			secondsLeft = time.Duration(rule.Duration) * time.Second
-		}
-		if secondsLeft > 0 {
-			rule := models.NewSuppRule(
-				models.Labels{"alert_id": alert.Id},
-				"alert",
-				fmt.Sprintf("Alert suppressed due to matching suppression rule %s", rule.Name),
-				"alert manager",
-				secondsLeft)
-			h.suppRules = append(h.suppRules, rule)
-			return h.Suppress(ctx, tx, alert, rule)
-		} else {
-			// rule has expired, remove from cache
-			for i := 0; i < len(h.suppRules); i++ {
-				if h.suppRules[i].Id == rule.Id {
-					h.suppRules = append(h.suppRules[:i], h.suppRules[i+1:]...)
-					break
-				}
-			}
-		}
+	// create entities for matching
+	labels := make(models.Labels)
+	for k, v := range alert.Labels {
+		labels[k] = v
+	}
+	if alert.Device.Valid {
+		labels["device"] = alert.Device.String
+	}
+	labels["entity"] = alert.Entity
+	labels["alert_name"] = alert.Name
+	if rule, ok := h.Suppressor.Match(labels, models.MatchCond_ANY); ok && rule.TimeLeft() > 0 {
+		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", alert.Id, rule)
+		return h.Suppress(
+			ctx, tx, alert, "alert_manager",
+			fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name),
+			rule.TimeLeft(),
+		)
 	}
 
 	// Send to interested parties
@@ -322,8 +275,7 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType)
 	// send the alert to the outputs. If the alert config or config outputs is undefined,
 	// the notifier will send it to the default output.
 	event := &AlertEvent{Alert: alert, Type: eventType}
-	notifier := GetNotifier()
-	notifier.Notify(event)
+	h.Notifier.Notify(event)
 	// send to influx for reporting
 	if influxOut, ok := Outputs["influx"]; ok {
 		if eventType == EventType_ACTIVE && alert.StartTime != alert.LastActive {
@@ -428,44 +380,38 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 	return existing, nil
 }
 
-func (h *AlertHandler) Suppress(ctx context.Context, tx models.Txn, alert *models.Alert, rule models.SuppressionRule) error {
-	duration := time.Duration(rule.Duration) * time.Second
-	alert.Suppress(duration)
-	if err := tx.UpdateAlert(alert); err != nil {
-		h.statDbError.Add(1)
-		return err
-	}
-	_, err := tx.NewSuppRule(&rule)
-	if err != nil {
-		h.statDbError.Add(1)
-		return fmt.Errorf("Unable to save supp rule: %v", err)
+func (h *AlertHandler) Suppress(
+	ctx context.Context,
+	tx models.Txn,
+	alert *models.Alert,
+	creator, reason string,
+	duration time.Duration,
+) error {
+	// create an alert specific supp-rule for tracking
+	r := models.NewSuppRule(
+		models.Labels{"alert_id": alert.Id}, "alert", reason, creator, duration,
+	)
+	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, r); err != nil {
+		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
 	}
 	h.notifyReceivers(alert, EventType_SUPPRESSED)
-	go h.unSuppWait(ctx, alert, duration)
+	go h.UnsuppWait(ctx, alert, duration)
 	return nil
 }
 
-func (h *AlertHandler) unSuppWait(ctx context.Context, alert *models.Alert, duration time.Duration) {
+func (h *AlertHandler) UnsuppWait(ctx context.Context, alert *models.Alert, duration time.Duration) {
 	time.Sleep(duration)
 	tx := h.Db.NewTx()
-	models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		existing, err := h.GetExisting(tx, alert)
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		err := h.Suppressor.UnsuppressAlert(ctx, tx, alert)
 		if err != nil {
 			return err
 		}
-		if existing.Status != models.Status_SUPPRESSED {
-			glog.V(4).Infof("Alert %d has cleared or expired, not unsuppressing", existing.Id)
-			return nil
-		}
-		alert.Unsuppress()
-		if err := tx.UpdateAlert(alert); err != nil {
-			glog.Errorf("Failed up update status: %v", err)
-			h.statDbError.Add(1)
-			return err
-		}
-		ListenChan <- &AlertEvent{Type: EventType_ACTIVE, Alert: alert}
-		return nil
+		return h.handleActive(ctx, tx, alert)
 	})
+	if err != nil {
+		glog.Errorf("Failed to unsuppress alert %d: %v", alert.Id, err)
+	}
 }
 
 func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert) error {

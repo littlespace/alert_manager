@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
 	ah "github.com/mayuresh82/alert_manager/handler"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"testing"
 )
@@ -62,27 +64,36 @@ func (tx *MockTx) UpdateAlert(alert *models.Alert) error {
 	return nil
 }
 
-func (t *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, error) {
+func (tx *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, error) {
 	return &models.Alert{
 		Status: models.Status_ACTIVE,
 		Id:     args[0].(int64)}, nil
 }
 
-func (t *MockTx) NewSuppRule(r *models.SuppressionRule) (int64, error) {
+func (tx *MockTx) NewSuppRule(r *models.SuppressionRule) (int64, error) {
 	return 1, nil
+}
+
+func (tx *MockTx) SelectRules(query string) (models.SuppRules, error) {
+	return models.SuppRules{}, nil
 }
 
 func (tx *MockTx) Commit() error {
 	return nil
 }
 
-func (t *MockTx) Rollback() error {
+func (tx *MockTx) Rollback() error {
 	return nil
 }
 
 func NewMockServer() *Server {
+	d := &MockDb{}
 	return &Server{
-		handler:           &ah.AlertHandler{Db: &MockDb{}},
+		handler: &ah.AlertHandler{
+			Db:         d,
+			Notifier:   ah.GetNotifier(),
+			Suppressor: ah.GetSuppressor(d),
+		},
 		statGets:          &tu.MockStat{},
 		statPosts:         &tu.MockStat{},
 		statPatches:       &tu.MockStat{},
@@ -213,8 +224,6 @@ func TestServerUpdate(t *testing.T) {
 }
 
 func TestServerAlertAction(t *testing.T) {
-	ah.Config = ah.NewConfigHandler("../testutil/testdata/test_config.yaml")
-	ah.Config.LoadConfig()
 	s := NewMockServer()
 	router := mux.NewRouter()
 	router.HandleFunc("/api/alerts/{id}/{action}", s.ActionAlert).Methods("PATCH")
@@ -259,4 +268,11 @@ func TestServerAlertAction(t *testing.T) {
 	assert.Equal(t, a["Status"].(string), "ACTIVE")
 	assert.Equal(t, a["Owner"].(string), "foo")
 	assert.Equal(t, a["Team"].(string), "bar")
+}
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	ah.Config = ah.NewConfigHandler("../testutil/testdata/test_config.yaml")
+	ah.Config.LoadConfig()
+	os.Exit(m.Run())
 }

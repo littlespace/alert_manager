@@ -49,28 +49,22 @@ func (ag alertGroup) aggAlert() *models.Alert {
 	return agg
 }
 
-func (ag alertGroup) saveAgg(ctx context.Context, tx models.Txn) (*models.Alert, error) {
+func (ag alertGroup) saveAgg(tx models.Txn) (*models.Alert, error) {
 	agg := ag.aggAlert()
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		var newId int64
-		newId, err := tx.NewAlert(agg)
-		if err != nil {
-			return fmt.Errorf("Unable to insert agg alert: %v", err)
-		}
-		agg.Id = newId
-		// update the agg IDs of all the original alerts
-		var origIds []int64
-		for _, o := range ag.groupedAlerts {
-			origIds = append(origIds, o.Id)
-		}
-		err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
-		if err != nil {
-			return fmt.Errorf("Unable to update agg Ids: %v", err)
-		}
-		return nil
-	})
+	var newId int64
+	newId, err := tx.NewAlert(agg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to insert agg alert: %v", err)
+	}
+	agg.Id = newId
+	// update the agg IDs of all the original alerts
+	var origIds []int64
+	for _, o := range ag.groupedAlerts {
+		origIds = append(origIds, o.Id)
+	}
+	err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to update agg Ids: %v", err)
 	}
 	return agg, nil
 }
@@ -90,27 +84,56 @@ func (a *Aggregator) Name() string {
 	return "aggregator"
 }
 
-func (a *Aggregator) handleGrouped(ctx context.Context) {
-	for {
-		select {
-		case group := <-groupedChan:
-			tx := a.db.NewTx()
-			agg, err := group.saveAgg(ctx, tx)
-			if err != nil {
-				glog.Errorf("Agg: Unable to save Agg alert: %v", err)
-				a.statError.Add(1)
-				break
-			}
-			notifier := ah.GetNotifier()
-			notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE})
-			a.statAggsActive.Add(1)
-		case <-ctx.Done():
-			return
+func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error {
+	tx := a.db.NewTx()
+	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		agg, err := group.saveAgg(tx)
+		if err != nil {
+			return err
 		}
-	}
+		if err := a.checkSupp(ctx, tx, agg); err != nil {
+			return err
+		}
+		notifier := ah.GetNotifier()
+		notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventMap[agg.Status.String()]})
+		a.statAggsActive.Add(1)
+		return nil
+	})
 }
 
-func (a *Aggregator) checkExpired(ctx context.Context, tx models.Txn) error {
+func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.Alert) error {
+	supp := ah.GetSuppressor(a.db)
+	labels := models.Labels{"alert_name": agg.Name}
+	if rule, ok := supp.Match(labels, models.MatchCond_ANY); ok && rule.TimeLeft() > 0 {
+		duration := rule.TimeLeft()
+		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", agg.Id, rule)
+		r := models.NewSuppRule(
+			models.Labels{"alert_id": agg.Id},
+			"alert",
+			fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name),
+			"alert_manager",
+			duration,
+		)
+		if err := supp.SuppressAlert(ctx, tx, agg, r); err != nil {
+			return fmt.Errorf("Unable to suppress agg: %v", err)
+		}
+		go func() {
+			time.Sleep(duration)
+			tx := a.db.NewTx()
+			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+				return supp.UnsuppressAlert(ctx, tx, agg)
+			})
+			if err != nil {
+				glog.Errorf("Failed to unsuppress alert %d: %v", agg.Id, err)
+			}
+		}()
+		return nil
+	}
+	return nil
+}
+
+func (a *Aggregator) checkExpired(ctx context.Context) error {
+	tx := a.db.NewTx()
 	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		allAggregated, err := tx.SelectAlerts(models.QuerySelectAllAggregated)
 		if err != nil {
@@ -155,27 +178,10 @@ func (a *Aggregator) checkExpired(ctx context.Context, tx models.Txn) error {
 	})
 }
 
-func (a *Aggregator) handleExpiry(ctx context.Context) {
-	t := time.NewTicker(AGG_CHECK_INTERVAL)
-	for {
-		select {
-		case <-t.C:
-			tx := a.db.NewTx()
-			if err := a.checkExpired(ctx, tx); err != nil {
-				a.statError.Add(1)
-				glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 // StartPoll does grouping based on periodic querying the db for matching alerts.
 // Only one of this or Start() must be used to fix the grouping method.
 func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 	a.db = db
-	go a.handleExpiry(ctx)
 	for _, alert := range ah.Config.GetConfiguredAlerts() {
 		if len(alert.Config.AggregationRules) == 0 {
 			continue
@@ -212,7 +218,18 @@ func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 			}
 		}(gpr)
 	}
-	a.handleGrouped(ctx)
+	t := time.NewTicker(AGG_CHECK_INTERVAL)
+	for {
+		select {
+		case <-t.C:
+			if err := a.checkExpired(ctx); err != nil {
+				a.statError.Add(1)
+				glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // Start does grouping by subscribing to alerts from the handler and grouping based
@@ -220,8 +237,23 @@ func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 	//a.StartPoll(ctx, h)
 	a.db = db
-	go a.handleGrouped(ctx)
-	go a.handleExpiry(ctx)
+	t := time.NewTicker(AGG_CHECK_INTERVAL)
+	go func() {
+		for {
+			select {
+			case <-t.C:
+				if err := a.checkExpired(ctx); err != nil {
+					a.statError.Add(1)
+					glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
+				}
+			case ag := <-groupedChan:
+				if err := a.handleGrouped(ctx, ag); err != nil {
+					glog.Errorf("Agg: Unable to save Agg alert: %v", err)
+					a.statError.Add(1)
+				}
+			}
+		}
+	}()
 	// subscribe to alerts that have agg rules defined
 	for _, alert := range ah.Config.GetConfiguredAlerts() {
 		if len(alert.Config.AggregationRules) > 0 {

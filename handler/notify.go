@@ -20,20 +20,20 @@ type notifier struct {
 }
 
 // Global Notifier Singleton
-var Notifier *notifier
+var notif *notifier
 var once sync.Once
 
 func GetNotifier() *notifier {
 	once.Do(func() {
-		Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
+		notif = &notifier{notifiedAlerts: make(map[int64]*notification)}
 		go func() {
 			t := time.NewTicker(remindCheckInterval)
 			for range t.C {
-				Notifier.remind()
+				notif.remind()
 			}
 		}()
 	})
-	return Notifier
+	return notif
 }
 
 func (n *notifier) remind() {
@@ -86,7 +86,8 @@ func (n *notifier) Notify(event *AlertEvent) {
 	defer n.Unlock()
 	switch event.Type {
 	case EventType_ACTIVE:
-		if _, alreadyNotified := n.notifiedAlerts[alert.Id]; alreadyNotified {
+		if notif, alreadyNotified := n.notifiedAlerts[alert.Id]; alreadyNotified {
+			notif.event = event
 			return
 		}
 		if ok && alert.LastActive.Sub(alert.StartTime.Time) < alertConfig.Config.NotifyDelay {
