@@ -27,23 +27,23 @@ var (
     is_aggregate=:is_aggregate
       WHERE id=:id`
 
-	queryUpdate           = "UPDATE alerts"
-	QueryUpdateLastActive = queryUpdate + " SET last_active=? WHERE id IN (?)"
-	QueryUpdateAggId      = queryUpdate + " SET agg_id=? WHERE id IN (?)"
+	queryUpdateAlerts     = "UPDATE alerts"
+	QueryUpdateLastActive = queryUpdateAlerts + " SET last_active=? WHERE id IN (?)"
+	QueryUpdateAggId      = queryUpdateAlerts + " SET agg_id=? WHERE id IN (?)"
 
-	querySelect             = "SELECT * from alerts"
-	QuerySelectByNames      = querySelect + " WHERE name IN (?) AND status=1 AND agg_id IS NULL FOR UPDATE"
-	QuerySelectById         = querySelect + " WHERE id=$1 FOR UPDATE"
-	QuerySelectByIds        = querySelect + " WHERE id IN (?) ORDER BY id FOR UPDATE"
-	QuerySelectByStatus     = querySelect + " WHERE status IN (?) ORDER BY id FOR UPDATE"
-	QuerySelectNoOwner      = querySelect + " WHERE owner is NULL AND status=1 ORDER BY id FOR UPDATE"
-	QuerySelectByNameEntity = querySelect + " WHERE name=$1 AND entity=$2 AND status IN (1,2) FOR UPDATE"
-	QuerySelectByDevice     = querySelect + " WHERE name=$1 AND entity=$2 AND device=$3 AND status IN (1,2) FOR UPDATE"
+	querySelectAlerts       = "SELECT * from alerts"
+	QuerySelectByNames      = querySelectAlerts + " WHERE name IN (?) AND status=1 AND agg_id IS NULL FOR UPDATE"
+	QuerySelectById         = querySelectAlerts + " WHERE id=$1 FOR UPDATE"
+	QuerySelectByIds        = querySelectAlerts + " WHERE id IN (?) ORDER BY id FOR UPDATE"
+	QuerySelectByStatus     = querySelectAlerts + " WHERE status IN (?) ORDER BY id FOR UPDATE"
+	QuerySelectNoOwner      = querySelectAlerts + " WHERE owner is NULL AND status=1 ORDER BY id FOR UPDATE"
+	QuerySelectByNameEntity = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND status IN (1,2) FOR UPDATE"
+	QuerySelectByDevice     = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND device=$3 AND status IN (1,2) FOR UPDATE"
 	QuerySelectTags         = "SELECT tags from alerts WHERE id=$1"
-	QuerySelectExpired      = querySelect + ` WHERE
+	QuerySelectExpired      = querySelectAlerts + ` WHERE
     status IN (1,2) AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after ORDER BY id FOR UPDATE`
-	QuerySelectAllAggregated = querySelect + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
-	QuerySelectSuppressed    = querySelect + ` WHERE status=2 AND id IN (
+	QuerySelectAllAggregated = querySelectAlerts + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
+	QuerySelectSuppressed    = querySelectAlerts + ` WHERE status=2 AND id IN (
     select (entities->>'alert_id')::int from suppression_rules where rtype = 1 AND
     creator = 'alert_manager' AND
     (cast(extract(epoch from now()) as integer) - created_at) < duration

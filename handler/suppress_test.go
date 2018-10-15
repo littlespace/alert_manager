@@ -29,7 +29,7 @@ type MockTx2 struct {
 	*models.Tx
 }
 
-func (tx *MockTx2) SelectRules(query string) (models.SuppRules, error) {
+func (tx *MockTx2) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	m := models.SuppRules{}
 	for n, r := range mockRules {
 		if n == "rule2" {
@@ -96,7 +96,7 @@ func TestSaveRule(t *testing.T) {
 	e := models.Labels{"alert_id": 1}
 	r := models.NewSuppRule(e, "alert", "test", "test", 5*time.Minute)
 	s := &suppressor{db: &MockDb2{}}
-	if err := s.SaveRule(context.Background(), &MockTx2{}, r); err != nil {
+	if _, err := s.SaveRule(context.Background(), &MockTx2{}, r); err != nil {
 		t.Fatal(err)
 	}
 	rule, _ := s.Match(e, models.MatchCond_ANY)

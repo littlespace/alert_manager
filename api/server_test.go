@@ -10,12 +10,18 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/models"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strconv"
 	"testing"
 )
+
+var mockRules = map[string]models.SuppressionRule{
+	"rule1": models.SuppressionRule{Id: 1, Name: "rule1", Duration: 60},
+	"rule2": models.SuppressionRule{Id: 2, Name: "rule2", Duration: 60},
+}
 
 type MockDb struct{}
 
@@ -32,6 +38,9 @@ type MockTx struct {
 }
 
 func (tx *MockTx) InQuery(query string, arg ...interface{}) error {
+	if query == models.QueryDeleteSuppRules {
+		delete(mockRules, "rule1")
+	}
 	return nil
 }
 
@@ -74,8 +83,11 @@ func (tx *MockTx) NewSuppRule(r *models.SuppressionRule) (int64, error) {
 	return 1, nil
 }
 
-func (tx *MockTx) SelectRules(query string) (models.SuppRules, error) {
-	return models.SuppRules{}, nil
+func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
+	return models.SuppRules{
+		models.SuppressionRule{Id: 1, Name: "rule1", Duration: 60},
+		models.SuppressionRule{Id: 2, Name: "rule2", Duration: 60},
+	}, nil
 }
 
 func (tx *MockTx) Commit() error {
@@ -163,8 +175,8 @@ func TestServerAuth(t *testing.T) {
 func TestServerGet(t *testing.T) {
 	s := NewMockServer()
 	router := mux.NewRouter()
-	router.HandleFunc("/api/alerts", s.GetAlerts).Methods("GET")
-	router.HandleFunc("/api/alerts/{id}", s.GetAlert).Methods("GET")
+	router.HandleFunc("/api/{category}", s.GetItems).Methods("GET")
+	router.HandleFunc("/api/{category}/{id}", s.GetAlert).Methods("GET")
 
 	req, err := http.NewRequest("GET", "/api/alerts", nil)
 	if err != nil {
@@ -203,12 +215,24 @@ func TestServerGet(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, a["Id"].(float64), float64(2))
+
+	req, err = http.NewRequest("GET", "/api/suppression_rules", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	b := []interface{}{}
+	if err := json.NewDecoder(rr.Result().Body).Decode(&b); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(b), 2)
 }
 
 func TestServerUpdate(t *testing.T) {
 	s := NewMockServer()
 	router := mux.NewRouter()
-	router.HandleFunc("/api/alerts/{id}", s.UpdateAlert).Methods("PATCH")
+	router.HandleFunc("/api/alerts/{id}", s.Update).Methods("PATCH")
 
 	// test update invalid query
 	req, _ := http.NewRequest("PATCH", "/api/alerts/1?owner=foo&owner=bar", nil)
@@ -268,6 +292,39 @@ func TestServerAlertAction(t *testing.T) {
 	assert.Equal(t, a["Status"].(string), "ACTIVE")
 	assert.Equal(t, a["Owner"].(string), "foo")
 	assert.Equal(t, a["Team"].(string), "bar")
+}
+
+func TestSuppRule(t *testing.T) {
+	s := NewMockServer()
+	router := mux.NewRouter()
+	router.HandleFunc("/api/suppression_rules", s.CreateSuppRule).Methods("POST")
+	router.HandleFunc("/api/suppression_rules/{id}/clear", s.ClearSuppRule).Methods("DELETE")
+
+	req, _ := http.NewRequest("POST", "/api/suppression_rules", nil)
+	body, _ := json.Marshal(&map[string]interface{}{
+		"Rtype": 0,
+		"Name":  "test2",
+		"Entities": map[string]interface{}{
+			"alert_name": "Test Alert",
+		},
+		"Duration": 300,
+		"Reason":   "foo",
+		"Creator":  "test",
+	})
+	req.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	a := map[string]interface{}{}
+	if err := json.NewDecoder(rr.Result().Body).Decode(&a); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, a["Id"].(float64), float64(1))
+
+	req, _ = http.NewRequest("DELETE", "/api/suppression_rules/1/clear", nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	_, ok := mockRules["rule1"]
+	assert.Equal(t, ok, false)
 }
 
 func TestMain(m *testing.M) {

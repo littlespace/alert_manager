@@ -87,7 +87,7 @@ func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts,
 	return models.Alerts{}, nil
 }
 
-func (t *MockTx) SelectRules(query string) (models.SuppRules, error) {
+func (t *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	return models.SuppRules{}, nil
 }
 

@@ -24,12 +24,17 @@ var (
     :name, :rtype, :entities, :created_at, :duration, :reason, :creator
     ) RETURNING id`
 
-	QuerySelectActive     = "SELECT * FROM suppression_rules WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
+	querySelectRules      = "SELECT * FROM suppression_rules"
+	QuerySelectActive     = querySelectRules + " WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
 	QuerySelectAlertRules = `SELECT DISTINCT ON ((entities->>'alert_id')::int) *
 		FROM suppression_rules
 		WHERE  (entities->>'alert_id')::int IN (?) AND
 		rtype = 1 AND creator = 'alert_manager' 
 		ORDER BY ((entities->>'alert_id')::int), created_at DESC;`
+
+	queryUpdateRules = "UPDATE suppression_rules"
+
+	QueryDeleteSuppRules = "DELETE FROM suppression_rules WHERE id IN (?)"
 )
 
 type SuppressionRule struct {
@@ -93,9 +98,10 @@ func NewSuppRule(entities Labels, rtype, reason, creator string, duration time.D
 
 type SuppRules []SuppressionRule
 
-func (tx *Tx) SelectRules(query string) (SuppRules, error) {
+func (tx *Tx) SelectRules(query string, args ...interface{}) (SuppRules, error) {
 	var rules SuppRules
-	err := tx.Select(&rules, query)
+	query = tx.Rebind(query)
+	err := tx.Select(&rules, query, args...)
 	return rules, err
 }
 

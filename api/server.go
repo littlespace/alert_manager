@@ -28,8 +28,10 @@ type JwtToken struct {
 	Token string `json:"token"`
 }
 
-func buildSelectQuery(queries map[string][]string) (models.Query, error) {
-	query := models.Query{}
+func buildSelectQuery(req *http.Request) (models.Query, error) {
+	queries := req.URL.Query()
+	vars := mux.Vars(req)
+	query := models.NewQuery(vars["category"])
 	for q, v := range queries {
 		switch q {
 		case "limit":
@@ -52,8 +54,10 @@ func buildSelectQuery(queries map[string][]string) (models.Query, error) {
 	return query, nil
 }
 
-func buildUpdateQuery(queries, matches map[string][]string) (models.UpdateQuery, error) {
-	query := models.UpdateQuery{}
+func buildUpdateQuery(req *http.Request, matches map[string][]string) (models.UpdateQuery, error) {
+	vars := mux.Vars(req)
+	queries := req.URL.Query()
+	query := models.NewUpdateQuery(vars["category"])
 	for q, v := range queries {
 		if len(v) > 1 {
 			return query, fmt.Errorf("Error: Invalid query params")
@@ -95,16 +99,19 @@ func NewServer(addr string, handler *ah.AlertHandler) *Server {
 
 func (s *Server) Start(ctx context.Context) {
 	router := mux.NewRouter()
+
 	router.HandleFunc("/api/auth", s.CreateToken).Methods("POST")
-	router.HandleFunc("/api/alerts", s.GetAlerts).Methods("GET")
+	router.HandleFunc("/api/{category}", s.GetItems).Methods("GET")
+	router.HandleFunc("/api/{category}/{id}", s.Validate(s.Update)).Methods("PATCH", "OPTIONS")
 	router.HandleFunc("/api/alerts/{id}", s.GetAlert).Methods("GET")
-	router.HandleFunc("/api/alerts/{id}", s.Validate(s.UpdateAlert)).Methods("PATCH")
-	router.HandleFunc("/api/alerts/{id}/{action}", s.Validate(s.ActionAlert)).Methods("PATCH")
+	router.HandleFunc("/api/alerts/{id}/{action}", s.Validate(s.ActionAlert)).Methods("PATCH", "OPTIONS")
+	router.HandleFunc("/api/suppression_rules", s.Validate(s.CreateSuppRule)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/suppression_rules/{id}/clear", s.Validate(s.ClearSuppRule)).Methods("DELETE", "OPTIONS")
 
 	// CORS specific headers
-	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With"})
+	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
-	allowedMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH"})
+	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"})
 
 	// set up the router
 	srv := &http.Server{
@@ -180,39 +187,38 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(JwtToken{Token: tokenString})
 }
 
-func (s *Server) fetchResults(q models.Querier) (models.Alerts, error) {
+func (s *Server) fetchResults(q models.Querier) ([]interface{}, error) {
 	tx := s.handler.Db.NewTx()
 	ctx := context.Background()
 	var (
-		alerts models.Alerts
-		er     error
+		items []interface{}
+		er    error
 	)
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		alerts, er = q.Run(tx)
+		items, er = q.Run(tx)
 		if er != nil {
 			return er
 		}
 		return nil
 	})
-	return alerts, err
+	return items, err
 }
 
-func (s *Server) GetAlerts(w http.ResponseWriter, req *http.Request) {
-	queries := req.URL.Query()
-	q, err := buildSelectQuery(queries)
+func (s *Server) GetItems(w http.ResponseWriter, req *http.Request) {
+	q, err := buildSelectQuery(req)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Unable to fetch alerts: %s", err.Error()), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Unable to fetch items: %s", err.Error()), http.StatusBadRequest)
 	}
-	alerts, err := s.fetchResults(q)
+	items, err := s.fetchResults(q)
 	if err != nil {
-		glog.Errorf("Api: Unable to fetch alerts: %v", err)
-		http.Error(w, fmt.Sprintf("Unable to fetch alerts: %s", err.Error()), http.StatusInternalServerError)
+		glog.Errorf("Api: Unable to fetch items: %v", err)
+		http.Error(w, fmt.Sprintf("Unable to fetch items: %s", err.Error()), http.StatusInternalServerError)
 		s.statError.Add(1)
 		return
 	}
 	s.statGets.Add(1)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(alerts)
+	json.NewEncoder(w).Encode(items)
 }
 
 func (s *Server) GetAlert(w http.ResponseWriter, req *http.Request) {
@@ -237,18 +243,17 @@ func (s *Server) GetAlert(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) UpdateAlert(w http.ResponseWriter, req *http.Request) {
+func (s *Server) Update(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	queries := req.URL.Query()
-	q, err := buildUpdateQuery(queries, map[string][]string{"id": []string{vars["id"]}})
+	q, err := buildUpdateQuery(req, map[string][]string{"id": []string{vars["id"]}})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Unable to Update alerts: %s", err.Error()), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Unable to Update item: %s", err.Error()), http.StatusBadRequest)
 		return
 	}
 	_, err = s.fetchResults(q)
 	if err != nil {
-		glog.Errorf("Api: Unable to Update alerts: %v", err)
-		http.Error(w, fmt.Sprintf("Unable to Update alerts: %s", err.Error()), http.StatusInternalServerError)
+		glog.Errorf("Api: Unable to Update item: %v", err)
+		http.Error(w, fmt.Sprintf("Unable to Update item: %s", err.Error()), http.StatusInternalServerError)
 		s.statError.Add(1)
 		return
 	}
@@ -311,4 +316,34 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 	s.statPatches.Add(1)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(alert)
+}
+
+func (s *Server) CreateSuppRule(w http.ResponseWriter, req *http.Request) {
+	rule := models.SuppressionRule{}
+	if err := json.NewDecoder(req.Body).Decode(&rule); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid parameters for query: %v", err), http.StatusBadRequest)
+		return
+	}
+	if rule.Name == "" {
+		rule.Name = fmt.Sprintf("Rule - %s - %v", rule.Creator, rule.Duration)
+	}
+	rule.CreatedAt = models.MyTime{time.Now()}
+	id, err := s.handler.AddSuppRule(req.Context(), rule)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to create suppression rule: %v", err), http.StatusInternalServerError)
+		return
+	}
+	rule.Id = id
+	s.statPosts.Add(1)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(rule)
+}
+
+func (s *Server) ClearSuppRule(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	id, _ := strconv.ParseInt(vars["id"], 10, 64)
+	if err := s.handler.DeleteSuppRule(req.Context(), id); err != nil {
+		http.Error(w, fmt.Sprintf("Unable to delete suppression rule: %v", err), http.StatusBadRequest)
+		return
+	}
 }

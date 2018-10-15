@@ -27,7 +27,7 @@ func (tx *MockTx) InSelect(query string, to interface{}, arg ...interface{}) err
 	if len(arg) == 0 {
 		return nil
 	}
-	for i, _ := range arg[0].([]interface{}) {
+	for i, _ := range arg[0].([]string) {
 		a := Alert{
 			Id:          int64(i),
 			Name:        "mock",
@@ -106,6 +106,7 @@ func TestQuerySQL(t *testing.T) {
 
 func TestSelectQueryRun(t *testing.T) {
 	q := Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1"}, Op: Op_EQUAL},
 			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
@@ -113,46 +114,47 @@ func TestSelectQueryRun(t *testing.T) {
 	}
 	assert.Equal(t, q.toSQL(), "SELECT * from alerts WHERE id=? AND name=?")
 	tx := &MockTx{}
-	alerts, err := q.Run(tx)
+	items, err := q.Run(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, len(alerts), 10)
+	assert.Equal(t, len(items), 10)
 
 	q.Limit = 5
-	alerts, err = q.Run(tx)
+	items, err = q.Run(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, len(alerts), 5)
+	assert.Equal(t, len(items), 5)
 	var ids []int64
-	for _, a := range alerts {
-		ids = append(ids, a.Id)
+	for _, a := range items {
+		ids = append(ids, a.(Alert).Id)
 	}
 	assert.ElementsMatch(t, ids, []int64{1, 2, 3, 4, 5})
 
 	q.Limit = 0
 	q.Offset = 5
-	alerts, err = q.Run(tx)
+	items, err = q.Run(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, len(alerts), 5)
+	assert.Equal(t, len(items), 5)
 	ids = ids[:0]
-	for _, a := range alerts {
-		ids = append(ids, a.Id)
+	for _, a := range items {
+		ids = append(ids, a.(Alert).Id)
 	}
 	assert.ElementsMatch(t, ids, []int64{6, 7, 8, 9, 10})
 
 	q = Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1", "2", "3"}, Op: Op_IN},
 		},
 	}
 	assert.Equal(t, q.toSQL(), "SELECT * from alerts WHERE id IN (?)")
-	alerts, err = q.Run(tx)
+	items, err = q.Run(tx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, len(alerts), 3)
+	assert.Equal(t, len(items), 3)
 }

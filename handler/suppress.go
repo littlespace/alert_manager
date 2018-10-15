@@ -70,28 +70,42 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 	}
 }
 
-func (s *suppressor) SaveRule(ctx context.Context, tx models.Txn, rule models.SuppressionRule) error {
+func (s *suppressor) SaveRule(ctx context.Context, tx models.Txn, rule models.SuppressionRule) (int64, error) {
 	id, err := tx.NewSuppRule(&rule)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	rule.Id = id
 	s.Lock()
 	defer s.Unlock()
 	s.suppRules = append(s.suppRules, rule)
-	return nil
+	return id, nil
+}
+
+func (s *suppressor) DeleteRule(ctx context.Context, tx models.Txn, id int64) error {
+	s.Lock()
+	defer s.Unlock()
+	for i, rule := range s.suppRules {
+		if rule.Id == id {
+			s.suppRules = append(s.suppRules[:i], s.suppRules[i+1:]...)
+			break
+		}
+	}
+	return tx.InQuery(models.QueryDeleteSuppRules, []int64{id})
 }
 
 func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) (models.SuppressionRule, bool) {
 	s.Lock()
 	defer s.Unlock()
 	var matches []models.SuppressionRule
-	for i, rule := range s.suppRules {
+	for i := 0; i < len(s.suppRules); i++ {
+		rule := s.suppRules[i]
 		if rule.Match(labels, cond) {
 			matches = append(matches, rule)
 			if rule.TimeLeft() <= 0 {
 				// rule has expired, remove from cache
 				s.suppRules = append(s.suppRules[:i], s.suppRules[i+1:]...)
+				i--
 			}
 		}
 	}
@@ -115,7 +129,7 @@ func (s *suppressor) SuppressAlert(
 	if err := tx.UpdateAlert(alert); err != nil {
 		return fmt.Errorf("Unable to update alert: %v", err)
 	}
-	if err := s.SaveRule(ctx, tx, rule); err != nil {
+	if _, err := s.SaveRule(ctx, tx, rule); err != nil {
 		return fmt.Errorf("Unable to save rule: %v", err)
 	}
 	return nil

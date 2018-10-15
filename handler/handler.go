@@ -435,3 +435,24 @@ func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *model
 	h.notifyReceivers(alert, EventType_ACKD)
 	return nil
 }
+
+// AddSuppRule adds a new suppression rule into the suppressor
+func (h *AlertHandler) AddSuppRule(ctx context.Context, rule models.SuppressionRule) (int64, error) {
+	tx := h.Db.NewTx()
+	var id int64
+	var er error
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		id, er = h.Suppressor.SaveRule(ctx, tx, rule)
+		return er
+	})
+	return id, err
+}
+
+// DeleteSuppRule deletes an existing suppression rule from the suppressor
+func (h *AlertHandler) DeleteSuppRule(ctx context.Context, id int64) error {
+	tx := h.Db.NewTx()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		return h.Suppressor.DeleteRule(ctx, tx, id)
+	})
+	return err
+}

@@ -70,7 +70,7 @@ func (tx *MockTx) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
 	return 1, nil
 }
 
-func (tx *MockTx) SelectRules(query string) (models.SuppRules, error) {
+func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	return models.SuppRules{}, nil
 }
 
