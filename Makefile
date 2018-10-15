@@ -1,5 +1,13 @@
 .PHONY: all alert_manager test
 
+VERSION := $(shell git describe --exact-match --tags 2>/dev/null)
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+COMMIT := $(shell git rev-parse --short HEAD)
+LDFLAGS := $(LDFLAGS) -X main.commit=$(COMMIT) -X main.branch=$(BRANCH)
+ifdef VERSION
+    LDFLAGS += -X main.version=$(VERSION)
+endif
+
 all:
 	$(MAKE) deps
 	$(MAKE) alert_manager
@@ -10,7 +18,7 @@ deps:
 	dep ensure
 
 alert_manager:
-	go build ./cmd/alert_manager
+	go build -ldflags "$(LDFLAGS)" ./cmd/alert_manager
 
 debug:
 	dep ensure

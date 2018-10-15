@@ -5,6 +5,7 @@ import (
 	"flag"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -80,10 +81,13 @@ type mockGrouper struct {
 
 func (m *mockGrouper) Name() string { return m.name }
 
-func (m *mockGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
-	return [][]*models.Alert{
-		[]*models.Alert{mockAlerts["bgp_1"]},
-		[]*models.Alert{mockAlerts["bgp_2"]},
+func (m *mockGrouper) Valid(alerts []*models.Alert) []*models.Alert {
+	return alerts
+}
+
+func (m *mockGrouper) GrouperFunc() groupers.GroupingFunc {
+	return func(i, j *models.Alert) bool {
+		return i.Labels["s1"] == j.Labels["s2"]
 	}
 }
 

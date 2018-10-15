@@ -1,12 +1,14 @@
 package groupers
 
 import (
+	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
 type Grouper interface {
 	Name() string
-	DoGrouping(alerts []*models.Alert) [][]*models.Alert
+	Valid(alerts []*models.Alert) []*models.Alert
+	GrouperFunc() GroupingFunc
 }
 
 var AllGroupers = make(map[string]Grouper)
@@ -15,14 +17,14 @@ func AddGrouper(grp Grouper) {
 	AllGroupers[grp.Name()] = grp
 }
 
-type groupingFunc func(i, j models.Labels) bool
+type GroupingFunc func(i, j *models.Alert) bool
 
 // generic grouping func
 // Compares items of a slice in pairs, evaluating against the result of the groupingFunc.
 // If two items are equal, group them into the same output slice. If not, then they
 // are grouped into separate output slices.
-func group(gf groupingFunc, items []models.Labels) [][]models.Labels {
-	groups := [][]models.Labels{[]models.Labels{items[0]}}
+func group(gf GroupingFunc, items []*models.Alert) [][]*models.Alert {
+	groups := [][]*models.Alert{[]*models.Alert{items[0]}}
 	for i := 1; i < len(items); i++ {
 		var found bool
 		for j := 0; j < len(groups); j++ {
@@ -38,8 +40,17 @@ func group(gf groupingFunc, items []models.Labels) [][]models.Labels {
 			}
 		}
 		if !found {
-			groups = append(groups, []models.Labels{items[i]})
+			groups = append(groups, []*models.Alert{items[i]})
 		}
 	}
 	return groups
+}
+
+func DoGrouping(g Grouper, alerts []*models.Alert) [][]*models.Alert {
+	validAlerts := g.Valid(alerts)
+	if len(validAlerts) == 0 {
+		return [][]*models.Alert{}
+	}
+	glog.V(4).Infof("%s: Now grouping %d alerts", g.Name(), len(validAlerts))
+	return group(g.GrouperFunc(), validAlerts)
 }

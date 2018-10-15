@@ -22,7 +22,7 @@ func (g *Grouper) startWindow(name string) {
 	g.Lock()
 	defer g.Unlock()
 	grouper := groupers.AllGroupers[name]
-	for _, group := range grouper.DoGrouping(g.recvBuffers[name]) {
+	for _, group := range groupers.DoGrouping(grouper, g.recvBuffers[name]) {
 		groupedChan <- &alertGroup{groupedAlerts: group, grouper: grouper}
 	}
 	g.recvBuffers[name] = g.recvBuffers[name][:0]

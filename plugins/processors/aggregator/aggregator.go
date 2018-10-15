@@ -209,7 +209,7 @@ func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
 					if len(alerts) == 0 {
 						break
 					}
-					for _, group := range g.DoGrouping(alerts) {
+					for _, group := range groupers.DoGrouping(g, alerts) {
 						groupedChan <- &alertGroup{groupedAlerts: group, grouper: g}
 					}
 				case <-ctx.Done():

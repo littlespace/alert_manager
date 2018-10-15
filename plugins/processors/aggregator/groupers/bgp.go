@@ -9,14 +9,14 @@ type bgpGrouper struct {
 	name string
 }
 
-// grouperFunc defines the condition for two bgp label sets to be considered same to be grouped together
-func (g bgpGrouper) grouperFunc() groupingFunc {
-	return func(i, j models.Labels) bool {
+// grouperFunc defines the condition for two bgp alerts to be considered same to be grouped together
+func (g bgpGrouper) GrouperFunc() GroupingFunc {
+	return func(i, j *models.Alert) bool {
 		return (
 		// two ends of the same session
-		i["LocalDeviceName"] == j["RemoteDeviceName"] && i["RemoteDeviceName"] == j["LocalDeviceName"] ||
+		i.Labels["LocalDeviceName"] == j.Labels["RemoteDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["LocalDeviceName"] ||
 			// two sessions from/to same device
-			i["LocalDeviceName"] == j["LocalDeviceName"] && i["RemoteDeviceName"] == j["RemoteDeviceName"])
+			i.Labels["LocalDeviceName"] == j.Labels["LocalDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["RemoteDeviceName"])
 	}
 }
 
@@ -24,45 +24,19 @@ func (g *bgpGrouper) Name() string {
 	return g.name
 }
 
-func (g *bgpGrouper) origAlerts(alerts []*models.Alert, group []models.Labels) []*models.Alert {
-	var orig []*models.Alert
-	for _, p := range group {
-		for _, a := range alerts {
-			if a.Id == p["AlertId"].(int64) {
-				orig = append(orig, a)
-				break
-			}
-		}
-	}
-	return orig
-}
-
-func (g *bgpGrouper) DoGrouping(alerts []*models.Alert) [][]*models.Alert {
-	// first group by peer endpoints. Assume the alert metadata contains the peer-device
-	var labels []models.Labels
-	var groupedAlerts [][]*models.Alert
+func (g *bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {
+	var valid []*models.Alert
 	for _, alert := range alerts {
 		if len(alert.Labels) == 0 || alert.Status != models.Status_ACTIVE {
 			continue
 		}
 		if alert.Labels["LabelType"].(string) != "Bgp" {
 			glog.V(2).Infof("Bgp Agg: Found non bgp alert, skip grouping")
-			return groupedAlerts
+			return valid
 		}
-		alert.Labels["AlertId"] = alert.Id
-		labels = append(labels, alert.Labels)
+		valid = append(valid, alert)
 	}
-	if len(labels) == 0 {
-		return groupedAlerts
-	}
-	glog.V(4).Infof("Bgp Agg: Now grouping %d alerts", len(alerts))
-	groups := group(g.grouperFunc(), labels)
-
-	for _, group := range groups {
-		orig := g.origAlerts(alerts, group)
-		groupedAlerts = append(groupedAlerts, orig)
-	}
-	return groupedAlerts
+	return valid
 }
 
 func init() {

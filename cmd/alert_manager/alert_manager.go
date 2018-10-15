@@ -12,16 +12,29 @@ import (
 	_ "github.com/mayuresh82/alert_manager/plugins/transforms/all"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"strings"
 )
 
 var (
-	pprofAddr = flag.String("pprof-addr", "", "pprof address to listen on, dont activate pprof if empty")
-	config    = flag.String("config", "config.toml", "Config file for alert_manager")
+	pprofAddr   = flag.String("pprof-addr", "", "pprof address to listen on, dont activate pprof if empty")
+	config      = flag.String("config", "", "Config file for alert_manager")
+	fVersion    = flag.Bool("version", false, "display the version")
+	nextVersion = "0.0.1"
+	version     string
+	commit      string
+	branch      string
 )
 
 func init() {
 	flag.Parse()
+}
+
+func getVersion() string {
+	if version == "" {
+		return fmt.Sprintf("v%s~%s", nextVersion, commit)
+	}
+	return "v" + version
 }
 
 func main() {
@@ -37,10 +50,18 @@ func main() {
 			glog.Infof("Starting pprof HTTP server at: %s", pprofHostPort)
 
 			if err := http.ListenAndServe(*pprofAddr, nil); err != nil {
-				glog.Fatalf("error Starting pprof: %v", err)
+				glog.Exitf("error Starting pprof: %v", err)
 			}
 		}()
 	}
+	if *fVersion {
+		fmt.Printf("Alert Manager: %s , (git: %s, %s)\n", getVersion(), commit, branch)
+		os.Exit(0)
+	}
+	if *config == "" {
+		glog.Exit("A config file must be specified with -config")
+	}
+	glog.Infof("Starting Alert Manager %s", getVersion())
 	config := alert_manager.NewConfig(*config)
 	alert_manager.Run(config)
 }

@@ -89,7 +89,7 @@ func TestGrouping(t *testing.T) {
 	for name, datas := range testDatas {
 		grouper := AllGroupers[name]
 		var aggregated [][]int64
-		for _, group := range grouper.DoGrouping(datas.incoming) {
+		for _, group := range DoGrouping(grouper, datas.incoming) {
 			var groupedIds []int64
 			for _, a := range group {
 				groupedIds = append(groupedIds, a.Id)
