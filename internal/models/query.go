@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -33,6 +34,7 @@ type Query struct {
 func NewQuery(table string) Query {
 	return Query{Table: table}
 }
+
 func (q Query) toSQL() string {
 	baseQuery := querySelectAlerts
 	if q.Table == "suppression_rules" {
@@ -42,8 +44,14 @@ func (q Query) toSQL() string {
 		return baseQuery
 	}
 	query := " WHERE "
-	i := 0
-	for _, p := range q.Params {
+	for i, p := range q.Params {
+		if p.Field == "tags" {
+			query = handleTags(query, p)
+			if i != len(q.Params)-1 {
+				query = query + " AND "
+			}
+			continue
+		}
 		query = query + p.Field
 		switch p.Op {
 		case Op_EQUAL:
@@ -51,8 +59,7 @@ func (q Query) toSQL() string {
 		case Op_IN:
 			query += " IN (?)"
 		}
-		i++
-		if i != len(q.Params) {
+		if i != len(q.Params)-1 {
 			query = query + " AND "
 		}
 	}
@@ -64,7 +71,8 @@ func (q Query) Run(tx Txn) ([]interface{}, error) {
 	sql := q.toSQL()
 	var values []interface{}
 	for _, p := range q.Params {
-		if p.Op == Op_IN {
+		p = sanitizeParam(p)
+		if p.Op == Op_IN && p.Field != "tags" {
 			values = append(values, p.Values)
 			continue
 		}
@@ -99,9 +107,9 @@ func (q Query) Run(tx Txn) ([]interface{}, error) {
 		return items, err
 	}
 	if len(q.Params) == 0 {
-		// set a default limit of 10
-		if len(items) > 10 {
-			q.Limit = 10
+		// set a default limit of 25
+		if len(items) > 25 {
+			q.Limit = 25
 		} else {
 			q.Limit = len(items)
 		}
@@ -141,11 +149,9 @@ func (u UpdateQuery) toSQL() string {
 		baseQuery = queryUpdateRules
 	}
 	query := " SET "
-	i := 0
-	for _, f := range u.Set {
+	for i, f := range u.Set {
 		query += fmt.Sprintf("%s=?", f.Name)
-		i++
-		if i != len(u.Set) {
+		if i != len(u.Set)-1 {
 			query = query + ", "
 		}
 	}
@@ -153,8 +159,14 @@ func (u UpdateQuery) toSQL() string {
 		return baseQuery + query
 	}
 	query += " WHERE "
-	i = 0
-	for _, p := range u.Where {
+	for i, p := range u.Where {
+		if p.Field == "tags" {
+			query = handleTags(query, p)
+			if i != len(u.Where)-1 {
+				query = query + " AND "
+			}
+			continue
+		}
 		query = query + p.Field
 		switch p.Op {
 		case Op_EQUAL:
@@ -162,8 +174,7 @@ func (u UpdateQuery) toSQL() string {
 		case Op_IN:
 			query += " IN (?)"
 		}
-		i++
-		if i != len(u.Where) {
+		if i != len(u.Where)-1 {
 			query = query + " AND "
 		}
 	}
@@ -178,7 +189,8 @@ func (u UpdateQuery) Run(tx Txn) ([]interface{}, error) {
 		values = append(values, f.Value)
 	}
 	for _, p := range u.Where {
-		if p.Op == Op_IN {
+		p = sanitizeParam(p)
+		if p.Op == Op_IN && p.Field != "tags" {
 			values = append(values, p.Values)
 			continue
 		}
@@ -191,4 +203,35 @@ func (u UpdateQuery) Run(tx Txn) ([]interface{}, error) {
 		return items, err
 	}
 	return items, nil
+}
+
+func sanitizeParam(p Param) Param {
+	var newVal []string
+	for _, v := range p.Values {
+		if p.Field == "status" {
+			if _, err := strconv.Atoi(v); err != nil {
+				newVal = append(newVal, strconv.Itoa(int(StatusMap[v])))
+				continue
+			}
+		} else if p.Field == "severity" {
+			if _, err := strconv.Atoi(v); err != nil {
+				newVal = append(newVal, strconv.Itoa(int(SevMap[v])))
+				continue
+			}
+		}
+		newVal = append(newVal, v)
+	}
+	return Param{Field: p.Field, Op: p.Op, Values: newVal}
+}
+
+func handleTags(query string, p Param) string {
+	// special handling for array data type
+	for j, _ := range p.Values {
+		query = query + "? = ANY(tags)"
+		if j != len(p.Values)-1 {
+			query = query + " AND "
+			continue
+		}
+	}
+	return query
 }

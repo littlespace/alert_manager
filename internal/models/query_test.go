@@ -77,6 +77,18 @@ var testDatas = map[string]Querier{
 			Param{Field: "name", Values: []string{"foo", "bar"}, Op: Op_IN},
 		},
 	},
+	"SELECT * from alerts WHERE id=? AND ? = ANY(tags)": Query{
+		Params: []Param{
+			Param{Field: "id", Values: []string{"1"}, Op: Op_EQUAL},
+			Param{Field: "tags", Values: []string{"foo"}, Op: Op_EQUAL},
+		},
+	},
+	"SELECT * from alerts WHERE id IN (?) AND ? = ANY(tags) AND ? = ANY(tags)": Query{
+		Params: []Param{
+			Param{Field: "id", Values: []string{"1", "2"}, Op: Op_IN},
+			Param{Field: "tags", Values: []string{"foo", "bar"}, Op: Op_IN},
+		},
+	},
 	"UPDATE alerts SET owner=? WHERE id=? AND name=?": UpdateQuery{
 		Set: []Field{
 			Field{Name: "owner", Value: "foo"},
@@ -93,6 +105,16 @@ var testDatas = map[string]Querier{
 		},
 		Where: []Param{
 			Param{Field: "id", Values: []string{"1", "2"}, Op: Op_IN},
+			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
+		},
+	},
+	"UPDATE alerts SET owner=?, team=? WHERE ? = ANY(tags) AND ? = ANY(tags) AND name=?": UpdateQuery{
+		Set: []Field{
+			Field{Name: "owner", Value: "foo"},
+			Field{Name: "team", Value: "bar"},
+		},
+		Where: []Param{
+			Param{Field: "tags", Values: []string{"foo", "bar"}, Op: Op_IN},
 			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
 		},
 	},
