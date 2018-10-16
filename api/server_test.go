@@ -98,6 +98,10 @@ func (tx *MockTx) Rollback() error {
 	return nil
 }
 
+func (tx *MockTx) Exec(query string, args ...interface{}) error {
+	return nil
+}
+
 func NewMockServer() *Server {
 	d := &MockDb{}
 	return &Server{

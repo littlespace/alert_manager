@@ -110,6 +110,9 @@ func (n *notifier) Notify(event *AlertEvent) {
 			notif.event = event
 			return
 		}
+		if event.Type == EventType_SUPPRESSED {
+			return
+		}
 	}
 	if ok {
 		n.send(event, alertConfig.Config.Outputs)

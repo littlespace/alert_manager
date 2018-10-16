@@ -416,7 +416,7 @@ func (h *AlertHandler) UnsuppWait(ctx context.Context, alert *models.Alert, dura
 
 func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
 	alert.Clear()
-	if err := tx.UpdateAlert(alert); err != nil {
+	if err := tx.Exec(models.QueryUpdateStatus, models.Status_CLEARED, alert.Id); err != nil {
 		h.statDbError.Add(1)
 		return err
 	}

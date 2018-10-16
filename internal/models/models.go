@@ -56,6 +56,7 @@ type Txn interface {
 	NewSuppRule(rule *SuppressionRule) (int64, error)
 	Rollback() error
 	Commit() error
+	Exec(query string, args ...interface{}) error
 }
 
 type Tx struct {
@@ -68,8 +69,7 @@ func (tx *Tx) InQuery(query string, arg ...interface{}) error {
 		return err
 	}
 	query = tx.Rebind(query)
-	_, err = tx.Exec(query, args...)
-	return err
+	return tx.Exec(query, args...)
 }
 
 func (tx *Tx) InSelect(query string, to interface{}, arg ...interface{}) error {
@@ -79,6 +79,11 @@ func (tx *Tx) InSelect(query string, to interface{}, arg ...interface{}) error {
 	}
 	query = tx.Rebind(query)
 	return tx.Select(to, query, args...)
+}
+
+func (tx *Tx) Exec(query string, args ...interface{}) error {
+	_, err := tx.Tx.Exec(query, args...)
+	return err
 }
 
 // WithTx wraps a transaction around a function call.

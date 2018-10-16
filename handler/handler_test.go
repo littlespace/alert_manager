@@ -31,7 +31,9 @@ func (m *MockDb) Close() error {
 	return nil
 }
 
-type MockTx struct{}
+type MockTx struct {
+	*models.Tx
+}
 
 func (t *MockTx) NewAlert(alert *models.Alert) (int64, error) {
 	if alert.Name == "Test Alert 1" {
@@ -74,6 +76,10 @@ func (t *MockTx) InQuery(query string, args ...interface{}) error {
 }
 
 func (t *MockTx) InSelect(query string, to interface{}, arg ...interface{}) error {
+	return nil
+}
+
+func (tx *MockTx) Exec(query string, args ...interface{}) error {
 	return nil
 }
 
