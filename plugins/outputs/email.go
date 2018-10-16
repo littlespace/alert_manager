@@ -96,6 +96,8 @@ func (e *EmailNotifier) subject(event *ah.AlertEvent) string {
 }
 
 func (e *EmailNotifier) start(event *ah.AlertEvent) {
+	loc, _ := time.LoadLocation("US/Pacific")
+	startTime := event.Alert.StartTime.In(loc).Format("Mon Jan 2 15:04:05 MST 2006")
 	data := &TplData{
 		Subject:       e.subject(event),
 		AlertMgrURL:   "http://TODO",
@@ -106,7 +108,7 @@ func (e *EmailNotifier) start(event *ah.AlertEvent) {
 			struct{ Name, Value string }{"Name", event.Alert.Name},
 			struct{ Name, Value string }{"Description", event.Alert.Description},
 			struct{ Name, Value string }{"Entity", event.Alert.Entity},
-			struct{ Name, Value string }{"StartTime", event.Alert.StartTime.String()},
+			struct{ Name, Value string }{"StartTime", startTime},
 		},
 	}
 	data.Header = fmt.Sprintf("[%s][%s] %s", data.AlertSeverity, data.EventType, event.Alert.Name)

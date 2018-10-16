@@ -83,7 +83,7 @@ var renderedTpl = `
   Name: Test Alert
   Description: Test Desc
   Entity: testent
-  StartTime: 2006-01-02 14:04:05 -0800 PST
+  StartTime: Mon Jan 2 14:04:05 PST 2006
 `
 
 func TestOutputEmail(t *testing.T) {
