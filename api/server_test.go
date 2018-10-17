@@ -194,20 +194,6 @@ func TestServerGet(t *testing.T) {
 	}
 	assert.Equal(t, len(m), 2)
 
-	req, err = http.NewRequest("GET", "/api/alerts?id=1", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rr = httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-	m = []interface{}{}
-	if err := json.NewDecoder(rr.Result().Body).Decode(&m); err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, len(m), 1)
-	alert := m[0].(map[string]interface{})
-	assert.Equal(t, alert["Id"].(float64), float64(1))
-
 	req, err = http.NewRequest("GET", "/api/alerts/2", nil)
 	if err != nil {
 		t.Fatal(err)
