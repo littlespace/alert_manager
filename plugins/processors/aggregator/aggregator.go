@@ -24,9 +24,16 @@ type alertGroup struct {
 func (ag alertGroup) aggAlert() *models.Alert {
 	rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.Name())
 	desc := ""
+	aggLabels := models.Labels{"device": []string{}, "entity": []string{}, "site": []string{}}
 	for _, o := range ag.groupedAlerts {
-		// TODO send notif for all groupedAlerts
 		desc += o.Description + "\n"
+		aggLabels["entity"] = append(aggLabels["entity"].([]string), o.Entity)
+		if o.Device.Valid {
+			aggLabels["device"] = append(aggLabels["device"].([]string), o.Device.String)
+		}
+		if o.Site.Valid {
+			aggLabels["site"] = append(aggLabels["site"].([]string), o.Site.String)
+		}
 	}
 	agg := models.NewAlert(
 		rule.Alert.Name,
@@ -39,6 +46,7 @@ func (ag alertGroup) aggAlert() *models.Alert {
 		rule.Alert.Config.Severity,
 		true)
 
+	agg.Labels = aggLabels
 	agg.AddTags(rule.Alert.Config.Tags...)
 	if rule.Alert.Config.AutoExpire != nil && *rule.Alert.Config.AutoExpire {
 		agg.SetAutoExpire(rule.Alert.Config.ExpireAfter)

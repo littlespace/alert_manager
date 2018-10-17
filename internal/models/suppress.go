@@ -100,7 +100,6 @@ type SuppRules []SuppressionRule
 
 func (tx *Tx) SelectRules(query string, args ...interface{}) (SuppRules, error) {
 	var rules SuppRules
-	query = tx.Rebind(query)
 	err := tx.Select(&rules, query, args...)
 	return rules, err
 }

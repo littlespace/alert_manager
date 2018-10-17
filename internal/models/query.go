@@ -1,10 +1,17 @@
 package models
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
+	"text/template"
 )
+
+const labelQueryTpl = `{{$key := .Key}}{{$length := len .Values }}({{$key}} IN (
+  {{- range $i, $e := .Values }}
+  {{- if $i }},{{- end }}'{{.}}'
+  {{- end }})
+  {{- range .Values }} OR (labels::jsonb)->'{{$key}}' ? '{{.}}'{{- end }})`
 
 type Op int
 
@@ -52,13 +59,17 @@ func (q Query) toSQL() string {
 			}
 			continue
 		}
-		query = query + p.Field
-		switch p.Op {
-		case Op_EQUAL:
-			query += "=?"
-		case Op_IN:
-			query += " IN (?)"
+		if p.Field == "device" || p.Field == "entity" || p.Field == "site" {
+			if quer, err := appendLabelQuery(query, p); err == nil {
+				query = quer
+				if i != len(q.Params)-1 {
+					query = query + " AND "
+				}
+				continue
+			}
 		}
+		query = query + p.Field
+		query = buildQuery(query, p)
 		if i != len(q.Params)-1 {
 			query = query + " AND "
 		}
@@ -69,36 +80,17 @@ func (q Query) toSQL() string {
 func (q Query) Run(tx Txn) ([]interface{}, error) {
 	var items []interface{}
 	sql := q.toSQL()
-	var values []interface{}
-	for _, p := range q.Params {
-		p = sanitizeParam(p)
-		if p.Op == Op_IN && p.Field != "tags" {
-			values = append(values, p.Values)
-			continue
-		}
-		for _, v := range p.Values {
-			values = append(values, v)
-		}
-	}
 	var err error
 	switch q.Table {
 	case "alerts":
 		var alerts Alerts
-		if strings.Contains(sql, "IN") {
-			err = tx.InSelect(sql, &alerts, values...)
-		} else {
-			alerts, err = tx.SelectAlerts(sql, values...)
-		}
+		alerts, err = tx.SelectAlerts(sql)
 		for _, a := range alerts {
 			items = append(items, a)
 		}
 	case "suppression_rules":
 		var rules SuppRules
-		if strings.Contains(sql, "IN") {
-			err = tx.InSelect(sql, &rules, values...)
-		} else {
-			rules, err = tx.SelectRules(sql, values...)
-		}
+		rules, err = tx.SelectRules(sql)
 		for _, r := range rules {
 			items = append(items, r)
 		}
@@ -150,7 +142,7 @@ func (u UpdateQuery) toSQL() string {
 	}
 	query := " SET "
 	for i, f := range u.Set {
-		query += fmt.Sprintf("%s=?", f.Name)
+		query += fmt.Sprintf("%s='%s'", f.Name, f.Value)
 		if i != len(u.Set)-1 {
 			query = query + ", "
 		}
@@ -168,12 +160,7 @@ func (u UpdateQuery) toSQL() string {
 			continue
 		}
 		query = query + p.Field
-		switch p.Op {
-		case Op_EQUAL:
-			query += "=?"
-		case Op_IN:
-			query += " IN (?)"
-		}
+		query = buildQuery(query, p)
 		if i != len(u.Where)-1 {
 			query = query + " AND "
 		}
@@ -184,25 +171,48 @@ func (u UpdateQuery) toSQL() string {
 func (u UpdateQuery) Run(tx Txn) ([]interface{}, error) {
 	var items []interface{} // dummy so that Run can conform to Querier interface
 	sql := u.toSQL()
-	var values []interface{}
-	for _, f := range u.Set {
-		values = append(values, f.Value)
-	}
-	for _, p := range u.Where {
-		p = sanitizeParam(p)
-		if p.Op == Op_IN && p.Field != "tags" {
-			values = append(values, p.Values)
-			continue
-		}
-		for _, v := range p.Values {
-			values = append(values, v)
-		}
-	}
-	err := tx.InQuery(sql, values...)
+	err := tx.Exec(sql)
 	if err != nil {
 		return items, err
 	}
 	return items, nil
+}
+
+func buildQuery(query string, p Param) string {
+	p = sanitizeParam(p)
+	switch p.Op {
+	case Op_EQUAL:
+		return query + fmt.Sprintf("='%s'", p.Values[0])
+	case Op_IN:
+		query += " IN ("
+		for i, v := range p.Values {
+			if i != len(p.Values)-1 {
+				query += fmt.Sprintf("'%s', ", v)
+			} else {
+				query += fmt.Sprintf("'%s')", v)
+			}
+		}
+		return query
+	}
+	return ""
+}
+
+func appendLabelQuery(query string, p Param) (string, error) {
+	data := struct {
+		Key    string
+		Values []string
+	}{Key: p.Field, Values: p.Values}
+
+	tpl, err := template.New("query").Parse(labelQueryTpl)
+	if err != nil {
+		return "", err
+	}
+	var b bytes.Buffer
+	if err := tpl.Execute(&b, data); err != nil {
+		return "", err
+	}
+	query = query + b.String()
+	return query, nil
 }
 
 func sanitizeParam(p Param) Param {
@@ -226,8 +236,8 @@ func sanitizeParam(p Param) Param {
 
 func handleTags(query string, p Param) string {
 	// special handling for array data type
-	for j, _ := range p.Values {
-		query = query + "? = ANY(tags)"
+	for j, v := range p.Values {
+		query = query + fmt.Sprintf("'%s' = ANY(tags)", v)
 		if j != len(p.Values)-1 {
 			query = query + " AND "
 			continue

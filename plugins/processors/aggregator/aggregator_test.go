@@ -117,6 +117,9 @@ func TestAlertGrouping(t *testing.T) {
 	assert.Equal(t, mockAlerts["bgp_1"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
 	assert.Equal(t, mockAlerts["bgp_2"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
 
+	assert.Equal(t, agg.Labels["device"], []string{"d1", "d2"})
+	assert.Equal(t, agg.Labels["entity"], []string{"e1", "e2"})
+
 	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	ctx := context.Background()
 	supp := ah.GetSuppressor(&MockDb{})

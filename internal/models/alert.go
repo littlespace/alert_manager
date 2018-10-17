@@ -290,7 +290,6 @@ func (tx *Tx) GetAlert(query string, args ...interface{}) (*Alert, error) {
 
 func (tx *Tx) SelectAlerts(query string, args ...interface{}) (Alerts, error) {
 	var alerts Alerts
-	query = tx.Rebind(query)
 	err := tx.Select(&alerts, query, args...)
 	return alerts, err
 }
