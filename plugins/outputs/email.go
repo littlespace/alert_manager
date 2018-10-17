@@ -96,8 +96,7 @@ func (e *EmailNotifier) subject(event *ah.AlertEvent) string {
 }
 
 func (e *EmailNotifier) start(event *ah.AlertEvent) {
-	loc, _ := time.LoadLocation("US/Pacific")
-	startTime := event.Alert.StartTime.In(loc).Format("Mon Jan 2 15:04:05 MST 2006")
+	startTime := event.Alert.StartTime.UTC().Format("Mon Jan 2 15:04:05 MST 2006")
 	data := &TplData{
 		Subject:       e.subject(event),
 		AlertMgrURL:   "http://TODO",
