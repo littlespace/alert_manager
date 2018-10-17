@@ -23,12 +23,6 @@ const tagTpl = `{{$f := .Field}}
 {{- if $i }} AND {{ end }}'{{$e}}' = ANY({{$f}})
 {{- end }}`
 
-var fns = template.FuncMap{
-	"plus1": func(x int) int {
-		return x + 1
-	},
-}
-
 func executeQueryTpl(raw string, data Param) (string, error) {
 	tpl, err := template.New("sql").Parse(raw)
 	if err != nil {
