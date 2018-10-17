@@ -35,74 +35,74 @@ func (tx *MockTx) SelectAlerts(query string, args ...interface{}) (Alerts, error
 }
 
 var testDatas = map[string]Querier{
-	"SELECT * from alerts WHERE id='1' AND name='foo'": Query{
+	"SELECT * from alerts WHERE id IN ('1') AND name IN ('foo')": Query{
 		Params: []Param{
-			Param{Field: "id", Values: []string{"1"}, Op: Op_EQUAL},
-			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
+			Param{Field: "id", Values: []string{"1"}},
+			Param{Field: "name", Values: []string{"foo"}},
 		},
 	},
-	"SELECT * from alerts WHERE id IN ('1', '2') AND status='1'": Query{
+	"SELECT * from alerts WHERE id IN ('1','2') AND status IN ('1')": Query{
 		Params: []Param{
-			Param{Field: "id", Values: []string{"1", "2"}, Op: Op_IN},
-			Param{Field: "status", Values: []string{"ACTIVE"}, Op: Op_EQUAL},
+			Param{Field: "id", Values: []string{"1", "2"}},
+			Param{Field: "status", Values: []string{"ACTIVE"}},
 		},
 	},
-	"SELECT * from alerts WHERE id IN ('1', '2') AND name IN ('foo', 'bar')": Query{
+	"SELECT * from alerts WHERE id IN ('1','2') AND name IN ('foo','bar')": Query{
 		Params: []Param{
-			Param{Field: "id", Values: []string{"1", "2"}, Op: Op_IN},
-			Param{Field: "name", Values: []string{"foo", "bar"}, Op: Op_IN},
+			Param{Field: "id", Values: []string{"1", "2"}},
+			Param{Field: "name", Values: []string{"foo", "bar"}},
 		},
 	},
-	"SELECT * from alerts WHERE id='1' AND 'foo' = ANY(tags)": Query{
+	"SELECT * from alerts WHERE id IN ('1') AND 'foo' = ANY(tags)": Query{
 		Params: []Param{
-			Param{Field: "id", Values: []string{"1"}, Op: Op_EQUAL},
-			Param{Field: "tags", Values: []string{"foo"}, Op: Op_EQUAL},
+			Param{Field: "id", Values: []string{"1"}},
+			Param{Field: "tags", Values: []string{"foo"}},
 		},
 	},
-	"SELECT * from alerts WHERE id IN ('1', '2') AND 'foo' = ANY(tags) AND 'bar' = ANY(tags)": Query{
+	"SELECT * from alerts WHERE id IN ('1','2') AND 'foo' = ANY(tags) AND 'bar' = ANY(tags)": Query{
 		Params: []Param{
-			Param{Field: "id", Values: []string{"1", "2"}, Op: Op_IN},
-			Param{Field: "tags", Values: []string{"foo", "bar"}, Op: Op_IN},
+			Param{Field: "id", Values: []string{"1", "2"}},
+			Param{Field: "tags", Values: []string{"foo", "bar"}},
 		},
 	},
 	"SELECT * from alerts WHERE (device IN ('d1','d2') OR (labels::jsonb)->'device' ? 'd1' OR (labels::jsonb)->'device' ? 'd2')": Query{
 		Params: []Param{
-			Param{Field: "device", Op: Op_IN, Values: []string{"d1", "d2"}},
+			Param{Field: "device", Values: []string{"d1", "d2"}},
 		},
 	},
-	"SELECT * from alerts WHERE (device IN ('d1') OR (labels::jsonb)->'device' ? 'd1') AND status IN ('1', '2')": Query{
+	"SELECT * from alerts WHERE (device IN ('d1') OR (labels::jsonb)->'device' ? 'd1') AND status IN ('1','2')": Query{
 		Params: []Param{
-			Param{Field: "device", Op: Op_EQUAL, Values: []string{"d1"}},
-			Param{Field: "status", Op: Op_IN, Values: []string{"ACTIVE", "SUPPRESSED"}},
+			Param{Field: "device", Values: []string{"d1"}},
+			Param{Field: "status", Values: []string{"ACTIVE", "SUPPRESSED"}},
 		},
 	},
-	"UPDATE alerts SET owner='foo' WHERE id='1' AND name='foo'": UpdateQuery{
+	"UPDATE alerts SET owner='foo' WHERE id IN ('1') AND name IN ('foo')": UpdateQuery{
 		Set: []Field{
 			Field{Name: "owner", Value: "foo"},
 		},
 		Where: []Param{
-			Param{Field: "id", Values: []string{"1"}, Op: Op_EQUAL},
-			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
+			Param{Field: "id", Values: []string{"1"}},
+			Param{Field: "name", Values: []string{"foo"}},
 		},
 	},
-	"UPDATE alerts SET owner='foo', team='bar' WHERE id IN ('1', '2') AND name='foo'": UpdateQuery{
-		Set: []Field{
-			Field{Name: "owner", Value: "foo"},
-			Field{Name: "team", Value: "bar"},
-		},
-		Where: []Param{
-			Param{Field: "id", Values: []string{"1", "2"}, Op: Op_IN},
-			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
-		},
-	},
-	"UPDATE alerts SET owner='foo', team='bar' WHERE 'foo' = ANY(tags) AND 'bar' = ANY(tags) AND name='foo'": UpdateQuery{
+	"UPDATE alerts SET owner='foo', team='bar' WHERE id IN ('1','2') AND name IN ('foo')": UpdateQuery{
 		Set: []Field{
 			Field{Name: "owner", Value: "foo"},
 			Field{Name: "team", Value: "bar"},
 		},
 		Where: []Param{
-			Param{Field: "tags", Values: []string{"foo", "bar"}, Op: Op_IN},
-			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
+			Param{Field: "id", Values: []string{"1", "2"}},
+			Param{Field: "name", Values: []string{"foo"}},
+		},
+	},
+	"UPDATE alerts SET owner='foo', team='bar' WHERE 'foo' = ANY(tags) AND 'bar' = ANY(tags) AND name IN ('foo')": UpdateQuery{
+		Set: []Field{
+			Field{Name: "owner", Value: "foo"},
+			Field{Name: "team", Value: "bar"},
+		},
+		Where: []Param{
+			Param{Field: "tags", Values: []string{"foo", "bar"}},
+			Param{Field: "name", Values: []string{"foo"}},
 		},
 	},
 }
@@ -117,11 +117,11 @@ func TestSelectQueryRun(t *testing.T) {
 	q := Query{
 		Table: "alerts",
 		Params: []Param{
-			Param{Field: "id", Values: []string{"1"}, Op: Op_EQUAL},
-			Param{Field: "name", Values: []string{"foo"}, Op: Op_EQUAL},
+			Param{Field: "id", Values: []string{"1"}},
+			Param{Field: "name", Values: []string{"foo"}},
 		},
 	}
-	assert.Equal(t, q.toSQL(), "SELECT * from alerts WHERE id='1' AND name='foo'")
+	assert.Equal(t, q.toSQL(), "SELECT * from alerts WHERE id IN ('1') AND name IN ('foo')")
 	tx := &MockTx{}
 	items, err := q.Run(tx)
 	if err != nil {

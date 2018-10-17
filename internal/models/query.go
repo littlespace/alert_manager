@@ -7,23 +7,43 @@ import (
 	"text/template"
 )
 
-const labelQueryTpl = `{{$key := .Key}}{{$length := len .Values }}({{$key}} IN (
-  {{- range $i, $e := .Values }}
-  {{- if $i }},{{- end }}'{{.}}'
-  {{- end }})
-  {{- range .Values }} OR (labels::jsonb)->'{{$key}}' ? '{{.}}'{{- end }})`
+const labelQueryTpl = `{{$key := .Field}}{{$length := len .Values }}({{$key}} IN (
+{{- range $i, $e := .Values }}
+{{- if $i }},{{- end }}'{{.}}'
+{{- end }})
+{{- range .Values }} OR (labels::jsonb)->'{{$key}}' ? '{{.}}'{{- end }})`
 
-type Op int
+const sqlTpl = `{{.Field}} IN (
+{{- range $i, $e := .Values }}
+{{- if $i }},{{- end }}'{{.}}'
+{{- end }})`
 
-var (
-	Op_EQUAL Op = 1
-	Op_IN    Op = 2
-)
+const tagTpl = `{{$f := .Field}}
+{{- range $i, $e := .Values }}
+{{- if $i }} AND {{ end }}'{{$e}}' = ANY({{$f}})
+{{- end }}`
+
+var fns = template.FuncMap{
+	"plus1": func(x int) int {
+		return x + 1
+	},
+}
+
+func executeQueryTpl(raw string, data Param) (string, error) {
+	tpl, err := template.New("sql").Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	var b bytes.Buffer
+	if err := tpl.Execute(&b, data); err != nil {
+		return "", err
+	}
+	return b.String(), nil
+}
 
 type Param struct {
 	Field  string
 	Values []string
-	Op     Op
 }
 
 type Querier interface {
@@ -43,38 +63,42 @@ func NewQuery(table string) Query {
 }
 
 func (q Query) toSQL() string {
-	baseQuery := querySelectAlerts
+	baseQ := querySelectAlerts
 	if q.Table == "suppression_rules" {
-		baseQuery = querySelectRules
+		baseQ = querySelectRules
 	}
 	if len(q.Params) == 0 {
-		return baseQuery
+		return baseQ
 	}
-	query := " WHERE "
+	query := baseQ + " WHERE "
 	for i, p := range q.Params {
+		p = sanitizeParam(p)
 		if p.Field == "tags" {
-			query = handleTags(query, p)
+			if quer, err := executeQueryTpl(tagTpl, p); err == nil {
+				query += quer
+			}
 			if i != len(q.Params)-1 {
 				query = query + " AND "
 			}
 			continue
 		}
 		if p.Field == "device" || p.Field == "entity" || p.Field == "site" {
-			if quer, err := appendLabelQuery(query, p); err == nil {
-				query = quer
+			if quer, err := executeQueryTpl(labelQueryTpl, p); err == nil {
+				query += quer
 				if i != len(q.Params)-1 {
 					query = query + " AND "
 				}
 				continue
 			}
 		}
-		query = query + p.Field
-		query = buildQuery(query, p)
+		if quer, err := executeQueryTpl(sqlTpl, p); err == nil {
+			query += quer
+		}
 		if i != len(q.Params)-1 {
 			query = query + " AND "
 		}
 	}
-	return baseQuery + query
+	return query
 }
 
 func (q Query) Run(tx Txn) ([]interface{}, error) {
@@ -152,15 +176,19 @@ func (u UpdateQuery) toSQL() string {
 	}
 	query += " WHERE "
 	for i, p := range u.Where {
+		p = sanitizeParam(p)
 		if p.Field == "tags" {
-			query = handleTags(query, p)
+			if quer, err := executeQueryTpl(tagTpl, p); err == nil {
+				query += quer
+			}
 			if i != len(u.Where)-1 {
 				query = query + " AND "
 			}
 			continue
 		}
-		query = query + p.Field
-		query = buildQuery(query, p)
+		if quer, err := executeQueryTpl(sqlTpl, p); err == nil {
+			query += quer
+		}
 		if i != len(u.Where)-1 {
 			query = query + " AND "
 		}
@@ -176,43 +204,6 @@ func (u UpdateQuery) Run(tx Txn) ([]interface{}, error) {
 		return items, err
 	}
 	return items, nil
-}
-
-func buildQuery(query string, p Param) string {
-	p = sanitizeParam(p)
-	switch p.Op {
-	case Op_EQUAL:
-		return query + fmt.Sprintf("='%s'", p.Values[0])
-	case Op_IN:
-		query += " IN ("
-		for i, v := range p.Values {
-			if i != len(p.Values)-1 {
-				query += fmt.Sprintf("'%s', ", v)
-			} else {
-				query += fmt.Sprintf("'%s')", v)
-			}
-		}
-		return query
-	}
-	return ""
-}
-
-func appendLabelQuery(query string, p Param) (string, error) {
-	data := struct {
-		Key    string
-		Values []string
-	}{Key: p.Field, Values: p.Values}
-
-	tpl, err := template.New("query").Parse(labelQueryTpl)
-	if err != nil {
-		return "", err
-	}
-	var b bytes.Buffer
-	if err := tpl.Execute(&b, data); err != nil {
-		return "", err
-	}
-	query = query + b.String()
-	return query, nil
 }
 
 func sanitizeParam(p Param) Param {
@@ -231,17 +222,5 @@ func sanitizeParam(p Param) Param {
 		}
 		newVal = append(newVal, v)
 	}
-	return Param{Field: p.Field, Op: p.Op, Values: newVal}
-}
-
-func handleTags(query string, p Param) string {
-	// special handling for array data type
-	for j, v := range p.Values {
-		query = query + fmt.Sprintf("'%s' = ANY(tags)", v)
-		if j != len(p.Values)-1 {
-			query = query + " AND "
-			continue
-		}
-	}
-	return query
+	return Param{Field: p.Field, Values: newVal}
 }

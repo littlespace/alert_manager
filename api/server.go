@@ -44,11 +44,7 @@ func buildSelectQuery(req *http.Request) (models.Query, error) {
 				q = parts[0]
 				v = strings.Split(v[0], ",")
 			}
-			op := models.Op_EQUAL
-			if len(v) > 1 {
-				op = models.Op_IN
-			}
-			query.Params = append(query.Params, models.Param{Field: q, Values: v, Op: op})
+			query.Params = append(query.Params, models.Param{Field: q, Values: v})
 		}
 	}
 	return query, nil
@@ -65,11 +61,7 @@ func buildUpdateQuery(req *http.Request, matches map[string][]string) (models.Up
 		query.Set = append(query.Set, models.Field{Name: q, Value: v[0]})
 	}
 	for m, v := range matches {
-		op := models.Op_EQUAL
-		if len(v) > 1 {
-			op = models.Op_IN
-		}
-		query.Where = append(query.Where, models.Param{Field: m, Values: v, Op: op})
+		query.Where = append(query.Where, models.Param{Field: m, Values: v})
 	}
 	return query, nil
 }
