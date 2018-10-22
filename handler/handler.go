@@ -90,20 +90,14 @@ func (h *AlertHandler) handleUnsuppressOnStart(ctx context.Context) {
 		if len(suppressedAlerts) == 0 {
 			return nil
 		}
-		var suppIds []int64
-		idToAlerts := make(map[int64]*models.Alert)
 		for _, alert := range suppressedAlerts {
-			idToAlerts[alert.Id] = alert
-			suppIds = append(suppIds, alert.Id)
-		}
-		var alertRules models.SuppRules
-		if err := tx.InSelect(models.QuerySelectAlertRules, &alertRules, suppIds); err != nil {
-			h.statDbError.Add(1)
-			return err
-		}
-		for _, rule := range alertRules {
-			ruleAlertId := int64(rule.Entities["alert_id"].(float64))
-			go h.UnsuppWait(ctx, idToAlerts[ruleAlertId], rule.TimeLeft())
+			labels := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
+			if alert.Device.Valid {
+				labels["device"] = alert.Device.String
+			}
+			if rule, ok := h.Suppressor.Match(labels, models.MatchCond_ALL); ok {
+				go h.UnsuppWait(ctx, alert, rule.TimeLeft())
+			}
 		}
 		return nil
 	})
@@ -262,11 +256,12 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 }
 
 func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType) {
+	event := &AlertEvent{Alert: alert, Type: eventType}
 	gMu.Lock()
 	for alertName, recvChans := range Processors {
 		if match, _ := regexp.MatchString(alertName, alert.Name); match {
 			for _, recvChan := range recvChans {
-				recvChan <- &AlertEvent{Alert: alert, Type: eventType}
+				recvChan <- event
 			}
 		}
 	}
@@ -274,15 +269,7 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType)
 
 	// send the alert to the outputs. If the alert config or config outputs is undefined,
 	// the notifier will send it to the default output.
-	event := &AlertEvent{Alert: alert, Type: eventType}
 	h.Notifier.Notify(event)
-	// send to influx for reporting
-	if influxOut, ok := Outputs["influx"]; ok {
-		if eventType == EventType_ACTIVE && alert.StartTime != alert.LastActive {
-			return
-		}
-		influxOut <- event
-	}
 }
 
 func (h *AlertHandler) handleExpiry(ctx context.Context) {
@@ -387,10 +374,12 @@ func (h *AlertHandler) Suppress(
 	creator, reason string,
 	duration time.Duration,
 ) error {
-	// create an alert specific supp-rule for tracking
-	r := models.NewSuppRule(
-		models.Labels{"alert_id": alert.Id}, "alert", reason, creator, duration,
-	)
+	// create an alert specific supp-rule to suppress all future similar alerts
+	ents := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
+	if alert.Device.Valid {
+		ents["device"] = alert.Device.String
+	}
+	r := models.NewSuppRule(ents, "entity", reason, creator, duration)
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, r); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
 	}

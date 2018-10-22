@@ -116,7 +116,7 @@ func (q Query) Run(tx Txn) ([]interface{}, error) {
 	if err != nil {
 		return items, err
 	}
-	if len(q.Params) == 0 {
+	if q.Limit == 0 {
 		// set a default limit of 25
 		if len(items) > 25 {
 			q.Limit = 25

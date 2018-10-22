@@ -102,15 +102,20 @@ func (n *notifier) Notify(event *AlertEvent) {
 				notifyOnClear = alertConfig.Config.NotifyOnClear
 			}
 			if !notifyOnClear {
+				n.reportToInflux(event)
 				return
 			}
 		}
 	case EventType_SUPPRESSED, EventType_ESCALATED:
 		if notif, ok := n.notifiedAlerts[alert.Id]; ok {
+			if notif.event.Type == EventType_ACTIVE && event.Type == EventType_SUPPRESSED {
+				n.reportToInflux(event)
+			}
 			notif.event = event
 			return
 		}
 		if event.Type == EventType_SUPPRESSED {
+			n.reportToInflux(event)
 			return
 		}
 	}
@@ -130,5 +135,12 @@ func (n *notifier) send(event *AlertEvent, outputs []string) {
 			glog.V(2).Infof("Sending alert %s to %s", event.Alert.Name, output)
 			outChan <- event
 		}
+	}
+	n.reportToInflux(event)
+}
+
+func (n *notifier) reportToInflux(event *AlertEvent) {
+	if influxOut, ok := Outputs["influx"]; ok {
+		influxOut <- event
 	}
 }
