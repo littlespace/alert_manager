@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"text/template"
+	"time"
 )
 
 const labelQueryTpl = `{{$key := .Field}}{{$length := len .Values }}({{$key}} IN (
@@ -46,14 +47,15 @@ type Querier interface {
 }
 
 type Query struct {
-	Table  string
-	Limit  int
-	Offset int
-	Params []Param
+	Table     string
+	Limit     int
+	Offset    int
+	TimeRange string
+	Params    []Param
 }
 
 func NewQuery(table string) Query {
-	return Query{Table: table}
+	return Query{Table: table, TimeRange: "72h"}
 }
 
 func (q Query) toSQL() string {
@@ -61,10 +63,14 @@ func (q Query) toSQL() string {
 	if q.Table == "suppression_rules" {
 		baseQ = querySelectRules
 	}
+	tr, err := time.ParseDuration(q.TimeRange)
+	if err == nil && tr > 0 {
+		baseQ += fmt.Sprintf(" WHERE (cast(extract(epoch from now()) as integer) - start_time) < %d", int64(tr.Seconds()))
+	}
 	if len(q.Params) == 0 {
 		return baseQ
 	}
-	query := baseQ + " WHERE "
+	query := baseQ + " AND "
 	for i, p := range q.Params {
 		p = sanitizeParam(p)
 		if p.Field == "tags" {
@@ -92,7 +98,7 @@ func (q Query) toSQL() string {
 			query = query + " AND "
 		}
 	}
-	return query
+	return query + " ORDER BY id"
 }
 
 func (q Query) Run(tx Txn) ([]interface{}, error) {

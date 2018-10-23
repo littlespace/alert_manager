@@ -38,6 +38,8 @@ func buildSelectQuery(req *http.Request) (models.Query, error) {
 			query.Limit, _ = strconv.Atoi(v[0])
 		case "offset":
 			query.Offset, _ = strconv.Atoi(v[0])
+		case "timerange":
+			query.TimeRange = v[0]
 		default:
 			if strings.HasSuffix(q, "__in") {
 				parts := strings.Split(q, "__")
