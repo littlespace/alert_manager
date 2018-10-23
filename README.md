@@ -13,8 +13,6 @@ Alert manager is a modular plugin based system that allows writing different plu
 3. [Processors](#processors) Processors "subscribe" to specific alerts and process them in any way that is defined in the code. Most common example is the aggregator which contains logic to group similar alerts based on labels. Incoming alerts are sent to all the registered processors at the same time, so the processors need to ensure they correctly handle them and processing actions dont collide. 
 4. [Outputs](#outputs) A set of output plugins that are used for notification.
 
-Alerts that are sent to registered processors are NOT sent to registered outputs. Its upto the processor to decide and send the alerts to the right outputs if required.
-
 ## Installation
 
 Current install method is via a docker container (docker pull mayuresh82/alert_manager). You can also just build from source:
