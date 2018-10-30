@@ -45,6 +45,10 @@ func (n *notifier) remind() {
 		if notif.event.Alert.Status == models.Status_SUPPRESSED {
 			continue
 		}
+		if notif.event.Alert.Owner.Valid {
+			// dont notify for ackd alerts
+			continue
+		}
 		if alertConfig, ok := Config.GetAlertConfig(notif.event.Alert.Name); ok {
 			if alertConfig.Config.NotifyRemind == 0 {
 				continue
@@ -80,7 +84,8 @@ func (n *notifier) remind() {
 func (n *notifier) Notify(event *AlertEvent, tx models.Txn) {
 	alert := event.Alert
 	alertConfig, ok := Config.GetAlertConfig(alert.Name)
-	if ok && alertConfig.Config.DisableNotify {
+	if (ok && alertConfig.Config.DisableNotify) || alert.Owner.Valid {
+		n.reportToInflux(event)
 		return
 	}
 	n.Lock()
