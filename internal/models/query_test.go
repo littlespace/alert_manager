@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 )
 
@@ -22,7 +23,7 @@ type MockTx struct {
 func (tx *MockTx) SelectAlerts(query string, args ...interface{}) (Alerts, error) {
 	var alerts Alerts
 	for i := 1; i <= 10; i++ {
-		alerts = append(alerts, Alert{
+		alerts = append(alerts, &Alert{
 			Id:          int64(i),
 			Name:        "mock",
 			Description: "test",
@@ -31,54 +32,75 @@ func (tx *MockTx) SelectAlerts(query string, args ...interface{}) (Alerts, error
 			Scope:       "scp",
 		})
 	}
+	if strings.Contains(query, "OFFSET") {
+		return alerts[5:], nil
+	}
+	if strings.Contains(query, "LIMIT") && !strings.Contains(query, "25") {
+		return alerts[:5], nil
+	}
+	return alerts, nil
+}
+
+func (tx *MockTx) SelectAlertsWithHistory(query string, args ...interface{}) (Alerts, error) {
+	alerts, _ := tx.SelectAlerts(query, args...)
+	for _, a := range alerts {
+		a.History = append(a.History, &Record{AlertId: a.Id, Event: "foobar"})
+	}
 	return alerts, nil
 }
 
 const baseQ = "SELECT * from alerts WHERE (cast(extract(epoch from now()) as integer) - start_time) < 5"
 
 var testDatas = map[string]Querier{
-	baseQ + " AND id IN ('1') AND name IN ('foo') ORDER BY id": Query{
+	baseQ + " AND alerts.id IN ('1') AND name IN ('foo')": Query{
+		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "name", Values: []string{"foo"}},
 		},
 	},
-	baseQ + " AND id IN ('1','2') AND status IN ('1') ORDER BY id": Query{
+	baseQ + " AND alerts.id IN ('1','2') AND status IN ('1')": Query{
+		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "status", Values: []string{"ACTIVE"}},
 		},
 	},
-	baseQ + " AND id IN ('1','2') AND name IN ('foo','bar') ORDER BY id": Query{
+	baseQ + " AND alerts.id IN ('1','2') AND name IN ('foo','bar')": Query{
+		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "name", Values: []string{"foo", "bar"}},
 		},
 	},
-	baseQ + " AND id IN ('1') AND 'foo' = ANY(tags) ORDER BY id": Query{
+	baseQ + " AND alerts.id IN ('1') AND 'foo' = ANY(tags)": Query{
+		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "tags", Values: []string{"foo"}},
 		},
 	},
-	baseQ + " AND id IN ('1','2') AND 'foo' = ANY(tags) AND 'bar' = ANY(tags) ORDER BY id": Query{
+	baseQ + " AND alerts.id IN ('1','2') AND 'foo' = ANY(tags) AND 'bar' = ANY(tags)": Query{
+		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "tags", Values: []string{"foo", "bar"}},
 		},
 	},
-	baseQ + " AND (device IN ('d1','d2') OR (labels::jsonb)->'device' ? 'd1' OR (labels::jsonb)->'device' ? 'd2') ORDER BY id": Query{
+	baseQ + " AND (device IN ('d1','d2') OR (labels::jsonb)->'device' ? 'd1' OR (labels::jsonb)->'device' ? 'd2')": Query{
+		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
 			Param{Field: "device", Values: []string{"d1", "d2"}},
 		},
 	},
-	baseQ + " AND (device IN ('d1') OR (labels::jsonb)->'device' ? 'd1') AND status IN ('1','2') ORDER BY id": Query{
+	baseQ + " AND (device IN ('d1') OR (labels::jsonb)->'device' ? 'd1') AND status IN ('1','2')": Query{
+		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
 			Param{Field: "device", Values: []string{"d1"}},
@@ -131,7 +153,7 @@ func TestSelectQueryRun(t *testing.T) {
 			Param{Field: "name", Values: []string{"foo"}},
 		},
 	}
-	assert.Equal(t, q.toSQL(), baseQ+" AND id IN ('1') AND name IN ('foo') ORDER BY id")
+	assert.Equal(t, q.toSQL(), baseQ+" AND alerts.id IN ('1') AND name IN ('foo')")
 	tx := &MockTx{}
 	items, err := q.Run(tx)
 	if err != nil {
@@ -147,7 +169,7 @@ func TestSelectQueryRun(t *testing.T) {
 	assert.Equal(t, len(items), 5)
 	var ids []int64
 	for _, a := range items {
-		ids = append(ids, a.(Alert).Id)
+		ids = append(ids, a.(*Alert).Id)
 	}
 	assert.ElementsMatch(t, ids, []int64{1, 2, 3, 4, 5})
 
@@ -160,8 +182,14 @@ func TestSelectQueryRun(t *testing.T) {
 	assert.Equal(t, len(items), 5)
 	ids = ids[:0]
 	for _, a := range items {
-		ids = append(ids, a.(Alert).Id)
+		ids = append(ids, a.(*Alert).Id)
 	}
 	assert.ElementsMatch(t, ids, []int64{6, 7, 8, 9, 10})
 
+	q.IncludeHistory = true
+	items, err = q.Run(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(items[0].(*Alert).History), 1)
 }

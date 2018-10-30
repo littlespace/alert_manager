@@ -34,4 +34,10 @@ CREATE TABLE IF NOT EXISTS suppression_rules (
   duration INT NOT NULL,
   reason TEXT,
   creator varchar(64) NOT NULL);
+
+CREATE TABLE IF NOT EXISTS alert_history (
+  id SERIAL PRIMARY KEY,
+  timestamp BIGINT NOT NULL,
+  alert_id INT NOT NULL,
+  event TEXT NOT NULL);
 `

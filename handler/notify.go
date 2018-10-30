@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"sync"
@@ -76,7 +77,7 @@ func (n *notifier) remind() {
 //    - if alert is expired then notify to configured or default outputs
 //    - if alert is suppressed then dont notify
 // - else send it to the default output
-func (n *notifier) Notify(event *AlertEvent) {
+func (n *notifier) Notify(event *AlertEvent, tx models.Txn) {
 	alert := event.Alert
 	alertConfig, ok := Config.GetAlertConfig(alert.Name)
 	if ok && alertConfig.Config.DisableNotify {
@@ -106,7 +107,7 @@ func (n *notifier) Notify(event *AlertEvent) {
 				return
 			}
 		}
-	case EventType_SUPPRESSED, EventType_ESCALATED:
+	case EventType_SUPPRESSED, EventType_ESCALATED, EventType_ACKD:
 		if notif, ok := n.notifiedAlerts[alert.Id]; ok {
 			if notif.event.Type == EventType_ACTIVE && event.Type == EventType_SUPPRESSED {
 				n.reportToInflux(event)
@@ -114,15 +115,17 @@ func (n *notifier) Notify(event *AlertEvent) {
 			notif.event = event
 			return
 		}
-		if event.Type == EventType_SUPPRESSED {
+		if event.Type == EventType_SUPPRESSED || event.Type == EventType_ACKD {
 			n.reportToInflux(event)
 			return
 		}
 	}
 	if ok {
 		n.send(event, alertConfig.Config.Outputs)
+		tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %v", alertConfig.Config.Outputs))
 	} else {
 		n.send(event, []string{})
+		tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %s", DefaultOutput))
 	}
 }
 

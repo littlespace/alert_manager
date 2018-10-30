@@ -111,6 +111,7 @@ type Alert struct {
 	Severity     AlertSeverity
 	Status       AlertStatus
 	Labels       Labels // json encoded k-v labels
+	History      []*Record
 }
 
 // custom Marshaler interface for Alert
@@ -127,6 +128,10 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		IsAggregate                              bool  `json:"is_aggregate"`
 		Severity                                 string
 		Status                                   string
+		History                                  []struct {
+			Timestamp int64
+			Event     string
+		}
 	}{
 		Id:           a.Id,
 		ExternalId:   a.ExternalId,
@@ -146,6 +151,13 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		IsAggregate:  a.IsAggregate,
 		Severity:     a.Severity.String(),
 		Status:       a.Status.String(),
+	}
+	for _, h := range a.History {
+		tmp.History = append(tmp.History, struct {
+			Timestamp int64
+			Event     string
+		}{h.Timestamp.Unix(), h.Event},
+		)
 	}
 	return json.Marshal(&tmp)
 }
@@ -236,7 +248,7 @@ func (a *Alert) Clear() {
 	a.Status = Status_CLEARED
 }
 
-type Alerts []Alert
+type Alerts []*Alert
 
 func (a Alerts) AnyStatusIn(status AlertStatus) bool {
 	for _, alert := range a {
@@ -262,6 +274,15 @@ func (a Alerts) AllCleared() bool {
 
 func (a Alerts) AllExpired() bool {
 	return a.AllStatusIn(Status_EXPIRED)
+}
+
+func (a Alerts) AllInactive() bool {
+	for _, al := range a {
+		if al.Status == Status_ACTIVE || al.Status == Status_SUPPRESSED {
+			return false
+		}
+	}
+	return true
 }
 
 func (tx *Tx) UpdateAlert(alert *Alert) error {
@@ -292,4 +313,15 @@ func (tx *Tx) SelectAlerts(query string, args ...interface{}) (Alerts, error) {
 	var alerts Alerts
 	err := tx.Select(&alerts, query, args...)
 	return alerts, err
+}
+
+func (tx *Tx) SelectAlertsWithHistory(query string, args ...interface{}) (Alerts, error) {
+	alerts, err := tx.SelectAlerts(query, args...)
+	if err != nil {
+		return Alerts{}, err
+	}
+	if err := tx.AddAlertHistory(alerts); err != nil {
+		return alerts, err
+	}
+	return alerts, nil
 }

@@ -47,7 +47,7 @@ func (tx *MockTx) InQuery(query string, arg ...interface{}) error {
 func (tx *MockTx) SelectAlerts(query string, arg ...interface{}) (models.Alerts, error) {
 	var alerts models.Alerts
 	for i := 1; i <= 2; i++ {
-		a := models.Alert{
+		a := &models.Alert{
 			Id:          int64(i),
 			Status:      models.Status_ACTIVE,
 			Name:        "mock",
@@ -85,9 +85,13 @@ func (tx *MockTx) NewSuppRule(r *models.SuppressionRule) (int64, error) {
 
 func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	return models.SuppRules{
-		models.SuppressionRule{Id: 1, Name: "rule1", Duration: 60},
-		models.SuppressionRule{Id: 2, Name: "rule2", Duration: 60},
+		&models.SuppressionRule{Id: 1, Name: "rule1", Duration: 60},
+		&models.SuppressionRule{Id: 2, Name: "rule2", Duration: 60},
 	}, nil
+}
+
+func (tx *MockTx) NewRecord(alertId int64, event string) (int64, error) {
+	return 1, nil
 }
 
 func (tx *MockTx) Commit() error {

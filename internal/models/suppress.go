@@ -84,8 +84,8 @@ func (s SuppressionRule) TimeLeft() time.Duration {
 	return s.CreatedAt.Add(time.Duration(s.Duration) * time.Second).Sub(time.Now())
 }
 
-func NewSuppRule(entities Labels, rtype, reason, creator string, duration time.Duration) SuppressionRule {
-	return SuppressionRule{
+func NewSuppRule(entities Labels, rtype, reason, creator string, duration time.Duration) *SuppressionRule {
+	return &SuppressionRule{
 		Name:      fmt.Sprintf("Rule - %s - %v", creator, duration),
 		Rtype:     typeMap[rtype],
 		CreatedAt: MyTime{time.Now()},
@@ -96,7 +96,7 @@ func NewSuppRule(entities Labels, rtype, reason, creator string, duration time.D
 	}
 }
 
-type SuppRules []SuppressionRule
+type SuppRules []*SuppressionRule
 
 func (tx *Tx) SelectRules(query string, args ...interface{}) (SuppRules, error) {
 	var rules SuppRules

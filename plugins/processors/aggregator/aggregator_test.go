@@ -64,7 +64,7 @@ func (t *MockTx) InSelect(query string, to interface{}, arg ...interface{}) erro
 }
 
 func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts, error) {
-	return models.Alerts{*mockAlerts["bgp_1"], *mockAlerts["bgp_2"]}, nil
+	return models.Alerts{mockAlerts["bgp_1"], mockAlerts["bgp_2"]}, nil
 }
 
 func (tx *MockTx) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
@@ -73,6 +73,10 @@ func (tx *MockTx) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
 
 func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	return models.SuppRules{}, nil
+}
+
+func (tx *MockTx) NewRecord(alertId int64, event string) (int64, error) {
+	return 1, nil
 }
 
 type mockGrouper struct {

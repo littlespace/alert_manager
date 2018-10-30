@@ -70,8 +70,8 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 	}
 }
 
-func (s *suppressor) SaveRule(ctx context.Context, tx models.Txn, rule models.SuppressionRule) (int64, error) {
-	id, err := tx.NewSuppRule(&rule)
+func (s *suppressor) SaveRule(ctx context.Context, tx models.Txn, rule *models.SuppressionRule) (int64, error) {
+	id, err := tx.NewSuppRule(rule)
 	if err != nil {
 		return 0, err
 	}
@@ -94,10 +94,10 @@ func (s *suppressor) DeleteRule(ctx context.Context, tx models.Txn, id int64) er
 	return tx.InQuery(models.QueryDeleteSuppRules, []int64{id})
 }
 
-func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) (models.SuppressionRule, bool) {
+func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) (*models.SuppressionRule, bool) {
 	s.Lock()
 	defer s.Unlock()
-	var matches []models.SuppressionRule
+	var matches []*models.SuppressionRule
 	for i := 0; i < len(s.suppRules); i++ {
 		rule := s.suppRules[i]
 		if rule.Match(labels, cond) {
@@ -116,14 +116,14 @@ func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) (mo
 		})
 		return matches[0], true
 	}
-	return models.SuppressionRule{}, false
+	return &models.SuppressionRule{}, false
 }
 
 func (s *suppressor) SuppressAlert(
 	ctx context.Context,
 	tx models.Txn,
 	alert *models.Alert,
-	rule models.SuppressionRule,
+	rule *models.SuppressionRule,
 ) error {
 	alert.Suppress(time.Duration(rule.Duration) * time.Second)
 	if err := tx.UpdateAlert(alert); err != nil {

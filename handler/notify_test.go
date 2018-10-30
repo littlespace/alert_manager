@@ -14,14 +14,15 @@ func TestNotify(t *testing.T) {
 	notif := &notifier{notifiedAlerts: make(map[int64]*notification)}
 	notifyChan := make(chan *AlertEvent, 1)
 	RegisterOutput("slack", notifyChan)
+	tx := &MockTx{}
 
 	// test notify delay
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	assert.Equal(t, len(notif.notifiedAlerts), 0)
 
 	// test first notification
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	recvd := <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_ACTIVE)
 	assert.Equal(t, recvd.Alert, mockAlert)
@@ -29,12 +30,12 @@ func TestNotify(t *testing.T) {
 
 	// test second notification
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)
 
 	// test clear notify
 	event = &AlertEvent{Type: EventType_CLEARED, Alert: mockAlert}
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	recvd = <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_CLEARED)
 	assert.Equal(t, recvd.Alert, mockAlert)
@@ -46,10 +47,11 @@ func TestNotifyReminder(t *testing.T) {
 	notif := &notifier{notifiedAlerts: make(map[int64]*notification)}
 	notifyChan := make(chan *AlertEvent, 1)
 	RegisterOutput("slack", notifyChan)
+	tx := &MockTx{}
 
 	// first notif
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	recvd := <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_ACTIVE)
 	assert.Equal(t, recvd.Alert, mockAlert)
@@ -69,7 +71,7 @@ func TestNotifyReminder(t *testing.T) {
 	// escalate and remind
 	mockAlert.Severity = models.Sev_CRITICAL
 	event = &AlertEvent{Type: EventType_ESCALATED, Alert: mockAlert}
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	notif.notifiedAlerts[mockAlert.Id].lastNotified = time.Now().Add(-20 * time.Minute)
 	notif.remind()
 	recvd = <-notifyChan
@@ -79,14 +81,14 @@ func TestNotifyReminder(t *testing.T) {
 
 	// alert suppressed - no remind
 	mockAlert.Suppress(30 * time.Minute)
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	notif.remind()
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)
 
 	// alert expired - no remind
 	mockAlert.Status = models.Status_EXPIRED
 	event = &AlertEvent{Type: EventType_EXPIRED, Alert: mockAlert}
-	notif.Notify(event)
+	notif.Notify(event, tx)
 	recvd = <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_EXPIRED)
 	assert.Equal(t, recvd.Alert, mockAlert)

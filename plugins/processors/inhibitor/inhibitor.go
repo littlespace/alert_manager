@@ -2,6 +2,7 @@ package inhibitor
 
 import (
 	"context"
+	"fmt"
 	"github.com/golang/glog"
 	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
@@ -80,6 +81,7 @@ func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig) {
 			if err != nil {
 				return err
 			}
+			tx.NewRecord(a.Id, fmt.Sprintf("Alert Inhibited due to matching inhibit rule: %s", rule.Name))
 			i.statAlertsInhibited.Add(1)
 		}
 		return nil

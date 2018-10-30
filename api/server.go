@@ -40,6 +40,8 @@ func buildSelectQuery(req *http.Request) (models.Query, error) {
 			query.Offset, _ = strconv.Atoi(v[0])
 		case "timerange":
 			query.TimeRange = v[0]
+		case "history":
+			query.IncludeHistory = true
 		default:
 			if strings.HasSuffix(q, "__in") {
 				parts := strings.Split(q, "__")
@@ -313,7 +315,7 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) CreateSuppRule(w http.ResponseWriter, req *http.Request) {
-	rule := models.SuppressionRule{}
+	rule := &models.SuppressionRule{}
 	if err := json.NewDecoder(req.Body).Decode(&rule); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid parameters for query: %v", err), http.StatusBadRequest)
 		return

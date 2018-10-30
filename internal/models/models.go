@@ -52,8 +52,11 @@ type Txn interface {
 	NewAlert(alert *Alert) (int64, error)
 	GetAlert(query string, args ...interface{}) (*Alert, error)
 	SelectAlerts(query string, args ...interface{}) (Alerts, error)
+	SelectAlertsWithHistory(query string, args ...interface{}) (Alerts, error)
+	AddAlertHistory(alerts Alerts) error
 	SelectRules(query string, args ...interface{}) (SuppRules, error)
 	NewSuppRule(rule *SuppressionRule) (int64, error)
+	NewRecord(alertId int64, event string) (int64, error)
 	Rollback() error
 	Commit() error
 	Exec(query string, args ...interface{}) error

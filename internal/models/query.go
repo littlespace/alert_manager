@@ -47,11 +47,12 @@ type Querier interface {
 }
 
 type Query struct {
-	Table     string
-	Limit     int
-	Offset    int
-	TimeRange string
-	Params    []Param
+	Table          string
+	Limit          int
+	Offset         int
+	TimeRange      string
+	IncludeHistory bool
+	Params         []Param
 }
 
 func NewQuery(table string) Query {
@@ -91,6 +92,9 @@ func (q Query) toSQL() string {
 				continue
 			}
 		}
+		if p.Field == "id" && q.Table == "alerts" {
+			p.Field = "alerts.id"
+		}
 		if quer, err := executeQueryTpl(sqlTpl, p); err == nil {
 			query += quer
 		}
@@ -98,17 +102,29 @@ func (q Query) toSQL() string {
 			query = query + " AND "
 		}
 	}
-	return query + " ORDER BY id"
+	return query
 }
 
 func (q Query) Run(tx Txn) ([]interface{}, error) {
 	var items []interface{}
 	sql := q.toSQL()
+	sql += fmt.Sprintf(" ORDER BY %s.id", q.Table)
+	if q.Limit == 0 {
+		q.Limit = 25
+	}
+	sql += fmt.Sprintf(" LIMIT %d", q.Limit)
+	if q.Offset > 0 {
+		sql += fmt.Sprintf(" OFFSET %d", q.Offset)
+	}
 	var err error
 	switch q.Table {
 	case "alerts":
 		var alerts Alerts
-		alerts, err = tx.SelectAlerts(sql)
+		if q.IncludeHistory {
+			alerts, err = tx.SelectAlertsWithHistory(sql)
+		} else {
+			alerts, err = tx.SelectAlerts(sql)
+		}
 		for _, a := range alerts {
 			items = append(items, a)
 		}
@@ -121,26 +137,6 @@ func (q Query) Run(tx Txn) ([]interface{}, error) {
 	}
 	if err != nil {
 		return items, err
-	}
-	if q.Limit == 0 {
-		// set a default limit of 25
-		if len(items) > 25 {
-			q.Limit = 25
-		} else {
-			q.Limit = len(items)
-		}
-	}
-	if q.Offset > 0 {
-		if q.Offset > len(items) {
-			return items, nil
-		}
-		items = items[q.Offset:]
-	}
-	if q.Limit > 0 {
-		if q.Limit > len(items) {
-			return items, nil
-		}
-		return items[:q.Limit], nil
 	}
 	return items, nil
 }

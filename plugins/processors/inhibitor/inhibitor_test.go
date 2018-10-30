@@ -38,13 +38,17 @@ type MockTx struct {
 
 func (tx *MockTx) InSelect(q string, to interface{}, args ...interface{}) error {
 	if to, ok := to.(*models.Alerts); ok {
-		*to = append(*to, *mockAlerts["dev_1"])
+		*to = append(*to, mockAlerts["dev_1"])
 	}
 	return nil
 }
 
 func (tx *MockTx) UpdateAlert(a *models.Alert) error {
 	return nil
+}
+
+func (tx *MockTx) NewRecord(alertId int64, event string) (int64, error) {
+	return 1, nil
 }
 
 func (tx *MockTx) Rollback() error {

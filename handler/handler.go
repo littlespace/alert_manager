@@ -166,6 +166,8 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		}
 		alert.Id = newId
 		glog.V(2).Infof("Received alert with ID: %v", alert.Id)
+		tx.NewRecord(newId, fmt.Sprintf("Alert created from source %s with severity %s",
+			alert.Source, alert.Severity.String()))
 	}
 
 	// check if alert matches an existing suppression rule based on alert labels
@@ -189,7 +191,7 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	}
 
 	// Send to interested parties
-	h.notifyReceivers(alert, EventType_ACTIVE)
+	h.notifyReceivers(alert, EventType_ACTIVE, tx)
 	return nil
 }
 
@@ -231,7 +233,7 @@ func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 		glog.Errorf("Failed update last active: %v", err)
 	}
 	// Send to interested parties
-	h.notifyReceivers(existingAlert, EventMap[existingAlert.Status.String()])
+	h.notifyReceivers(existingAlert, EventMap[existingAlert.Status.String()], tx)
 	return err == nil
 }
 
@@ -255,7 +257,7 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	}
 }
 
-func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType) {
+func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType, tx models.Txn) {
 	event := &AlertEvent{Alert: alert, Type: eventType}
 	gMu.Lock()
 	for alertName, recvChans := range Processors {
@@ -266,10 +268,9 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType)
 		}
 	}
 	gMu.Unlock()
-
 	// send the alert to the outputs. If the alert config or config outputs is undefined,
 	// the notifier will send it to the default output.
-	h.Notifier.Notify(event)
+	h.Notifier.Notify(event, tx)
 }
 
 func (h *AlertHandler) handleExpiry(ctx context.Context) {
@@ -286,11 +287,12 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 			}
 			glog.V(2).Infof("Alert ID %d has now expired", ex.Id)
 			ex.Status = models.Status_EXPIRED
-			if err := tx.UpdateAlert(&ex); err != nil {
+			if err := tx.UpdateAlert(ex); err != nil {
 				return err
 			}
+			tx.NewRecord(ex.Id, "Alert expired")
 			toSend := ex // this copy needed to avoid overwriting
-			h.notifyReceivers(&toSend, EventType_EXPIRED)
+			h.notifyReceivers(toSend, EventType_EXPIRED, tx)
 		}
 		return nil
 	})
@@ -324,12 +326,14 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 					changed = true
 					glog.V(2).Infof("Escalating alert %s:%d to %s", alert.Name, alert.Id, rule.EscalateTo)
 					alert.Severity = newSev
-					if err := tx.UpdateAlert(&alert); err != nil {
+					if err := tx.UpdateAlert(alert); err != nil {
 						return err
 					}
+					tx.NewRecord(alert.Id, fmt.Sprintf(
+						"Alert severity escalated to %s and notification sent to %v", newSev.String(), rule.SendTo))
 					for _, s := range rule.SendTo {
 						if outChan, ok := Outputs[s]; ok {
-							outChan <- &AlertEvent{Alert: &alert, Type: EventType_ESCALATED}
+							outChan <- &AlertEvent{Alert: alert, Type: EventType_ESCALATED}
 						}
 					}
 					break
@@ -337,7 +341,7 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 			}
 			if changed {
 				toSend := alert // this copy needed to avoid overwriting
-				h.notifyReceivers(&toSend, EventType_ESCALATED)
+				h.notifyReceivers(toSend, EventType_ESCALATED, tx)
 			}
 		}
 		return nil
@@ -383,7 +387,8 @@ func (h *AlertHandler) Suppress(
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, r); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
 	}
-	h.notifyReceivers(alert, EventType_SUPPRESSED)
+	tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))
+	h.notifyReceivers(alert, EventType_SUPPRESSED, tx)
 	go h.UnsuppWait(ctx, alert, duration)
 	return nil
 }
@@ -396,6 +401,7 @@ func (h *AlertHandler) UnsuppWait(ctx context.Context, alert *models.Alert, dura
 		if err != nil {
 			return err
 		}
+		tx.NewRecord(alert.Id, "Alert unsuppressed")
 		return h.handleActive(ctx, tx, alert)
 	})
 	if err != nil {
@@ -409,7 +415,8 @@ func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.A
 		h.statDbError.Add(1)
 		return err
 	}
-	h.notifyReceivers(alert, EventType_CLEARED)
+	tx.NewRecord(alert.Id, "Alert cleared")
+	h.notifyReceivers(alert, EventType_CLEARED, tx)
 	return nil
 }
 
@@ -420,13 +427,14 @@ func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *model
 		h.statDbError.Add(1)
 		return err
 	}
+	tx.NewRecord(alert.Id, fmt.Sprintf("Alert owner set to %s, team set to %s", name, teamName))
 	// Notify all the receivers
-	h.notifyReceivers(alert, EventType_ACKD)
+	h.notifyReceivers(alert, EventType_ACKD, tx)
 	return nil
 }
 
 // AddSuppRule adds a new suppression rule into the suppressor
-func (h *AlertHandler) AddSuppRule(ctx context.Context, rule models.SuppressionRule) (int64, error) {
+func (h *AlertHandler) AddSuppRule(ctx context.Context, rule *models.SuppressionRule) (int64, error) {
 	tx := h.Db.NewTx()
 	var id int64
 	var er error

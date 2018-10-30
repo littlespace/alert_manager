@@ -86,9 +86,9 @@ func (tx *MockTx) Exec(query string, args ...interface{}) error {
 func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts, error) {
 	switch query {
 	case models.QuerySelectExpired:
-		return models.Alerts{*mockAlerts["existing_a3"]}, nil
+		return models.Alerts{mockAlerts["existing_a3"]}, nil
 	case models.QuerySelectNoOwner:
-		return models.Alerts{*mockAlerts["existing_a4"]}, nil
+		return models.Alerts{mockAlerts["existing_a4"]}, nil
 	}
 	return models.Alerts{}, nil
 }
@@ -98,6 +98,10 @@ func (t *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRule
 }
 
 func (t *MockTx) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
+	return 1, nil
+}
+
+func (t *MockTx) NewRecord(alertId int64, event string) (int64, error) {
 	return 1, nil
 }
 

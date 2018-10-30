@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var mockRules = map[string]models.SuppressionRule{
+var mockRules = map[string]*models.SuppressionRule{
 	"rule1": models.NewSuppRule(models.Labels{"alert_name": "Test Alert 1"}, "alert", "test", "test", 1*time.Minute),
 	"rule2": models.NewSuppRule(models.Labels{"device": "dev2"}, "device", "test", "test", 1*time.Minute),
 	"rule3": models.NewSuppRule(models.Labels{"device": "dev3", "entity": "ent1"}, "entity", "test", "test", 1*time.Minute),

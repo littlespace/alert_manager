@@ -69,7 +69,9 @@ func (ag alertGroup) saveAgg(tx models.Txn) (*models.Alert, error) {
 	var origIds []int64
 	for _, o := range ag.groupedAlerts {
 		origIds = append(origIds, o.Id)
+		tx.NewRecord(o.Id, fmt.Sprintf("Alert aggregated into alert %d", agg.Id))
 	}
+	tx.NewRecord(agg.Id, fmt.Sprintf("Aggregated alert created from source alerts %v", origIds))
 	err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to update agg Ids: %v", err)
@@ -103,7 +105,7 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error
 			return err
 		}
 		notifier := ah.GetNotifier()
-		notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventMap[agg.Status.String()]})
+		notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventMap[agg.Status.String()]}, tx)
 		a.statAggsActive.Add(1)
 		return nil
 	})
@@ -115,16 +117,18 @@ func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.A
 	if rule, ok := supp.Match(labels, models.MatchCond_ANY); ok && rule.TimeLeft() > 0 {
 		duration := rule.TimeLeft()
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", agg.Id, rule)
+		msg := fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name)
 		r := models.NewSuppRule(
 			models.Labels{"alert_id": agg.Id},
 			"alert",
-			fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name),
+			msg,
 			"alert_manager",
 			duration,
 		)
 		if err := supp.SuppressAlert(ctx, tx, agg, r); err != nil {
 			return fmt.Errorf("Unable to suppress agg: %v", err)
 		}
+		tx.NewRecord(agg.Id, fmt.Sprintf("Alert Suppressed by alert_manager for %v : %s", duration, msg))
 		go func() {
 			time.Sleep(duration)
 			tx := a.db.NewTx()
@@ -134,6 +138,7 @@ func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.A
 			if err != nil {
 				glog.Errorf("Failed to unsuppress alert %d: %v", agg.Id, err)
 			}
+			tx.NewRecord(agg.Id, "Alert unsuppressed")
 		}()
 		return nil
 	}
@@ -164,13 +169,12 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 				continue
 			}
 			var status string
-			if alerts.AllCleared() {
-				glog.V(2).Infof("Agg : Agg Alert %d has now cleared", aggId)
-				status = "CLEARED"
-			}
 			if alerts.AllExpired() && rule.Alert.Config.AutoExpire != nil && *rule.Alert.Config.AutoExpire {
 				status = "EXPIRED"
 				glog.V(2).Infof("Agg : Agg Alert %d has now expired", aggId)
+			} else if alerts.AllInactive() {
+				glog.V(2).Infof("Agg : Agg Alert %d has now cleared", aggId)
+				status = "CLEARED"
 			}
 			if status != "" {
 				aggAlert.Status = models.StatusMap[status]
@@ -178,8 +182,9 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 					return fmt.Errorf("Agg: Unable to update agg status: %v", err)
 				}
 				a.statAggsActive.Add(-1)
+				tx.NewRecord(aggAlert.Id, fmt.Sprintf("Alert %s", status))
 				notifier := ah.GetNotifier()
-				notifier.Notify(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]})
+				notifier.Notify(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]}, tx)
 			}
 		}
 		return nil
