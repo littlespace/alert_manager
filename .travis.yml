@@ -8,8 +8,8 @@ services:
  - docker
 
 script:
+ - make
  - make test
- - make alert_manager
 
 notifications:
   email:

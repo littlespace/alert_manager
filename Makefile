@@ -25,7 +25,6 @@ debug:
 	go build -race ./cmd/alert_manager
 
 test:
-	dep ensure
 	go test -v -race -short -failfast ./...
 
 linux:
