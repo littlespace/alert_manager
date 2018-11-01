@@ -273,6 +273,10 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 		var err error
 		switch vars["action"] {
 		case "suppress":
+			if alert.Status != models.Status_ACTIVE {
+				http.Error(w, fmt.Sprintf("Alert %d is not ACTIVE", id), http.StatusBadRequest)
+				return fmt.Errorf("Invalid query: Alert %d is not ACTIVE", id)
+			}
 			durationStr, ok := queries["duration"]
 			if !ok {
 				http.Error(w, "Invalid query: expected duration", http.StatusBadRequest)
