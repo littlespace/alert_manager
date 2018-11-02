@@ -111,7 +111,7 @@ func NewMockServer() *Server {
 	return &Server{
 		handler: &ah.AlertHandler{
 			Db:         d,
-			Notifier:   ah.GetNotifier(),
+			Notifier:   ah.GetNotifier(d),
 			Suppressor: ah.GetSuppressor(d),
 		},
 		statGets:          &tu.MockStat{},

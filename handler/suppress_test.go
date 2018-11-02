@@ -71,25 +71,25 @@ func TestRuleMatch(t *testing.T) {
 
 	// test active match - any
 	labels := models.Labels{"alert_name": "Test Alert 1", "device": "dev1"}
-	rule, ok := s.Match(labels, models.MatchCond_ANY)
+	rule := s.Match(labels, models.MatchCond_ANY)
 	assert.Equal(t, rule, mockRules["rule1"])
 
 	// test active match - all
 	labels = models.Labels{"device": "dev3", "entity": "ent1"}
-	rule, ok = s.Match(labels, models.MatchCond_ALL)
+	rule = s.Match(labels, models.MatchCond_ALL)
 	assert.Equal(t, rule, mockRules["rule3"])
 
 	// test no match
 	labels = models.Labels{"foo": "bar"}
-	rule, ok = s.Match(labels, models.MatchCond_ANY)
-	assert.Equal(t, ok, false)
+	rule = s.Match(labels, models.MatchCond_ANY)
+	assert.Nil(t, rule)
 
 	// test expired match - rule removal
 	labels = models.Labels{"device": "dev2"}
-	rule, ok = s.Match(labels, models.MatchCond_ALL)
-	assert.Equal(t, ok, true)
-	rule, ok = s.Match(labels, models.MatchCond_ALL)
-	assert.Equal(t, ok, false)
+	rule = s.Match(labels, models.MatchCond_ALL)
+	assert.NotNil(t, rule)
+	rule = s.Match(labels, models.MatchCond_ALL)
+	assert.Nil(t, rule)
 }
 
 func TestSaveRule(t *testing.T) {
@@ -99,7 +99,7 @@ func TestSaveRule(t *testing.T) {
 	if _, err := s.SaveRule(context.Background(), &MockTx2{}, r); err != nil {
 		t.Fatal(err)
 	}
-	rule, _ := s.Match(e, models.MatchCond_ANY)
+	rule := s.Match(e, models.MatchCond_ANY)
 	assert.Equal(t, int(rule.Id), 1)
 }
 
@@ -116,8 +116,7 @@ func TestSuppAlert(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, a1.Status, models.Status_SUPPRESSED)
-	rule, ok := s.Match(labels, models.MatchCond_ANY)
-	assert.Equal(t, ok, true)
+	rule := s.Match(labels, models.MatchCond_ANY)
 	assert.Equal(t, int(rule.Id), 1)
 
 	// unsuppress

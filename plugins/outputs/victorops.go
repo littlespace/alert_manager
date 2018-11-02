@@ -10,6 +10,7 @@ import (
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type victorOpsMsg struct {
@@ -53,7 +54,10 @@ func (n *VictorOpsNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
 }
 
 func (n *VictorOpsNotifier) post(data []byte) {
-	resp, err := http.Post(n.Url, "application/json", bytes.NewBuffer(data))
+	c := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+	resp, err := c.Post(n.Url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		glog.Errorf("Output: Unable to post to victorops: %v", err)
 		return

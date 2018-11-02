@@ -35,5 +35,7 @@ func RegisterProcessor(alertName string, recvChan chan *AlertEvent) {
 }
 
 func RegisterOutput(outName string, outputChan chan *AlertEvent) {
+	gMu.Lock()
+	defer gMu.Unlock()
 	Outputs[outName] = outputChan
 }

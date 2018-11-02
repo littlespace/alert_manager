@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
@@ -17,6 +18,7 @@ type notification struct {
 
 type notifier struct {
 	notifiedAlerts map[int64]*notification
+	db             models.Dbase
 	sync.Mutex
 }
 
@@ -24,9 +26,9 @@ type notifier struct {
 var notif *notifier
 var once sync.Once
 
-func GetNotifier() *notifier {
+func GetNotifier(db models.Dbase) *notifier {
 	once.Do(func() {
-		notif = &notifier{notifiedAlerts: make(map[int64]*notification)}
+		notif = &notifier{notifiedAlerts: make(map[int64]*notification), db: db}
 		go func() {
 			t := time.NewTicker(remindCheckInterval)
 			for range t.C {
@@ -81,7 +83,7 @@ func (n *notifier) remind() {
 //    - if alert is expired then notify to configured or default outputs
 //    - if alert is suppressed then dont notify
 // - else send it to the default output
-func (n *notifier) Notify(event *AlertEvent, tx models.Txn) {
+func (n *notifier) Notify(event *AlertEvent) {
 	alert := event.Alert
 	alertConfig, ok := Config.GetAlertConfig(alert.Name)
 	if (ok && alertConfig.Config.DisableNotify) || alert.Owner.Valid {
@@ -125,12 +127,21 @@ func (n *notifier) Notify(event *AlertEvent, tx models.Txn) {
 			return
 		}
 	}
-	if ok {
-		n.send(event, alertConfig.Config.Outputs)
-		tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %v", alertConfig.Config.Outputs))
-	} else {
-		n.send(event, []string{})
-		tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %s", DefaultOutput))
+	tx := n.db.NewTx()
+	ctx := context.Background()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		var err error
+		if ok {
+			n.send(event, alertConfig.Config.Outputs)
+			_, err = tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %v", alertConfig.Config.Outputs))
+		} else {
+			n.send(event, []string{})
+			_, err = tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %s", DefaultOutput))
+		}
+		return err
+	})
+	if err != nil {
+		glog.V(2).Infof("Failed to create notif record: %v", err)
 	}
 }
 
@@ -138,16 +149,20 @@ func (n *notifier) send(event *AlertEvent, outputs []string) {
 	if len(outputs) == 0 {
 		outputs = append(outputs, DefaultOutput)
 	}
+	gMu.Lock()
 	for _, output := range outputs {
 		if outChan, ok := Outputs[output]; ok {
 			glog.V(2).Infof("Sending alert %s to %s", event.Alert.Name, output)
 			outChan <- event
 		}
 	}
+	gMu.Unlock()
 	n.reportToInflux(event)
 }
 
 func (n *notifier) reportToInflux(event *AlertEvent) {
+	gMu.Lock()
+	defer gMu.Unlock()
 	if influxOut, ok := Outputs["influx"]; ok {
 		influxOut <- event
 	}

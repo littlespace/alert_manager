@@ -104,8 +104,8 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error
 		if err := a.checkSupp(ctx, tx, agg); err != nil {
 			return err
 		}
-		notifier := ah.GetNotifier()
-		notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventMap[agg.Status.String()]}, tx)
+		notifier := ah.GetNotifier(a.db)
+		go notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventMap[agg.Status.String()]})
 		a.statAggsActive.Add(1)
 		return nil
 	})
@@ -114,7 +114,8 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error
 func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.Alert) error {
 	supp := ah.GetSuppressor(a.db)
 	labels := models.Labels{"alert_name": agg.Name}
-	if rule, ok := supp.Match(labels, models.MatchCond_ANY); ok && rule.TimeLeft() > 0 {
+	rule := supp.Match(labels, models.MatchCond_ANY)
+	if rule != nil && rule.Rtype == models.SuppType_ALERT && rule.TimeLeft() > 0 {
 		duration := rule.TimeLeft()
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", agg.Id, rule)
 		msg := fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name)
@@ -183,8 +184,8 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 				}
 				a.statAggsActive.Add(-1)
 				tx.NewRecord(aggAlert.Id, fmt.Sprintf("Alert %s", status))
-				notifier := ah.GetNotifier()
-				notifier.Notify(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]}, tx)
+				notifier := ah.GetNotifier(a.db)
+				go notifier.Notify(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]})
 			}
 		}
 		return nil

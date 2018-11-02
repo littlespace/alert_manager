@@ -9,26 +9,26 @@ import (
 )
 
 func TestNotify(t *testing.T) {
-	mockAlert := tu.MockAlert(1, "Test Alert 4", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
+	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
 	event := &AlertEvent{Type: EventType_ACTIVE, Alert: mockAlert}
-	notif := &notifier{notifiedAlerts: make(map[int64]*notification)}
+	db := &MockDb{}
+	notif = &notifier{notifiedAlerts: make(map[int64]*notification), db: db}
 	notifyChan := make(chan *AlertEvent, 1)
 	RegisterOutput("slack", notifyChan)
-	tx := &MockTx{}
 
 	// test notify delay
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	assert.Equal(t, len(notif.notifiedAlerts), 0)
 
 	// test ackd alert
 	event.Alert.Owner.Valid = true
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	assert.Equal(t, len(notif.notifiedAlerts), 0)
 	event.Alert.Owner.Valid = false
 
 	// test first notification
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	recvd := <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_ACTIVE)
 	assert.Equal(t, recvd.Alert, mockAlert)
@@ -36,28 +36,28 @@ func TestNotify(t *testing.T) {
 
 	// test second notification
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)
 
 	// test clear notify
 	event = &AlertEvent{Type: EventType_CLEARED, Alert: mockAlert}
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	recvd = <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_CLEARED)
 	assert.Equal(t, recvd.Alert, mockAlert)
 }
 
 func TestNotifyReminder(t *testing.T) {
-	mockAlert := tu.MockAlert(1, "Test Alert 4", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
+	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
 	event := &AlertEvent{Type: EventType_ACTIVE, Alert: mockAlert}
-	notif := &notifier{notifiedAlerts: make(map[int64]*notification)}
+	db := &MockDb{}
+	notif = &notifier{notifiedAlerts: make(map[int64]*notification), db: db}
 	notifyChan := make(chan *AlertEvent, 1)
 	RegisterOutput("slack", notifyChan)
-	tx := &MockTx{}
 
 	// first notif
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	recvd := <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_ACTIVE)
 	assert.Equal(t, recvd.Alert, mockAlert)
@@ -83,7 +83,7 @@ func TestNotifyReminder(t *testing.T) {
 	// escalate and remind
 	mockAlert.Severity = models.Sev_CRITICAL
 	event = &AlertEvent{Type: EventType_ESCALATED, Alert: mockAlert}
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	notif.notifiedAlerts[mockAlert.Id].lastNotified = time.Now().Add(-20 * time.Minute)
 	notif.remind()
 	recvd = <-notifyChan
@@ -93,14 +93,14 @@ func TestNotifyReminder(t *testing.T) {
 
 	// alert suppressed - no remind
 	mockAlert.Suppress(30 * time.Minute)
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	notif.remind()
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)
 
 	// alert expired - no remind
 	mockAlert.Status = models.Status_EXPIRED
 	event = &AlertEvent{Type: EventType_EXPIRED, Alert: mockAlert}
-	notif.Notify(event, tx)
+	notif.Notify(event)
 	recvd = <-notifyChan
 	assert.Equal(t, recvd.Type, EventType_EXPIRED)
 	assert.Equal(t, recvd.Alert, mockAlert)

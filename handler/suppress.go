@@ -94,7 +94,7 @@ func (s *suppressor) DeleteRule(ctx context.Context, tx models.Txn, id int64) er
 	return tx.InQuery(models.QueryDeleteSuppRules, []int64{id})
 }
 
-func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) (*models.SuppressionRule, bool) {
+func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) *models.SuppressionRule {
 	s.Lock()
 	defer s.Unlock()
 	var matches []*models.SuppressionRule
@@ -109,14 +109,13 @@ func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) (*m
 			}
 		}
 	}
-	// if more than one rules match, return the most recent
 	if len(matches) > 0 {
 		sort.Slice(matches, func(i, j int) bool {
 			return matches[i].CreatedAt.After(matches[j].CreatedAt.Time)
 		})
-		return matches[0], true
+		return matches[0]
 	}
-	return &models.SuppressionRule{}, false
+	return nil
 }
 
 func (s *suppressor) SuppressAlert(

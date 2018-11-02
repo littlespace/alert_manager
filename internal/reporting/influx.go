@@ -76,7 +76,10 @@ func (n *InfluxReporter) flush() {
 		n.buffer = n.buffer[:0]
 		return
 	}
-	resp, err := http.Post(n.Url, "binary/octet-stream", bytes.NewBuffer([]byte(data)))
+	c := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+	resp, err := c.Post(n.Url, "binary/octet-stream", bytes.NewBuffer([]byte(data)))
 	if err != nil {
 		//n.statsPostError.Add(1)
 		glog.Errorf("Output: Unable to post to influx: %v", err)

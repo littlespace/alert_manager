@@ -10,6 +10,7 @@ import (
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type SlackNotifier struct {
@@ -81,7 +82,10 @@ func (n *SlackNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
 }
 
 func (n *SlackNotifier) post(data []byte) {
-	resp, err := http.Post(n.Url, "application/json", bytes.NewBuffer(data))
+	c := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+	resp, err := c.Post(n.Url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		//n.statsPostError.Add(1)
 		glog.Errorf("Output: Unable to post to slack: %v", err)

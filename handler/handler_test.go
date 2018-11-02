@@ -127,7 +127,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 3)
@@ -158,6 +158,17 @@ func TestHandlerAlertActive(t *testing.T) {
 	event = <-mockNotifChan
 	assert.Equal(t, event.Type, EventType_SUPPRESSED)
 	assert.Equal(t, int(event.Alert.Id), 200)
+
+	rule = models.NewSuppRule(models.Labels{"device": "d2"}, "device", "", "", time.Duration(1*time.Minute))
+	h.Suppressor.SaveRule(ctx, tx, rule)
+	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
+	h.handleActive(ctx, tx, a2)
+	assert.Equal(t, int(a2.Id), 200)
+	assert.Equal(t, a2.Status.String(), "SUPPRESSED")
+	event = <-mockNotifChan
+	assert.Equal(t, event.Type, EventType_SUPPRESSED)
+	assert.Equal(t, int(event.Alert.Id), 200)
+
 }
 
 func TestHandlerAlertClear(t *testing.T) {
@@ -165,7 +176,7 @@ func TestHandlerAlertClear(t *testing.T) {
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 1)
@@ -194,7 +205,7 @@ func TestHandlerAlertExpiry(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 1)
@@ -212,7 +223,7 @@ func TestHandlerAlertEscalate(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification)}
+	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	mockNotifChan := make(chan *AlertEvent, 2)

@@ -5,16 +5,21 @@ import (
 	"time"
 )
 
+type SuppType int
+
 const (
-	SuppType_DEVICE = iota
-	SuppType_ALERT
-	SuppType_ENTITY
+	SuppType_DEVICE SuppType = 1
+	SuppType_ALERT  SuppType = 2
+	SuppType_ENTITY SuppType = 3
+	SuppType_ALL    SuppType = 4
 )
 
-var typeMap = map[string]int{
+var typeMap = map[string]SuppType{
 	"device": SuppType_DEVICE,
 	"alert":  SuppType_ALERT,
-	"entity": SuppType_ENTITY}
+	"entity": SuppType_ENTITY,
+	"all":    SuppType_ALL,
+}
 
 var (
 	QueryInsertRule = `INSERT INTO
@@ -39,7 +44,7 @@ var (
 
 type SuppressionRule struct {
 	Id         int64
-	Rtype      int
+	Rtype      SuppType
 	Name       string
 	Entities   Labels
 	CreatedAt  MyTime `db:"created_at"`
