@@ -54,8 +54,8 @@ func (t *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, err
 }
 
 func (t *MockTx) InQuery(query string, args ...interface{}) error {
-	mockAlerts["bgp_1"].SetAggId(mockAlerts["agg_bgp_12"].Id)
-	mockAlerts["bgp_2"].SetAggId(mockAlerts["agg_bgp_12"].Id)
+	mockAlerts["bgp_1"].AggregatorId = mockAlerts["agg_bgp_12"].Id
+	mockAlerts["bgp_2"].AggregatorId = mockAlerts["agg_bgp_12"].Id
 	return nil
 }
 
@@ -118,8 +118,8 @@ func TestAlertGrouping(t *testing.T) {
 	assert.Equal(t, agg.Severity, mockAlerts["agg_bgp_12"].Severity)
 	assert.Equal(t, agg.IsAggregate, true)
 
-	assert.Equal(t, mockAlerts["bgp_1"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
-	assert.Equal(t, mockAlerts["bgp_2"].AggregatorId.Int64, mockAlerts["agg_bgp_12"].Id)
+	assert.Equal(t, mockAlerts["bgp_1"].AggregatorId, mockAlerts["agg_bgp_12"].Id)
+	assert.Equal(t, mockAlerts["bgp_2"].AggregatorId, mockAlerts["agg_bgp_12"].Id)
 
 	assert.Equal(t, agg.Labels["device"], []string{"d1", "d2"})
 	assert.Equal(t, agg.Labels["entity"], []string{"e1", "e2"})

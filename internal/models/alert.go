@@ -105,7 +105,7 @@ type Alert struct {
 	LastActive   MyTime        `db:"last_active"`
 	AutoExpire   bool          `db:"auto_expire"`
 	AutoClear    bool          `db:"auto_clear"`
-	AggregatorId sql.NullInt64 `db:"agg_id"`
+	AggregatorId int64         `db:"agg_id"`
 	IsAggregate  bool          `db:"is_aggregate"`
 	ExpireAfter  sql.NullInt64 `db:"expire_after"`
 	Severity     AlertSeverity
@@ -147,7 +147,7 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		Tags:         a.Tags,
 		StartTime:    a.StartTime.Unix(),
 		LastActive:   a.LastActive.Unix(),
-		AggregatorId: a.AggregatorId.Int64,
+		AggregatorId: a.AggregatorId,
 		IsAggregate:  a.IsAggregate,
 		Severity:     a.Severity.String(),
 		Status:       a.Status.String(),
@@ -237,10 +237,6 @@ func (a *Alert) SetOwner(name, team string) {
 func (a *Alert) SetSeverity(sev AlertSeverity) {
 	glog.V(2).Infof("Setting alert %d Severity to %v", a.Id, sev)
 	a.Severity = sev
-}
-
-func (a *Alert) SetAggId(id int64) {
-	a.AggregatorId = sql.NullInt64{id, true}
 }
 
 func (a *Alert) Clear() {

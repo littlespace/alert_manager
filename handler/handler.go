@@ -237,8 +237,8 @@ func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 	}
 	// extend the expiry time if alert already exists
 	toUpdate := []int64{existingAlert.Id}
-	if existingAlert.AggregatorId.Valid {
-		toUpdate = append(toUpdate, existingAlert.AggregatorId.Int64)
+	if existingAlert.AggregatorId != 0 {
+		toUpdate = append(toUpdate, existingAlert.AggregatorId)
 	}
 	newLastActive := models.MyTime{time.Now()}
 	existingAlert.LastActive = newLastActive

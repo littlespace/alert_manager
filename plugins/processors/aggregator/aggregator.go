@@ -156,7 +156,7 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 		// group by agg-id
 		aggGroup := make(map[int64]models.Alerts)
 		for _, a := range allAggregated {
-			aggGroup[a.AggregatorId.Int64] = append(aggGroup[a.AggregatorId.Int64], a)
+			aggGroup[a.AggregatorId] = append(aggGroup[a.AggregatorId], a)
 		}
 		// check if every group needs clear/expiry
 		for aggId, alerts := range aggGroup {
@@ -278,7 +278,7 @@ func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 		select {
 		case event := <-a.Notif:
 			// check if alert has already been agg'd
-			if event.Alert.AggregatorId.Int64 != 0 {
+			if event.Alert.AggregatorId != 0 {
 				break
 			}
 			config, ok := ah.Config.GetAlertConfig(event.Alert.Name)
