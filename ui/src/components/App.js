@@ -9,6 +9,7 @@ import AlertsListView from '../views/AlertsListView';
 import AlertView from '../views/AlertView';
 
 import red from '@material-ui/core/colors/red';
+import blue from '@material-ui/core/colors/blue';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 
 const theme = createMuiTheme({
@@ -17,6 +18,7 @@ const theme = createMuiTheme({
       main: '#424242',
     },
     secondary: red,
+    damien: blue,
   },
   status: {
     danger: 'orange',

@@ -35,7 +35,7 @@ export class AlertManagerApi {
         var params = `?limit=${limit}`
 
         if (aggregate) {
-            params = params + `&is_aggregate=true`
+            params = params + `&agg_id=0`
         }
 
         if (timerange_h) {
@@ -64,6 +64,12 @@ export class AlertManagerApi {
           .then(response => response.json());
     }
 
+    getAlertWithHistory(id) {
+        return fetch(`${this.url}${url_alerts}?id=${id}&history=true`)
+          .then(response => response.json())
+          .then(data => data[0]);
+    }
+
     getContributingAlerts(id) {
         return fetch(`${this.url}${url_alerts}?agg_id=${id}` )
           .then(response => response.json());
@@ -89,6 +95,13 @@ export class AlertManagerApi {
           .catch(function(error) {
             console.log(error);
         });
+    }
+
+    bulkUpdateStatus({items, status}={}) {
+
+        for( var i in items) {
+            console.log(`Will update status for ${i} with ${status}`)
+        }
     }
 
     updateAlertStatus({id, status}={}) {
