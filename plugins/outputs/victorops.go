@@ -38,6 +38,8 @@ func (n *VictorOpsNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
 		m.MessageType = "CRITICAL"
 	case ah.EventType_CLEARED:
 		m.MessageType = "RECOVERY"
+	case ah.EventType_ACKD:
+		m.MessageType = "ACKNOWLEDGEMENT"
 	}
 
 	var device string
