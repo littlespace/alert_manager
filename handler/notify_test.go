@@ -20,12 +20,6 @@ func TestNotify(t *testing.T) {
 	notif.Notify(event)
 	assert.Equal(t, len(notif.notifiedAlerts), 0)
 
-	// test ackd alert
-	event.Alert.Owner.Valid = true
-	notif.Notify(event)
-	assert.Equal(t, len(notif.notifiedAlerts), 0)
-	event.Alert.Owner.Valid = false
-
 	// test first notification
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
 	notif.Notify(event)

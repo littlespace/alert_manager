@@ -327,7 +327,7 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 		for _, alert := range unAckd {
 			config, ok := Config.GetAlertConfig(alert.Name)
 			if !ok {
-				glog.V(2).Infof("Failed to check escalation for %s : No config found", alert.Name)
+				glog.V(4).Infof("Failed to check escalation for %s : No config found", alert.Name)
 				continue
 			}
 			var changed bool

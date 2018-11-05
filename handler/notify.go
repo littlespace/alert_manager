@@ -86,7 +86,7 @@ func (n *notifier) remind() {
 func (n *notifier) Notify(event *AlertEvent) {
 	alert := event.Alert
 	alertConfig, ok := Config.GetAlertConfig(alert.Name)
-	if (ok && alertConfig.Config.DisableNotify) || alert.Owner.Valid {
+	if ok && alertConfig.Config.DisableNotify {
 		n.reportToInflux(event)
 		return
 	}

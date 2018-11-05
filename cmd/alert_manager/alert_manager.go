@@ -34,7 +34,7 @@ func getVersion() string {
 	if version == "" {
 		return fmt.Sprintf("v%s~%s", nextVersion, commit)
 	}
-	return "v" + version
+	return fmt.Sprintf("%s~%s", version, commit)
 }
 
 func main() {
