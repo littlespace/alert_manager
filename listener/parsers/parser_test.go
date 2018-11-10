@@ -49,6 +49,18 @@ var testDatas = map[string]struct {
 			Source:  "observium",
 		},
 	},
+	"kapacitor": {
+		raw: `{"id":"Neteng Transit Util Out","message":"br2-lhr1:et-0/0/9:1","details":"Transit Util exceeds 0.4265067984","time":"2018-11-08T00:20:00Z","duration":0,"level":"WARNING","data":{"series":[{"name":"jnpr_interface_stat","tags":{"device":"br2-lhr1","entity":"et-0/0/9:1"},"columns":["time","sigma","stat"],"values":[["2018-11-08T00:20:00Z",0,0.4265067984]]}]},"previousLevel":"WARNING"}`,
+		parsed: &listener.WebHookAlertData{
+			Id:      "",
+			Name:    "Neteng Transit Util Out",
+			Details: "br2-lhr1:et-0/0/9:1:Transit Util exceeds 0.4265067984",
+			Device:  "br2-lhr1",
+			Entity:  "et-0/0/9:1",
+			Status:  listener.Status_ALERTING,
+			Source:  "kapacitor",
+		},
+	},
 }
 
 func TestParsing(t *testing.T) {
