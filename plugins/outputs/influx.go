@@ -13,9 +13,11 @@ func (n *InfluxNotifier) parseFromEvent(event *ah.AlertEvent) *reporting.Datapoi
 	tags := map[string]string{
 		"name":     alert.Name,
 		"entity":   alert.Entity,
-		"scope":    alert.Scope,
 		"severity": alert.Severity.String(),
 		"status":   alert.Status.String(),
+	}
+	if alert.Scope != "" {
+		tags["scope"] = alert.Scope
 	}
 	if alert.Device.Valid {
 		tags["device"] = alert.Device.String
