@@ -114,14 +114,14 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error
 func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.Alert) error {
 	supp := ah.GetSuppressor(a.db)
 	labels := models.Labels{"alert_name": agg.Name}
-	rule := supp.Match(labels, models.MatchCond_ANY)
-	if rule != nil && rule.Rtype == models.SuppType_ALERT && rule.TimeLeft() > 0 {
+	rule := supp.Match(labels)
+	if rule != nil && rule.TimeLeft() > 0 {
 		duration := rule.TimeLeft()
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", agg.Id, rule)
 		msg := fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name)
 		r := models.NewSuppRule(
 			models.Labels{"alert_id": agg.Id},
-			"alert",
+			models.MatchCond_ALL,
 			msg,
 			"alert_manager",
 			duration,
