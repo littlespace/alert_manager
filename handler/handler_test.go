@@ -149,7 +149,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Equal(t, mockAlerts["existing_a1"].LastActive, nowTime)
 
 	// test new active alert - suppressed
-	rule := models.NewSuppRule(models.Labels{"suppress": "me"}, "alert", "", "", time.Duration(1*time.Minute))
+	rule := models.NewSuppRule(models.Labels{"device": "d2"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
 	h.Suppressor.SaveRule(ctx, tx, rule)
 	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a2)
@@ -158,17 +158,6 @@ func TestHandlerAlertActive(t *testing.T) {
 	event = <-mockNotifChan
 	assert.Equal(t, event.Type, EventType_SUPPRESSED)
 	assert.Equal(t, int(event.Alert.Id), 200)
-
-	rule = models.NewSuppRule(models.Labels{"device": "d2"}, "device", "", "", time.Duration(1*time.Minute))
-	h.Suppressor.SaveRule(ctx, tx, rule)
-	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
-	h.handleActive(ctx, tx, a2)
-	assert.Equal(t, int(a2.Id), 200)
-	assert.Equal(t, a2.Status.String(), "SUPPRESSED")
-	event = <-mockNotifChan
-	assert.Equal(t, event.Type, EventType_SUPPRESSED)
-	assert.Equal(t, int(event.Alert.Id), 200)
-
 }
 
 func TestHandlerAlertClear(t *testing.T) {

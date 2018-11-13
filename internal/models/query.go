@@ -61,12 +61,14 @@ func NewQuery(table string) Query {
 
 func (q Query) toSQL() string {
 	baseQ := querySelectAlerts
+	start := "start_time"
 	if q.Table == "suppression_rules" {
 		baseQ = querySelectRules
+		start = "created_at"
 	}
 	tr, err := time.ParseDuration(q.TimeRange)
 	if err == nil && tr > 0 {
-		baseQ += fmt.Sprintf(" WHERE (cast(extract(epoch from now()) as integer) - start_time) < %d", int64(tr.Seconds()))
+		baseQ += fmt.Sprintf(" WHERE (cast(extract(epoch from now()) as integer) - %s) < %d", start, int64(tr.Seconds()))
 	}
 	if len(q.Params) == 0 {
 		return baseQ

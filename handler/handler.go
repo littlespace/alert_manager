@@ -95,7 +95,7 @@ func (h *AlertHandler) handleUnsuppressOnStart(ctx context.Context) {
 			if alert.Device.Valid {
 				labels["device"] = alert.Device.String
 			}
-			if rule := h.Suppressor.Match(labels, models.MatchCond_ALL); rule != nil {
+			if rule := h.Suppressor.Match(labels); rule != nil {
 				go h.UnsuppWait(ctx, alert, rule.TimeLeft())
 			}
 		}
@@ -171,7 +171,15 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	}
 
 	// check if alert matches an existing suppression rule based on alert labels
-	if rule := h.matchRule(alert); rule != nil && rule.TimeLeft() > 0 {
+	labels := models.Labels{
+		"device":     alert.Device.String,
+		"entity":     alert.Entity,
+		"alert_name": alert.Name,
+	}
+	for k, v := range alert.Labels {
+		labels[k] = v
+	}
+	if rule := h.Suppressor.Match(labels); rule != nil && rule.TimeLeft() > 0 {
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", alert.Id, rule)
 		return h.Suppress(
 			ctx, tx, alert, "alert_manager",
@@ -183,31 +191,6 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	// Send to interested parties
 	h.notifyReceivers(alert, EventType_ACTIVE)
 	return nil
-}
-
-func (h *AlertHandler) matchRule(alert *models.Alert) *models.SuppressionRule {
-	// find a matching suppression rule in order of specificity: ent->alert->device->labels
-	rule := h.Suppressor.Match(models.Labels{"device": alert.Device.String}, models.MatchCond_ALL)
-	if rule != nil && rule.Rtype == models.SuppType_DEVICE {
-		return rule
-	}
-	rule = h.Suppressor.Match(models.Labels{"entity": alert.Entity}, models.MatchCond_ALL)
-	if rule != nil && rule.Rtype == models.SuppType_ENTITY {
-		return rule
-	}
-	rule = h.Suppressor.Match(models.Labels{"alert_name": alert.Name}, models.MatchCond_ALL)
-	if rule != nil && rule.Rtype == models.SuppType_ALERT {
-		return rule
-	}
-	labels := models.Labels{"entity": alert.Entity, "alert_name": alert.Name}
-	if alert.Device.Valid {
-		labels["device"] = alert.Device.String
-	}
-	rule = h.Suppressor.Match(labels, models.MatchCond_ALL)
-	if rule != nil && rule.Rtype == models.SuppType_ALL {
-		return rule
-	}
-	return h.Suppressor.Match(alert.Labels, models.MatchCond_ANY)
 }
 
 func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
@@ -400,7 +383,7 @@ func (h *AlertHandler) Suppress(
 	if alert.Device.Valid {
 		ents["device"] = alert.Device.String
 	}
-	r := models.NewSuppRule(ents, "all", reason, creator, duration)
+	r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, creator, duration)
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, r); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
 	}

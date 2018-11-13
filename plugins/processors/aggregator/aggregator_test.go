@@ -134,7 +134,10 @@ func TestAlertGrouping(t *testing.T) {
 	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
 
 	// test suppressed
-	r := models.NewSuppRule(models.Labels{"alert_name": "Neteng_Aggregated BGP Down"}, "alert", "test", "test", 5*time.Minute)
+	r := models.NewSuppRule(
+		models.Labels{"alert_name": "Neteng_Aggregated BGP Down"},
+		models.MatchCond_ALL,
+		"test", "test", 5*time.Minute)
 	supp.SaveRule(ctx, &MockTx{}, r)
 	if err := a.handleGrouped(ctx, &ag); err != nil {
 		t.Fatal(err)

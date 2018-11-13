@@ -41,11 +41,11 @@ type AggregationRuleConfig struct {
 }
 
 type SuppressionRuleConfig struct {
-	Name     string
-	Duration time.Duration
-	Reason   string
-	Type     string
-	Matches  map[string]interface{}
+	Name           string
+	Duration       time.Duration
+	Reason         string
+	MatchCondition string `yaml:"match_condition"`
+	Matches        map[string]interface{}
 }
 
 type InhibitRuleConfig struct {

@@ -2,49 +2,36 @@ package models
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 )
 
-type SuppType int
+type MatchCondition int
 
 const (
-	SuppType_DEVICE SuppType = 1
-	SuppType_ALERT  SuppType = 2
-	SuppType_ENTITY SuppType = 3
-	SuppType_ALL    SuppType = 4
+	MatchCond_ALL MatchCondition = 1
+	MatchCond_ANY MatchCondition = 2
 )
 
-var typeMap = map[string]SuppType{
-	"device": SuppType_DEVICE,
-	"alert":  SuppType_ALERT,
-	"entity": SuppType_ENTITY,
-	"all":    SuppType_ALL,
-}
+var CondMap = map[string]MatchCondition{"all": MatchCond_ALL, "any": MatchCond_ANY}
 
 var (
 	QueryInsertRule = `INSERT INTO
     suppression_rules (
-      name, rtype, entities, created_at, duration, reason, creator
+      name, mcond, entities, created_at, duration, reason, creator
     ) VALUES (
-    :name, :rtype, :entities, :created_at, :duration, :reason, :creator
+    :name, :mcond, :entities, :created_at, :duration, :reason, :creator
     ) RETURNING id`
 
-	querySelectRules      = "SELECT * FROM suppression_rules"
-	QuerySelectActive     = querySelectRules + " WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
-	QuerySelectAlertRules = `SELECT DISTINCT ON ((entities->>'alert_id')::int) *
-		FROM suppression_rules
-		WHERE  (entities->>'alert_id')::int IN (?) AND
-		rtype = 1 AND creator = 'alert_manager' 
-		ORDER BY ((entities->>'alert_id')::int), created_at DESC;`
-
-	queryUpdateRules = "UPDATE suppression_rules"
-
+	querySelectRules     = "SELECT * FROM suppression_rules"
+	QuerySelectActive    = querySelectRules + " WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
+	queryUpdateRules     = "UPDATE suppression_rules"
 	QueryDeleteSuppRules = "DELETE FROM suppression_rules WHERE id IN (?)"
 )
 
 type SuppressionRule struct {
 	Id         int64
-	Rtype      SuppType
+	Mcond      MatchCondition
 	Name       string
 	Entities   Labels
 	CreatedAt  MyTime `db:"created_at"`
@@ -54,27 +41,38 @@ type SuppressionRule struct {
 	DontExpire bool
 }
 
-type MatchCondition int
-
-const (
-	MatchCond_ALL MatchCondition = 1
-	MatchCond_ANY MatchCondition = 2
-)
-
-func (s SuppressionRule) Match(labels Labels, cond MatchCondition) bool {
-	switch cond {
+func (s SuppressionRule) Match(labels Labels) bool {
+	switch s.Mcond {
 	case MatchCond_ALL:
-		for lk, lv := range labels {
-			ev, ok := s.Entities[lk]
-			if !ok || ev != lv {
+		for ek, ev := range s.Entities {
+			lv, ok := labels[ek]
+			if !ok {
+				return false
+			}
+			var match bool
+			if _, ok = lv.(string); ok {
+				match, _ = regexp.MatchString(ev.(string), lv.(string))
+			} else {
+				match = lv == ev
+			}
+			if !match {
 				return false
 			}
 		}
 		return true
 	case MatchCond_ANY:
-		for lk, lv := range labels {
-			ev, ok := s.Entities[lk]
-			if ok && ev == lv {
+		for ek, ev := range s.Entities {
+			lv, ok := labels[ek]
+			if !ok {
+				continue
+			}
+			var match bool
+			if _, ok = lv.(string); ok {
+				match, _ = regexp.MatchString(ev.(string), lv.(string))
+			} else {
+				match = lv == ev
+			}
+			if match {
 				return true
 			}
 		}
@@ -89,10 +87,10 @@ func (s SuppressionRule) TimeLeft() time.Duration {
 	return s.CreatedAt.Add(time.Duration(s.Duration) * time.Second).Sub(time.Now())
 }
 
-func NewSuppRule(entities Labels, rtype, reason, creator string, duration time.Duration) *SuppressionRule {
+func NewSuppRule(entities Labels, mcond MatchCondition, reason, creator string, duration time.Duration) *SuppressionRule {
 	return &SuppressionRule{
 		Name:      fmt.Sprintf("Rule - %s - %v", creator, duration),
-		Rtype:     typeMap[rtype],
+		Mcond:     mcond,
 		CreatedAt: MyTime{time.Now()},
 		Duration:  int64(duration.Seconds()),
 		Reason:    reason,

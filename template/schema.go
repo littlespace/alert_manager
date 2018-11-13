@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS suppression_rules (
   id SERIAL PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   entities JSON NOT NULL,
-  rtype SMALLINT  NOT NULL,
+  mcond SMALLINT  NOT NULL,
   created_at BIGINT NOT NULL,
   duration INT NOT NULL,
   reason TEXT,

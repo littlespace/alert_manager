@@ -9,10 +9,15 @@ import (
 	"time"
 )
 
-var mockRules = map[string]*models.SuppressionRule{
-	"rule1": models.NewSuppRule(models.Labels{"alert_name": "Test Alert 1"}, "alert", "test", "test", 1*time.Minute),
-	"rule2": models.NewSuppRule(models.Labels{"device": "dev2"}, "device", "test", "test", 1*time.Minute),
-	"rule3": models.NewSuppRule(models.Labels{"device": "dev3", "entity": "ent1"}, "entity", "test", "test", 1*time.Minute),
+var mockRules = []*models.SuppressionRule{
+	models.NewSuppRule(
+		models.Labels{"alert_name": "Test Alert 1", "device": "dev1"}, models.MatchCond_ALL, "test", "test", 1*time.Minute),
+	models.NewSuppRule(
+		models.Labels{"entity": "ent*", "alert_name": "Test Alert 1"}, models.MatchCond_ALL, "test", "test", 1*time.Minute),
+	models.NewSuppRule(
+		models.Labels{"device": "dev3", "entity": "e2"}, models.MatchCond_ANY, "test", "test", 1*time.Minute),
+	models.NewSuppRule(
+		models.Labels{"device": "dev2", "entity": "e1"}, models.MatchCond_ANY, "test", "test", 1*time.Minute),
 }
 
 type MockDb2 struct{}
@@ -31,8 +36,8 @@ type MockTx2 struct {
 
 func (tx *MockTx2) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	m := models.SuppRules{}
-	for n, r := range mockRules {
-		if n == "rule2" {
+	for i, r := range mockRules {
+		if i == 3 {
 			r.CreatedAt.Time = r.CreatedAt.Add(-5 * time.Minute)
 		}
 		m = append(m, r)
@@ -69,37 +74,43 @@ func TestRuleMatch(t *testing.T) {
 	s := &suppressor{db: &MockDb2{}}
 	s.loadSuppRules(context.Background())
 
-	// test active match - any
-	labels := models.Labels{"alert_name": "Test Alert 1", "device": "dev1"}
-	rule := s.Match(labels, models.MatchCond_ANY)
-	assert.Equal(t, rule, mockRules["rule1"])
-
 	// test active match - all
-	labels = models.Labels{"device": "dev3", "entity": "ent1"}
-	rule = s.Match(labels, models.MatchCond_ALL)
-	assert.Equal(t, rule, mockRules["rule3"])
+	labels := models.Labels{"alert_name": "Test Alert 1", "device": "dev1"}
+	rule := s.Match(labels)
+	assert.Equal(t, rule, mockRules[0])
+
+	// test active match - regex
+	labels = models.Labels{"entity": "ent1", "alert_name": "Test Alert 1"}
+	rule = s.Match(labels)
+	assert.Equal(t, rule, mockRules[1])
+
+	// test active match - any
+	labels = models.Labels{"entity": "e2"}
+	rule = s.Match(labels)
+	assert.Equal(t, rule, mockRules[2])
 
 	// test no match
 	labels = models.Labels{"foo": "bar"}
-	rule = s.Match(labels, models.MatchCond_ANY)
+	rule = s.Match(labels)
 	assert.Nil(t, rule)
 
 	// test expired match - rule removal
 	labels = models.Labels{"device": "dev2"}
-	rule = s.Match(labels, models.MatchCond_ALL)
+	rule = s.Match(labels)
 	assert.NotNil(t, rule)
-	rule = s.Match(labels, models.MatchCond_ALL)
+	assert.Equal(t, rule, mockRules[3])
+	rule = s.Match(labels)
 	assert.Nil(t, rule)
 }
 
 func TestSaveRule(t *testing.T) {
 	e := models.Labels{"alert_id": 1}
-	r := models.NewSuppRule(e, "alert", "test", "test", 5*time.Minute)
+	r := models.NewSuppRule(e, models.MatchCond_ALL, "test", "test", 5*time.Minute)
 	s := &suppressor{db: &MockDb2{}}
 	if _, err := s.SaveRule(context.Background(), &MockTx2{}, r); err != nil {
 		t.Fatal(err)
 	}
-	rule := s.Match(e, models.MatchCond_ANY)
+	rule := s.Match(e)
 	assert.Equal(t, int(rule.Id), 1)
 }
 
@@ -111,12 +122,12 @@ func TestSuppAlert(t *testing.T) {
 
 	// suppress and find a match
 	labels := models.Labels{"alert_id": a1.Id}
-	r := models.NewSuppRule(labels, "alert", "test", "test", 1*time.Minute)
+	r := models.NewSuppRule(labels, models.MatchCond_ALL, "test", "test", 1*time.Minute)
 	if err := s.SuppressAlert(ctx, tx, a1, r); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, a1.Status, models.Status_SUPPRESSED)
-	rule := s.Match(labels, models.MatchCond_ANY)
+	rule := s.Match(labels)
 	assert.Equal(t, int(rule.Id), 1)
 
 	// unsuppress
@@ -126,7 +137,7 @@ func TestSuppAlert(t *testing.T) {
 	assert.Equal(t, a1.Status, models.Status_ACTIVE)
 
 	a2 := tu.MockAlert(2, "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "1", "WARN", []string{}, nil)
-	r = models.NewSuppRule(models.Labels{"alert_id": a2.Id}, "alert", "test", "test", 1*time.Minute)
+	r = models.NewSuppRule(models.Labels{"alert_id": a2.Id}, models.MatchCond_ALL, "test", "test", 1*time.Minute)
 	if err := s.SuppressAlert(ctx, tx, a2, r); err != nil {
 		t.Fatal(err)
 	}

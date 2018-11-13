@@ -63,7 +63,7 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 	for _, rule := range Config.GetSuppressionRules() {
 		for k, v := range rule.Matches {
 			ents := models.Labels{k: v}
-			r := models.NewSuppRule(ents, rule.Type, rule.Reason, "alert manager", rule.Duration)
+			r := models.NewSuppRule(ents, models.CondMap[rule.MatchCondition], rule.Reason, "alert manager", rule.Duration)
 			r.DontExpire = true
 			s.suppRules = append(s.suppRules, r)
 		}
@@ -94,13 +94,13 @@ func (s *suppressor) DeleteRule(ctx context.Context, tx models.Txn, id int64) er
 	return tx.InQuery(models.QueryDeleteSuppRules, []int64{id})
 }
 
-func (s *suppressor) Match(labels models.Labels, cond models.MatchCondition) *models.SuppressionRule {
+func (s *suppressor) Match(labels models.Labels) *models.SuppressionRule {
 	s.Lock()
 	defer s.Unlock()
 	var matches []*models.SuppressionRule
 	for i := 0; i < len(s.suppRules); i++ {
 		rule := s.suppRules[i]
-		if rule.Match(labels, cond) {
+		if rule.Match(labels) {
 			matches = append(matches, rule)
 			if rule.TimeLeft() <= 0 {
 				// rule has expired, remove from cache

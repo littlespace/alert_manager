@@ -94,14 +94,14 @@ http://<am_url>/api/alerts/1/ack?owner=foo&team=bar
 The API also provides functionality for creating and clearing suppression rules. Alert suppression rules allow you to define conditions that suppress incoming alerts for a specified duration. Creation and clearing of rules requires you to first authenticate to the server using the method outlined above.
 
 #### Creating Rules:
-Match conditions are defined using *entities* . To create a new rule, send an authenticated POST request with the required fields encoded in json:
+Match conditions are defined using *entities* . For a match to be true, the entities of the rule are checked against the labels on the alert. To create a new rule, send an authenticated POST request with the required fields encoded in json:
 ```
 POST:
 http://<am_url>/api/suppression_rules
 
 Body:
     {
-        "Rtype": 0,
+        "Mcond": 1,  <---- 1  = match ALL entities. 2 = match ANY entity
         "Name": "test2",
         "Entities": {
             "alert_name": "Test Alert 1"
@@ -117,7 +117,7 @@ The response returned will be a rule encoded as json with the additional 'id' an
 ```
     {
         "Id": 1,
-        "Rtype": 0,
+        "Mcond": 1,
         "Name": "test2",
         "Entities": {
             "alert_name": "Test Alert 1"
