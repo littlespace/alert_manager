@@ -54,8 +54,13 @@ func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent,
 	defined, ok := ah.Config.GetAlertConfig(d.Name)
 	var scope string
 	if ok {
-		d.Level = defined.Config.Severity
+		if defined.Config.Severity != "" {
+			d.Level = defined.Config.Severity
+		}
 		scope = defined.Config.Scope
+	}
+	if d.Level == "" {
+		d.Level = "INFO"
 	}
 	event := &ah.AlertEvent{}
 	event.Alert = models.NewAlert(d.Name, d.Details, d.Entity, d.Source, scope, d.Id, d.Time, d.Level, false)

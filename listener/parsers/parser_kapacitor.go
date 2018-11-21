@@ -32,7 +32,7 @@ func (p *KapacitorParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 		glog.Errorf("Unable to decode json: %v", err)
 		return nil, err
 	}
-	details := d.Message + ":" + d.Details
+	details := d.Message + "\n" + d.Details
 	t, err := time.Parse(time.RFC3339, d.Time)
 	if err != nil {
 		glog.Errorf("Unable to parse time string , using current time")

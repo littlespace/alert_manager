@@ -323,19 +323,14 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 				if timePassed >= rule.After {
 					changed = true
 					glog.V(2).Infof("Escalating alert %s:%d to %s", alert.Name, alert.Id, rule.EscalateTo)
+					h.Notifier.Lock()
 					alert.Severity = newSev
+					h.Notifier.Unlock()
 					if err := tx.UpdateAlert(alert); err != nil {
 						return err
 					}
 					tx.NewRecord(alert.Id, fmt.Sprintf(
-						"Alert severity escalated to %s and notification sent to %v", newSev.String(), rule.SendTo))
-					gMu.Lock()
-					for _, s := range rule.SendTo {
-						if outChan, ok := Outputs[s]; ok {
-							outChan <- &AlertEvent{Alert: alert, Type: EventType_ESCALATED}
-						}
-					}
-					gMu.Unlock()
+						"Alert severity escalated to %s", newSev.String()))
 					break
 				}
 			}

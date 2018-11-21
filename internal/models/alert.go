@@ -33,7 +33,7 @@ var (
 	QueryUpdateStatus     = queryUpdateAlerts + " SET status=$1 WHERE id=$2 OR id IN (SELECT id from alerts WHERE agg_id=$2)"
 
 	querySelectAlerts       = "SELECT * from alerts"
-	QuerySelectByNames      = querySelectAlerts + " WHERE name IN (?) AND status=1 AND agg_id IS NULL FOR UPDATE"
+	QuerySelectByNames      = querySelectAlerts + " WHERE name IN (?) AND status=1 AND agg_id=0 FOR UPDATE"
 	QuerySelectById         = querySelectAlerts + " WHERE id=$1 FOR UPDATE"
 	QuerySelectByIds        = querySelectAlerts + " WHERE id IN (?) ORDER BY id FOR UPDATE"
 	QuerySelectByStatus     = querySelectAlerts + " WHERE status IN (?) ORDER BY id FOR UPDATE"

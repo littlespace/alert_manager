@@ -65,7 +65,7 @@ func (n *notifier) remind() {
 		notif.lastNotified = time.Now()
 		glog.V(2).Infof("Sending notification reminder for %d:%s", notif.event.Alert.Id, notif.event.Alert.Name)
 		if alertConfig, ok := Config.GetAlertConfig(notif.event.Alert.Name); ok {
-			n.send(notif.event, alertConfig.Config.Outputs)
+			n.send(notif.event, alertConfig.Config.Outputs.Get(notif.event.Alert.Severity.String()))
 		} else {
 			n.send(notif.event, []string{})
 		}
@@ -92,15 +92,23 @@ func (n *notifier) Notify(event *AlertEvent) {
 	}
 	n.Lock()
 	defer n.Unlock()
+	var outputs []string
+	if ok {
+		outputs = alertConfig.Config.Outputs.Get(event.Alert.Severity.String())
+	}
+	notif, alreadyNotified := n.notifiedAlerts[alert.Id]
+	if alreadyNotified {
+		notif.event = event
+	}
 	switch event.Type {
 	case EventType_ACTIVE:
-		if notif, alreadyNotified := n.notifiedAlerts[alert.Id]; alreadyNotified {
-			notif.event = event
+		if alreadyNotified {
 			return
 		}
 		if ok && alert.LastActive.Sub(alert.StartTime.Time) < alertConfig.Config.NotifyDelay {
 			return
 		}
+		n.reportToInflux(event)
 		n.notifiedAlerts[alert.Id] = &notification{event: event, lastNotified: time.Now()}
 	case EventType_CLEARED, EventType_EXPIRED:
 		delete(n.notifiedAlerts, alert.Id)
@@ -114,12 +122,11 @@ func (n *notifier) Notify(event *AlertEvent) {
 				return
 			}
 		}
-	case EventType_SUPPRESSED, EventType_ESCALATED, EventType_ACKD:
-		if notif, ok := n.notifiedAlerts[alert.Id]; ok {
+	case EventType_SUPPRESSED, EventType_ACKD:
+		if alreadyNotified {
 			if notif.event.Type == EventType_ACTIVE && event.Type == EventType_SUPPRESSED {
 				n.reportToInflux(event)
 			}
-			notif.event = event
 			return
 		}
 		if event.Type == EventType_SUPPRESSED || event.Type == EventType_ACKD {
@@ -127,17 +134,18 @@ func (n *notifier) Notify(event *AlertEvent) {
 			return
 		}
 	}
+	n.send(event, outputs)
 	tx := n.db.NewTx()
 	ctx := context.Background()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		var err error
-		if ok {
-			n.send(event, alertConfig.Config.Outputs)
-			_, err = tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %v", alertConfig.Config.Outputs))
+		var msg string
+		if len(outputs) > 0 {
+			msg = fmt.Sprintf("Alert notification sent to %v", outputs)
 		} else {
-			n.send(event, []string{})
-			_, err = tx.NewRecord(event.Alert.Id, fmt.Sprintf("Alert notification sent to %s", DefaultOutput))
+			msg = fmt.Sprintf("Alert notification sent to %s", DefaultOutput)
 		}
+		_, err = tx.NewRecord(event.Alert.Id, msg)
 		return err
 	})
 	if err != nil {
@@ -157,7 +165,6 @@ func (n *notifier) send(event *AlertEvent, outputs []string) {
 		}
 	}
 	gMu.Unlock()
-	n.reportToInflux(event)
 }
 
 func (n *notifier) reportToInflux(event *AlertEvent) {

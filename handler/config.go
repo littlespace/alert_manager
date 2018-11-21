@@ -9,6 +9,20 @@ import (
 	"time"
 )
 
+type Outs []struct {
+	Severity string
+	SendTo   []string `yaml:"send_to"`
+}
+
+func (o Outs) Get(sev string) []string {
+	for _, i := range o {
+		if i.Severity == sev {
+			return i.SendTo
+		}
+	}
+	return []string{}
+}
+
 type AlertConfig struct {
 	Name   string
 	Config struct {
@@ -23,12 +37,11 @@ type AlertConfig struct {
 		NotifyDelay      time.Duration `yaml:"notify_delay"`
 		NotifyRemind     time.Duration `yaml:"notify_remind"`
 		DisableNotify    bool          `yaml:"disable_notify"`
-		Outputs          []string
+		Outputs          Outs
 		AggregationRules []string `yaml:"aggregation_rules"`
 		EscalationRules  []struct {
 			After      time.Duration
-			EscalateTo string   `yaml:"escalate_to"`
-			SendTo     []string `yaml:"send_to"`
+			EscalateTo string `yaml:"escalate_to"`
 		} `yaml:"escalation_rules"`
 	}
 }

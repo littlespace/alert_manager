@@ -78,6 +78,9 @@ func TestNotifyReminder(t *testing.T) {
 	mockAlert.Severity = models.Sev_CRITICAL
 	event = &AlertEvent{Type: EventType_ESCALATED, Alert: mockAlert}
 	notif.Notify(event)
+	recvd = <-notifyChan
+	assert.Equal(t, recvd.Type, EventType_ESCALATED)
+	assert.Equal(t, recvd.Alert, mockAlert)
 	notif.notifiedAlerts[mockAlert.Id].lastNotified = time.Now().Add(-20 * time.Minute)
 	notif.remind()
 	recvd = <-notifyChan
@@ -87,6 +90,7 @@ func TestNotifyReminder(t *testing.T) {
 
 	// alert suppressed - no remind
 	mockAlert.Suppress(30 * time.Minute)
+	event = &AlertEvent{Type: EventType_SUPPRESSED, Alert: mockAlert}
 	notif.Notify(event)
 	notif.remind()
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)

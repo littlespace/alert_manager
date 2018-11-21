@@ -54,7 +54,7 @@ var testDatas = map[string]struct {
 		parsed: &listener.WebHookAlertData{
 			Id:      "",
 			Name:    "Neteng Transit Util Out",
-			Details: "br2-lhr1:et-0/0/9:1:Transit Util exceeds 0.4265067984",
+			Details: "br2-lhr1:et-0/0/9:1\nTransit Util exceeds 0.4265067984",
 			Device:  "br2-lhr1",
 			Entity:  "et-0/0/9:1",
 			Status:  listener.Status_ALERTING,
