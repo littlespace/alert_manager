@@ -21,8 +21,12 @@ alert_config:
       auto_clear: false
       # notify on clear (default : False)
       notify_on_clear: true
-      # set of outputs to send the alert notification to
-      outputs: [ slack ]
+      # set of per-severity outputs to send the alert notification to
+      outputs:
+        - severity: WARN
+          send_to: [ slack, email ]
+        - severity: CRITICAL
+          send_to: [ victorops ]
       # esc rules define how long an alert can remain unactioned(or unacknowledged)
       # before the severity gets bumped up. For e.g this can ultimately page the oncall
       escalation_rules:
@@ -30,7 +34,6 @@ alert_config:
           escalate_to: WARN
         - after: 10m
           escalate_to: CRITICAL
-          send_to: [ victorops ]
       # aggregation rules to associate with the alert, these are defined below
       aggregation_rules:
         - rule1
@@ -52,11 +55,14 @@ aggregation_rules:
         source: fibercut
         severity: WARN
         tags: [ neteng, bb, fibercut ]
-        outputs: [ slack ]
+        outputs:
+          - severity: WARN
+            send_to: [ slack ]
+          - severity: CRITICAL
+            send_to: [ victorops ]
         escalation_rules:
           - after: 15m
             escalate_to: CRITICAL
-            send_to: [ victorops ] 
 
 # supp rules are a set of persistent rules that match specified alert labels and
 # suppress the alerts. The labels are all custom defined inside the transforms
