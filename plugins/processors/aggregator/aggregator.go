@@ -23,10 +23,9 @@ type alertGroup struct {
 // aggAlert generates an aggregate alert for a given alert group based on defined config.
 func (ag alertGroup) aggAlert() *models.Alert {
 	rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.Name())
-	desc := ""
+	desc := ag.grouper.AggDesc(ag.groupedAlerts)
 	aggLabels := models.Labels{"device": []string{}, "entity": []string{}, "site": []string{}}
 	for _, o := range ag.groupedAlerts {
-		desc += o.Description + "\n"
 		aggLabels["entity"] = append(aggLabels["entity"].([]string), o.Entity)
 		if o.Device.Valid {
 			aggLabels["device"] = append(aggLabels["device"].([]string), o.Device.String)

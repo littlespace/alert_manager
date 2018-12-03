@@ -13,8 +13,10 @@ type bgpGrouper struct {
 func (g bgpGrouper) GrouperFunc() GroupingFunc {
 	return func(i, j *models.Alert) bool {
 		return (
-		// two ends of the same session
-		i.Labels["LocalDeviceName"] == j.Labels["RemoteDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["LocalDeviceName"] ||
+		// same host
+		i.Device.String == j.Device.String ||
+			// two ends of the same session
+			i.Labels["LocalDeviceName"] == j.Labels["RemoteDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["LocalDeviceName"] ||
 			// two sessions from/to same device
 			i.Labels["LocalDeviceName"] == j.Labels["LocalDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["RemoteDeviceName"])
 	}
@@ -22,6 +24,14 @@ func (g bgpGrouper) GrouperFunc() GroupingFunc {
 
 func (g *bgpGrouper) Name() string {
 	return g.name
+}
+
+func (g *bgpGrouper) AggDesc(alerts []*models.Alert) string {
+	msg := "Sessions down:\n"
+	for _, a := range alerts {
+		msg += a.Description + "\n"
+	}
+	return msg
 }
 
 func (g *bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {

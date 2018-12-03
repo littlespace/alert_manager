@@ -1,6 +1,7 @@
 package groupers
 
 import (
+	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
@@ -29,6 +30,17 @@ func (g fibercutGrouper) GrouperFunc() GroupingFunc {
 
 func (g *fibercutGrouper) Name() string {
 	return g.name
+}
+
+func (g *fibercutGrouper) AggDesc(alerts []*models.Alert) string {
+	msg := "Affected Interfaces:\n"
+	for _, a := range alerts {
+		msg += fmt.Sprintf(
+			"%s:%s, Provider: %s, CktId: %s\n",
+			a.Device.String, a.Entity, a.Labels["Provider"].(string), a.Labels["CktId"].(string),
+		)
+	}
+	return msg
 }
 
 func (g *fibercutGrouper) Valid(alerts []*models.Alert) []*models.Alert {

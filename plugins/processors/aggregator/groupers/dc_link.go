@@ -1,6 +1,7 @@
 package groupers
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
@@ -40,6 +41,19 @@ func (g dcCktGrouper) GrouperFunc() GroupingFunc {
 
 func (g *dcCktGrouper) Name() string {
 	return g.name
+}
+
+func (g *dcCktGrouper) AggDesc(alerts []*models.Alert) string {
+	msg := "Affected entities:\n"
+	for _, a := range alerts {
+		switch a.Labels["LabelType"].(string) {
+		case "Circuit":
+			msg += fmt.Sprintf("Interface: %s:%s\n", a.Device.String, a.Entity)
+		case "Bgp":
+			msg += fmt.Sprintf("Bgp Peer: %s\n", a.Entity)
+		}
+	}
+	return msg
 }
 
 func (g *dcCktGrouper) Valid(alerts []*models.Alert) []*models.Alert {

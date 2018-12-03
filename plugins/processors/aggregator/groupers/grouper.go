@@ -7,6 +7,7 @@ import (
 
 type Grouper interface {
 	Name() string
+	AggDesc(alerts []*models.Alert) string
 	Valid(alerts []*models.Alert) []*models.Alert
 	GrouperFunc() GroupingFunc
 }
