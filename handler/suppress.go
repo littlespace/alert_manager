@@ -73,7 +73,7 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 func (s *suppressor) SaveRule(ctx context.Context, tx models.Txn, rule *models.SuppressionRule) (int64, error) {
 	id, err := tx.NewSuppRule(rule)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("Unable to save rule: %v", err)
 	}
 	rule.Id = id
 	s.Lock()
@@ -122,14 +122,11 @@ func (s *suppressor) SuppressAlert(
 	ctx context.Context,
 	tx models.Txn,
 	alert *models.Alert,
-	rule *models.SuppressionRule,
+	duration time.Duration,
 ) error {
-	alert.Suppress(time.Duration(rule.Duration) * time.Second)
+	alert.Suppress(duration)
 	if err := tx.UpdateAlert(alert); err != nil {
 		return fmt.Errorf("Unable to update alert: %v", err)
-	}
-	if _, err := s.SaveRule(ctx, tx, rule); err != nil {
-		return fmt.Errorf("Unable to save rule: %v", err)
 	}
 	return nil
 }

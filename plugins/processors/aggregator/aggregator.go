@@ -119,14 +119,7 @@ func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.A
 		duration := rule.TimeLeft()
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", agg.Id, rule)
 		msg := fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name)
-		r := models.NewSuppRule(
-			models.Labels{"alert_id": agg.Id},
-			models.MatchCond_ALL,
-			msg,
-			"alert_manager",
-			duration,
-		)
-		if err := supp.SuppressAlert(ctx, tx, agg, r); err != nil {
+		if err := supp.SuppressAlert(ctx, tx, agg, duration); err != nil {
 			return fmt.Errorf("Unable to suppress agg: %v", err)
 		}
 		tx.NewRecord(agg.Id, fmt.Sprintf("Alert Suppressed by alert_manager for %v : %s", duration, msg))

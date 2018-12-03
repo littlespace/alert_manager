@@ -123,7 +123,10 @@ func TestSuppAlert(t *testing.T) {
 	// suppress and find a match
 	labels := models.Labels{"alert_id": a1.Id}
 	r := models.NewSuppRule(labels, models.MatchCond_ALL, "test", "test", 1*time.Minute)
-	if err := s.SuppressAlert(ctx, tx, a1, r); err != nil {
+	if err := s.SuppressAlert(ctx, tx, a1, 1*time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SaveRule(ctx, tx, r); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, a1.Status, models.Status_SUPPRESSED)
@@ -137,8 +140,7 @@ func TestSuppAlert(t *testing.T) {
 	assert.Equal(t, a1.Status, models.Status_ACTIVE)
 
 	a2 := tu.MockAlert(2, "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "1", "WARN", []string{}, nil)
-	r = models.NewSuppRule(models.Labels{"alert_id": a2.Id}, models.MatchCond_ALL, "test", "test", 1*time.Minute)
-	if err := s.SuppressAlert(ctx, tx, a2, r); err != nil {
+	if err := s.SuppressAlert(ctx, tx, a2, 1*time.Minute); err != nil {
 		t.Fatal(err)
 	}
 	// try to unsuppress a cleared alert, no go

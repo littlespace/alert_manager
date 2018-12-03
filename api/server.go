@@ -287,12 +287,21 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 				http.Error(w, fmt.Sprintf("Invalid duration: %s", err.Error()), http.StatusBadRequest)
 				return fmt.Errorf("Invalid duration: %s", err.Error())
 			}
+			creator := "alert_manager"
+			reason := "alert suppressed via API"
 			err = s.handler.Suppress(
 				ctx, tx, alert,
-				"alert_manager",
-				"alert suppressed via API",
+				creator,
+				reason,
 				duration,
 			)
+			// create an alert specific supp-rule to suppress all future similar alerts
+			ents := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
+			if alert.Device.Valid {
+				ents["device"] = alert.Device.String
+			}
+			r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, creator, duration)
+			_, err = s.handler.AddSuppRule(ctx, r)
 		case "clear":
 			err = s.handler.Clear(ctx, tx, alert)
 		case "ack":
