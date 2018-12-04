@@ -126,6 +126,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
@@ -164,6 +165,7 @@ func TestHandlerAlertClear(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
@@ -173,17 +175,17 @@ func TestHandlerAlertClear(t *testing.T) {
 
 	// test alert clear -non existing
 	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
-	h.handleClear(ctx, tx, a2)
+	h.handleClear(ctx, tx, a2, 0)
 	assert.Equal(t, a2.Status.String(), "ACTIVE")
 
 	// test alert clear - no autoclear
 	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{"a", "b"}, nil)
-	h.handleClear(ctx, tx, a1)
+	h.handleClear(ctx, tx, a1, 0)
 	assert.Equal(t, mockAlerts["existing_a1"].Status.String(), "ACTIVE")
 
 	// test alert clear - autoclear
 	mockAlerts["existing_a1"].AutoClear = true
-	h.handleClear(ctx, tx, a1)
+	h.handleClear(ctx, tx, a1, 0)
 	assert.Equal(t, mockAlerts["existing_a1"].Status.String(), "CLEARED")
 	event := <-mockNotifChan
 	assert.Equal(t, event.Type, EventType_CLEARED)
@@ -193,6 +195,7 @@ func TestHandlerAlertClear(t *testing.T) {
 func TestHandlerAlertExpiry(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
@@ -211,6 +214,7 @@ func TestHandlerAlertExpiry(t *testing.T) {
 func TestHandlerAlertEscalate(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
