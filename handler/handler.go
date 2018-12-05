@@ -8,6 +8,7 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/stats"
 	"regexp"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,7 @@ const (
 
 	EXPIRY_CHECK_INTERVAL     = 5 * time.Minute
 	ESCALATION_CHECK_INTERVAL = 3 * time.Minute
+	CLEAR_HOLDDOWN_INTERVAL   = 1 * time.Minute
 )
 
 var EventMap = map[string]EventType{
@@ -55,6 +57,32 @@ var ListenChan = make(chan *AlertEvent)
 // default output channel
 var DefaultOutput string
 
+// ClearHandler keeps a track of clearing active alerts
+type ClearHandler struct {
+	actives map[int64]chan struct{}
+	sync.RWMutex
+}
+
+func (c *ClearHandler) get(id int64) (chan struct{}, bool) {
+	c.RLock()
+	defer c.RUnlock()
+	resetClear, ok := c.actives[id]
+	return resetClear, ok
+}
+
+func (c *ClearHandler) add(id int64) chan struct{} {
+	c.Lock()
+	defer c.Unlock()
+	c.actives[id] = make(chan struct{})
+	return c.actives[id]
+}
+
+func (c *ClearHandler) delete(id int64) {
+	c.Lock()
+	defer c.Unlock()
+	delete(c.actives, id)
+}
+
 // AlertHandler handles common alert operations such as expiry, suppression etc.
 // It also sends alerts to interested receivers
 type AlertHandler struct {
@@ -62,6 +90,7 @@ type AlertHandler struct {
 	Db         models.Dbase
 	Notifier   *notifier
 	Suppressor *suppressor
+	clearer    *ClearHandler
 
 	statTransformError stats.Stat
 	statDbError        stats.Stat
@@ -73,6 +102,7 @@ func NewHandler(db models.Dbase) *AlertHandler {
 		Db:                 db,
 		Notifier:           GetNotifier(db),
 		Suppressor:         GetSuppressor(db),
+		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
 		statTransformError: stats.NewCounter("handler.transform_errors"),
 		statDbError:        stats.NewCounter("handler.db_errors"),
 	}
@@ -135,7 +165,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 				case EventType_ACTIVE:
 					return h.handleActive(ctx, tx, alert)
 				case EventType_CLEARED:
-					return h.handleClear(ctx, tx, alert)
+					return h.handleClear(ctx, tx, alert, CLEAR_HOLDDOWN_INTERVAL)
 				}
 				return nil
 			})
@@ -204,7 +234,7 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	return nil
 }
 
-func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
+func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *models.Alert, holddown time.Duration) error {
 	// clear existing alert if auto clear is true
 	existingAlert, err := h.GetExisting(tx, alert)
 	if err != nil {
@@ -215,10 +245,38 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 		glog.V(2).Infof("Not auto-clearing alert %d ", existingAlert.Id)
 		return nil
 	}
-	err = h.Clear(ctx, tx, existingAlert)
+	// wait for a holddown period before clearing the alert to avoid flaps
+	if holddown == 0 {
+		return h.clearAlert(ctx, tx, existingAlert)
+	}
+	go func() {
+		t := time.NewTimer(holddown)
+		resetClear := h.clearer.add(existingAlert.Id)
+		defer h.clearer.delete(existingAlert.Id)
+		for {
+			select {
+			case <-t.C:
+				newTx := h.Db.NewTx()
+				err := models.WithTx(ctx, newTx, func(ctx context.Context, tx models.Txn) error {
+					return h.clearAlert(ctx, tx, existingAlert)
+				})
+				if err != nil {
+					glog.Error(err)
+				}
+				return
+			case <-resetClear:
+				return
+			}
+		}
+	}()
+	return nil
+}
+
+func (h *AlertHandler) clearAlert(ctx context.Context, tx models.Txn, alert *models.Alert) error {
+	err := h.Clear(ctx, tx, alert)
 	if err != nil {
 		h.statDbError.Add(1)
-		return fmt.Errorf("Cant clear existing alert %d: %v", existingAlert.Id, err)
+		return fmt.Errorf("Cant clear existing alert %d: %v", alert.Id, err)
 	}
 	return nil
 }
@@ -240,6 +298,9 @@ func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 	if err != nil {
 		h.statDbError.Add(1)
 		glog.Errorf("Failed update last active: %v", err)
+	}
+	if resetClear, ok := h.clearer.get(existingAlert.Id); ok {
+		resetClear <- struct{}{}
 	}
 	// Send to interested parties
 	h.notifyReceivers(existingAlert, EventMap[existingAlert.Status.String()])

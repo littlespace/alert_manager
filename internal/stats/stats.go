@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/reporting"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -143,8 +144,21 @@ func StartExport(ctx context.Context, interval time.Duration) {
 				}
 				g.Reset()
 			}
+			for _, dp := range internalStats() {
+				reporting.DataChan <- dp
+			}
 		case <-ctx.Done():
 			return
 		}
+	}
+}
+
+func internalStats() []*reporting.Datapoint {
+	return []*reporting.Datapoint{
+		&reporting.Datapoint{
+			Measurement: measurement,
+			Fields:      map[string]interface{}{"internal.num_goroutines": runtime.NumGoroutine()},
+			TimeStamp:   time.Now(),
+		},
 	}
 }
