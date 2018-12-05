@@ -23,10 +23,9 @@ type alertGroup struct {
 // aggAlert generates an aggregate alert for a given alert group based on defined config.
 func (ag alertGroup) aggAlert() *models.Alert {
 	rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.Name())
-	desc := ""
+	desc := ag.grouper.AggDesc(ag.groupedAlerts)
 	aggLabels := models.Labels{"device": []string{}, "entity": []string{}, "site": []string{}}
 	for _, o := range ag.groupedAlerts {
-		desc += o.Description + "\n"
 		aggLabels["entity"] = append(aggLabels["entity"].([]string), o.Entity)
 		if o.Device.Valid {
 			aggLabels["device"] = append(aggLabels["device"].([]string), o.Device.String)
@@ -119,14 +118,7 @@ func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.A
 		duration := rule.TimeLeft()
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", agg.Id, rule)
 		msg := fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name)
-		r := models.NewSuppRule(
-			models.Labels{"alert_id": agg.Id},
-			models.MatchCond_ALL,
-			msg,
-			"alert_manager",
-			duration,
-		)
-		if err := supp.SuppressAlert(ctx, tx, agg, r); err != nil {
+		if err := supp.SuppressAlert(ctx, tx, agg, duration); err != nil {
 			return fmt.Errorf("Unable to suppress agg: %v", err)
 		}
 		tx.NewRecord(agg.Id, fmt.Sprintf("Alert Suppressed by alert_manager for %v : %s", duration, msg))

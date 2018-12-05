@@ -181,11 +181,22 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	}
 	if rule := h.Suppressor.Match(labels); rule != nil && rule.TimeLeft() > 0 {
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", alert.Id, rule)
-		return h.Suppress(
-			ctx, tx, alert, "alert_manager",
-			fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name),
-			rule.TimeLeft(),
-		)
+		duration := rule.TimeLeft()
+		reason := fmt.Sprintf("Alert suppressed due to matching suppression Rule %d:%s", rule.Id, rule.Name)
+		if err := h.Suppress(ctx, tx, alert, "alert_manager", reason, duration); err != nil {
+			return err
+		}
+		if rule.DontExpire {
+			ents := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
+			if alert.Device.Valid {
+				ents["device"] = alert.Device.String
+			}
+			r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, "alert_manager", duration)
+			if _, err := h.AddSuppRule(ctx, r); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	// Send to interested parties
@@ -373,13 +384,7 @@ func (h *AlertHandler) Suppress(
 	creator, reason string,
 	duration time.Duration,
 ) error {
-	// create an alert specific supp-rule to suppress all future similar alerts
-	ents := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
-	if alert.Device.Valid {
-		ents["device"] = alert.Device.String
-	}
-	r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, creator, duration)
-	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, r); err != nil {
+	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, duration); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
 	}
 	tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))

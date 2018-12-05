@@ -44,6 +44,10 @@ func (tx *MockTx) InQuery(query string, arg ...interface{}) error {
 	return nil
 }
 
+func (tx *MockTx) InSelect(query string, to interface{}, arg ...interface{}) error {
+	return nil
+}
+
 func (tx *MockTx) SelectAlerts(query string, arg ...interface{}) (models.Alerts, error) {
 	var alerts models.Alerts
 	for i := 1; i <= 2; i++ {

@@ -26,15 +26,22 @@ var testDatas = map[string]struct {
 				4, "Neteng BGP Down", "", "dev2", "PeerY", "src", "scp", "4", "WARN", []string{"bgp", "dc"},
 				models.Labels{"LabelType": "Bgp", "Type": "ebgp", "LocalDeviceName": "dev2", "LocalInterface": "if2", "LocalIp": "a:b:c::2", "RemoteDeviceName": "dev1", "RemoteInterface": "if1", "RemoteIp": "a:b:c::1"}),
 			tu.MockAlert(
-				5, "Neteng BGP Down", "", "dev1", "PeerZ", "src", "scp", "5", "WARN", []string{"bgp", "dc"},
-				models.Labels{"LabelType": "Bgp", "Type": "ebgp", "LocalDeviceName": "dev1", "LocalInterface": "if3", "LocalIp": "2.2.2.1", "RemoteDeviceName": "dev3", "RemoteInterface": "if4", "RemoteIp": "2.2.2.2"}),
+				5, "Neteng BGP Down", "", "dev3", "PeerZ", "src", "scp", "5", "WARN", []string{"bgp", "dc"},
+				models.Labels{"LabelType": "Bgp", "Type": "ebgp", "LocalDeviceName": "dev3", "LocalInterface": "if3", "LocalIp": "2.2.2.1", "RemoteDeviceName": "dev4", "RemoteInterface": "if4", "RemoteIp": "2.2.2.2"}),
 			tu.MockAlert(
-				6, "Neteng BGP Down", "", "dev3", "PeerA", "src", "scp", "6", "WARN", []string{"bgp", "dc"},
-				models.Labels{"LabelType": "Bgp", "Type": "ebgp", "LocalDeviceName": "dev3", "LocalInterface": "if4", "LocalIp": "2.2.2.2", "RemoteDeviceName": "dev1", "RemoteInterface": "if3", "RemoteIp": "2.2.2.1"}),
+				6, "Neteng BGP Down", "", "dev4", "PeerA", "src", "scp", "6", "WARN", []string{"bgp", "dc"},
+				models.Labels{"LabelType": "Bgp", "Type": "ebgp", "LocalDeviceName": "dev4", "LocalInterface": "if4", "LocalIp": "2.2.2.2", "RemoteDeviceName": "dev3", "RemoteInterface": "if3", "RemoteIp": "2.2.2.1"}),
+			tu.MockAlert(
+				7, "Neteng BGP Down", "", "dev100", "PeerY", "src", "scp", "1", "WARN", []string{"bgp", "dc"},
+				models.Labels{"LabelType": "Bgp", "Type": "ebgp", "LocalDeviceName": "dev100", "LocalInterface": "if1", "LocalIp": "1.1.1.100", "RemoteDeviceName": "dev200", "RemoteInterface": "if2", "RemoteIp": "1.1.1.400"}),
+			tu.MockAlert(
+				8, "Neteng BGP Down", "", "dev100", "PeerZ", "src", "scp", "1", "WARN", []string{"bgp", "dc"},
+				models.Labels{"LabelType": "Bgp", "Type": "ebgp", "LocalDeviceName": "dev100", "LocalInterface": "if1", "LocalIp": "1.1.1.101", "RemoteDeviceName": "dev300", "RemoteInterface": "if2", "RemoteIp": "1.1.1.300"}),
 		},
 		grouped: [][]int64{
 			[]int64{1, 2, 3, 4},
 			[]int64{5, 6},
+			[]int64{7, 8},
 		},
 	},
 	"dc_circuit_down": {

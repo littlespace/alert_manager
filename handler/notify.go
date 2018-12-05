@@ -29,6 +29,7 @@ var once sync.Once
 func GetNotifier(db models.Dbase) *notifier {
 	once.Do(func() {
 		notif = &notifier{notifiedAlerts: make(map[int64]*notification), db: db}
+		notif.loadActiveAlerts()
 		go func() {
 			t := time.NewTicker(remindCheckInterval)
 			for range t.C {
@@ -37,6 +38,26 @@ func GetNotifier(db models.Dbase) *notifier {
 		}()
 	})
 	return notif
+}
+
+func (n *notifier) loadActiveAlerts() {
+	n.Lock()
+	defer n.Unlock()
+	tx := n.db.NewTx()
+	ctx := context.Background()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		var active []*models.Alert
+		if err := tx.InSelect(models.QuerySelectByStatus, &active, []int64{1}); err != nil {
+			return err
+		}
+		for _, a := range active {
+			n.notifiedAlerts[a.Id] = &notification{event: &AlertEvent{Type: EventType_ACTIVE, Alert: a}}
+		}
+		return nil
+	})
+	if err != nil {
+		glog.Errorf("Failed to load active alerts: %v", err)
+	}
 }
 
 func (n *notifier) remind() {

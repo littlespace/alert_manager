@@ -8,6 +8,7 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type Clienter interface {
@@ -114,6 +115,6 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 
 func init() {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	n := &Netbox{client: &Client{&http.Client{Transport: tr}}}
+	n := &Netbox{client: &Client{&http.Client{Transport: tr, Timeout: 5 * time.Second}}}
 	ah.AddTransform(n)
 }
