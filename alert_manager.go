@@ -58,7 +58,6 @@ func Run(config *Config) {
 	}()
 
 	// start the handler
-	ah.DefaultOutput = config.Agent.DefaultOutput
 	handler := ah.NewHandler(db)
 	go handler.Start(ctx)
 

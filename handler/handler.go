@@ -54,9 +54,6 @@ type AlertEvent struct {
 // all listeners send alerts down this channel
 var ListenChan = make(chan *AlertEvent)
 
-// default output channel
-var DefaultOutput string
-
 // ClearHandler keeps a track of clearing active alerts
 type ClearHandler struct {
 	actives map[int64]chan struct{}
@@ -165,7 +162,11 @@ func (h *AlertHandler) Start(ctx context.Context) {
 				case EventType_ACTIVE:
 					return h.handleActive(ctx, tx, alert)
 				case EventType_CLEARED:
-					return h.handleClear(ctx, tx, alert, CLEAR_HOLDDOWN_INTERVAL)
+					holddown := Config.GetGeneralConfig().ClearHolddownInterval
+					if holddown == 0 {
+						holddown = CLEAR_HOLDDOWN_INTERVAL
+					}
+					return h.handleClear(ctx, tx, alert, holddown)
 				}
 				return nil
 			})
