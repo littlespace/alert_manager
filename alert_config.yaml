@@ -1,3 +1,13 @@
+# general config defines general parameters that apply to all alerts
+general_config:
+  default_outputs:
+    - severity: WARN
+      send_to: [ slack ]
+    - severity: CRITICAL
+      send_to: [ victorops ]
+  # how long to wait before clearing an alert after a clear notification comes in.
+  clear_holddown_interval: 1m
+
 # alert_config defines non default config for expected alerts coming in. An alert
 # does not need to be defined here for it to be accepted by alert manager. Such an
 # alert will get all default values

@@ -88,7 +88,8 @@ func (n *notifier) remind() {
 		if alertConfig, ok := Config.GetAlertConfig(notif.event.Alert.Name); ok {
 			n.send(notif.event, alertConfig.Config.Outputs.Get(notif.event.Alert.Severity.String()))
 		} else {
-			n.send(notif.event, []string{})
+			generalConf := Config.GetGeneralConfig()
+			n.send(notif.event, generalConf.DefaultOutputs.Get(notif.event.Alert.Severity.String()))
 		}
 	}
 }
@@ -116,6 +117,9 @@ func (n *notifier) Notify(event *AlertEvent) {
 	var outputs []string
 	if ok {
 		outputs = alertConfig.Config.Outputs.Get(event.Alert.Severity.String())
+	} else {
+		generalConf := Config.GetGeneralConfig()
+		outputs = generalConf.DefaultOutputs.Get(event.Alert.Severity.String())
 	}
 	notif, alreadyNotified := n.notifiedAlerts[alert.Id]
 	if alreadyNotified {
@@ -159,14 +163,8 @@ func (n *notifier) Notify(event *AlertEvent) {
 	tx := n.db.NewTx()
 	ctx := context.Background()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		var err error
-		var msg string
-		if len(outputs) > 0 {
-			msg = fmt.Sprintf("Alert notification sent to %v", outputs)
-		} else {
-			msg = fmt.Sprintf("Alert notification sent to %s", DefaultOutput)
-		}
-		_, err = tx.NewRecord(event.Alert.Id, msg)
+		msg := fmt.Sprintf("Alert notification sent to %v", outputs)
+		_, err := tx.NewRecord(event.Alert.Id, msg)
 		return err
 	})
 	if err != nil {
@@ -175,9 +173,6 @@ func (n *notifier) Notify(event *AlertEvent) {
 }
 
 func (n *notifier) send(event *AlertEvent, outputs []string) {
-	if len(outputs) == 0 {
-		outputs = append(outputs, DefaultOutput)
-	}
 	gMu.Lock()
 	for _, output := range outputs {
 		if outChan, ok := Outputs[output]; ok {

@@ -11,7 +11,6 @@ import (
 
 type AgentConfig struct {
 	ApiAddr             string        `mapstructure:"api_addr"`
-	DefaultOutput       string        `mapstructure:"default_output"`
 	StatsExportInterval time.Duration `mapstructure:"stats_export_interval"`
 }
 
