@@ -21,11 +21,20 @@ type Inhibitor struct {
 	statAlertsInhibited stats.Stat
 	statError           stats.Stat
 
+	wg sync.WaitGroup
 	sync.Mutex
 }
 
 func (i *Inhibitor) Name() string {
 	return "inhibitor"
+}
+
+func (i *Inhibitor) Stage() int {
+	return 0
+}
+
+func (i *Inhibitor) SetDb(db models.Dbase) {
+	i.db = db
 }
 
 func (i *Inhibitor) ruleAlerts(name string) []*models.Alert {
@@ -45,7 +54,7 @@ func (i *Inhibitor) addAlert(name string, alert *models.Alert) {
 	i.alertBuf[name] = append(i.alertBuf[name], alert)
 }
 
-func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig) {
+func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig, out chan *ah.AlertEvent) {
 	time.Sleep(rule.Delay)
 	srcNames := []string{rule.SrcMatch.Alert}
 	tx := i.db.NewTx()
@@ -65,11 +74,17 @@ func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig) {
 				continue
 			}
 			for _, tgt := range i.ruleAlerts(rule.Name) {
+				var inhibit bool
 				for _, match := range rule.TargetMatches {
 					if tgt.Name == match.Alert && tgt.Labels[match.Label] == srcLabel {
 						glog.V(2).Infof("Inhibitor: Found matching inhibit rule for %d:%s", tgt.Id, tgt.Name)
 						toInhibit = append(toInhibit, tgt)
+						inhibit = true
+						break
 					}
+				}
+				if !inhibit {
+					out <- &ah.AlertEvent{Type: ah.EventType_ACTIVE, Alert: tgt}
 				}
 			}
 		}
@@ -94,46 +109,46 @@ func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig) {
 	i.Lock()
 	i.alertBuf[rule.Name] = i.alertBuf[rule.Name][:0]
 	i.Unlock()
+	i.wg.Done()
 }
 
-func (i *Inhibitor) Start(ctx context.Context, db models.Dbase) {
-	i.db = db
-	// subscribe to target alerts
-	toSub := make(map[string]struct{})
-	for _, rule := range ah.Config.GetInhibitRules() {
-		for _, match := range rule.TargetMatches {
-			toSub[match.Alert] = struct{}{}
+fun (i *Inhibitor) Process(ctx context.Context, in, out chan *ah.AlertEvent, done chan struct{})
+	for event := range in {
+		if event.Type != ah.EventType_ACTIVE {
+			continue
 		}
-	}
-	for a, _ := range toSub {
-		ah.RegisterProcessor(a, i.Notif)
-	}
-	for {
-		select {
-		case event := <-i.Notif:
-			if event.Type != ah.EventType_ACTIVE {
-				break
+		for _, rule := range ah.Config.GetInhibitRules() {
+			// process only interesting alerts
+			var toProcess bool
+			for _, match := range rule.TargetMatches {
+				if match.Alert == in.Alert.Name {
+					toProcess = true
+					break
+				}
 			}
-			for _, rule := range ah.Config.GetInhibitRules() {
-				if rule.Delay == 0 {
-					// sequentially check alert against every rule
-					i.addAlert(rule.Name, event.Alert)
-					i.checkRule(ctx, rule)
-					continue
-				}
-				// delay and group alerts before checking rules
-				i.Lock()
-				l := len(i.alertBuf[rule.Name])
-				i.Unlock()
-				if l == 0 {
-					go i.checkRule(ctx, rule)
-				}
+			if !toProcess {
+				continue
+			}
+			if rule.Delay == 0 {
+				// sequentially check alert against every rule
 				i.addAlert(rule.Name, event.Alert)
+				i.checkRule(ctx, rule, out)
+				continue
 			}
-		case <-ctx.Done():
-			return
+			// delay and group alerts before checking rules
+			i.Lock()
+			l := len(i.alertBuf[rule.Name])
+			i.Unlock()
+			if l == 0 {
+				i.wg.Add(1)
+				go i.checkRule(ctx, rule)
+				
+			}
+			i.addAlert(rule.Name, event.Alert)
 		}
 	}
+	i.wg.Wait()
+	done <- struct{}{}
 }
 
 func init() {
