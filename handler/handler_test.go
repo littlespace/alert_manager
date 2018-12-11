@@ -122,24 +122,32 @@ func (t *mockTransform) Apply(a *models.Alert) error {
 	return nil
 }
 
+type mockProcessor struct{}
+
+func (m *mockProcessor) Name() string { return "mockProcessor" }
+
+func (m *mockProcessor) Stage() int { return 1 }
+
+func (m *mockProcessor) Process(ctx context.Context, db models.Dbase, in chan *AlertEvent) chan *AlertEvent {
+	return make(chan *AlertEvent)
+}
+
 func TestHandlerAlertActive(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.procChan = make(chan *AlertEvent, 3)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
-
-	mockNotifChan := make(chan *AlertEvent, 3)
-	RegisterProcessor("Test Alert 2", mockNotifChan)
 
 	// test new active alert
 	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a2)
 	assert.Equal(t, int(a2.Id), 200)
 	assert.Equal(t, a2.Labels, models.Labels{"suppress": "me"})
-	event := <-mockNotifChan
+	event := <-h.procChan
 	assert.Equal(t, event.Type, EventType_ACTIVE)
 	assert.Equal(t, int(event.Alert.Id), 200)
 
@@ -148,6 +156,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	h.handleActive(ctx, tx, a1)
 	assert.Equal(t, int(a1.Id), 0)
 	assert.Equal(t, mockAlerts["existing_a1"].LastActive, nowTime)
+	<-h.procChan
 
 	// test new active alert - suppressed
 	rule := models.NewSuppRule(models.Labels{"device": "d2"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
@@ -160,13 +169,11 @@ func TestHandlerAlertClear(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.procChan = make(chan *AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
-
-	mockNotifChan := make(chan *AlertEvent, 1)
-	RegisterProcessor("Test Alert 1", mockNotifChan)
 
 	// test alert clear -non existing
 	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
@@ -182,7 +189,7 @@ func TestHandlerAlertClear(t *testing.T) {
 	mockAlerts["existing_a1"].AutoClear = true
 	h.handleClear(ctx, tx, a1, 0)
 	assert.Equal(t, mockAlerts["existing_a1"].Status.String(), "CLEARED")
-	event := <-mockNotifChan
+	event := <-h.procChan
 	assert.Equal(t, event.Type, EventType_CLEARED)
 	assert.Equal(t, int(event.Alert.Id), 100)
 }
@@ -190,17 +197,15 @@ func TestHandlerAlertClear(t *testing.T) {
 func TestHandlerAlertExpiry(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.procChan = make(chan *AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
-	mockNotifChan := make(chan *AlertEvent, 1)
-	RegisterProcessor("Test Alert 3", mockNotifChan)
-
 	h.handleExpiry(ctx)
 
-	event := <-mockNotifChan
+	event := <-h.procChan
 	assert.Equal(t, event.Alert.Status.String(), "EXPIRED")
 	assert.Equal(t, event.Type, EventType_EXPIRED)
 	assert.Equal(t, int(event.Alert.Id), 300)
@@ -209,13 +214,11 @@ func TestHandlerAlertExpiry(t *testing.T) {
 func TestHandlerAlertEscalate(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
+	h.procChan = make(chan *AlertEvent, 2)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
-
-	mockNotifChan := make(chan *AlertEvent, 2)
-	RegisterProcessor("Test Alert 4", mockNotifChan)
 
 	// test no escalation needed
 	mockAlerts["existing_a4"].StartTime = models.MyTime{time.Now()}
@@ -224,20 +227,21 @@ func TestHandlerAlertEscalate(t *testing.T) {
 	// test first level escalation
 	mockAlerts["existing_a4"].StartTime = models.MyTime{}
 	h.handleEscalation(ctx)
-	event := <-mockNotifChan
+	event := <-h.procChan
 	assert.Equal(t, event.Alert.Severity.String(), "WARN")
 	assert.Equal(t, event.Type, EventType_ESCALATED)
 	mockAlerts["existing_a4"] = event.Alert
 
 	// test second level escalation
 	h.handleEscalation(ctx)
-	event = <-mockNotifChan
+	event = <-h.procChan
 	assert.Equal(t, event.Alert.Severity.String(), "CRITICAL")
 	assert.Equal(t, event.Type, EventType_ESCALATED)
 }
 
 func TestMain(m *testing.M) {
 	AddTransform(&mockTransform{name: "mock", priority: 100, register: "Test Alert 2"})
+	AddProcessor(&mockProcessor{})
 	flag.Parse()
 	Config = NewConfigHandler("../testutil/testdata/test_config.yaml")
 	Config.LoadConfig()

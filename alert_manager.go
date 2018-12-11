@@ -3,16 +3,14 @@ package alert_manager
 import (
 	"context"
 	"flag"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/api"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
-	"github.com/mayuresh82/alert_manager/plugins"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 // global flags
@@ -45,9 +43,16 @@ func Run(config *Config) {
 	handler := ah.NewHandler(db)
 	go handler.Start(ctx)
 
-	//Initialize all the plugins
-	// Listener, Processors, transforms
-	plugins.Init(ctx, db)
+	// start all the listeners
+	for name, listener := range Listeners {
+		glog.Infof("Starting Listener: %s on %s", name, listener.Uri())
+		go listener.Listen(ctx)
+	}
+	// start all the outputs
+	for name, output := range Outputs {
+		glog.Infof("Starting output: %s", name)
+		go output.Start(ctx)
+	}
 
 	// start the API server
 	glog.Infof("Starting API server on %s", config.Agent.ApiAddr)

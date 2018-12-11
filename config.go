@@ -1,14 +1,12 @@
 package alert_manager
 
 import (
-	"time"
-
 	"github.com/BurntSushi/toml"
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/reporting"
-	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/mitchellh/mapstructure"
+	"time"
 )
 
 type AgentConfig struct {
@@ -61,7 +59,7 @@ func (c *Config) UnmarshalTOML(data interface{}) error {
 		case "listeners":
 			for lisKey, lisValue := range v {
 				lv, _ := lisValue.(map[string]interface{})
-				if listener, ok := plugins.Listeners[lisKey]; ok {
+				if listener, ok := Listeners[lisKey]; ok {
 					decoderConfig.Result = listener
 					decoder, _ := mapstructure.NewDecoder(decoderConfig)
 					if err := decoder.Decode(lv); err != nil {
@@ -72,7 +70,7 @@ func (c *Config) UnmarshalTOML(data interface{}) error {
 		case "outputs":
 			for rKey, rValue := range v {
 				rv, _ := rValue.(map[string]interface{})
-				if receiver, ok := plugins.Outputs[rKey]; ok {
+				if receiver, ok := Outputs[rKey]; ok {
 					decoderConfig.Result = receiver
 					decoder, _ := mapstructure.NewDecoder(decoderConfig)
 					if err := decoder.Decode(rv); err != nil {
@@ -83,7 +81,7 @@ func (c *Config) UnmarshalTOML(data interface{}) error {
 		case "processors":
 			for rKey, rValue := range v {
 				rv, _ := rValue.(map[string]interface{})
-				if receiver, ok := plugins.Processors[rKey]; ok {
+				if receiver := handler.GetProcessor(rKey); receiver != nil {
 					decoderConfig.Result = receiver
 					decoder, _ := mapstructure.NewDecoder(decoderConfig)
 					if err := decoder.Decode(rv); err != nil {

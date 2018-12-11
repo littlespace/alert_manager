@@ -87,6 +87,7 @@ type AlertHandler struct {
 	Db         models.Dbase
 	Notifier   *notifier
 	Suppressor *suppressor
+	procChan   chan *AlertEvent
 	clearer    *ClearHandler
 
 	statTransformError stats.Stat
@@ -99,6 +100,7 @@ func NewHandler(db models.Dbase) *AlertHandler {
 		Db:                 db,
 		Notifier:           GetNotifier(db),
 		Suppressor:         GetSuppressor(db),
+		procChan:           make(chan *AlertEvent),
 		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
 		statTransformError: stats.NewCounter("handler.transform_errors"),
 		statDbError:        stats.NewCounter("handler.db_errors"),
@@ -108,6 +110,11 @@ func NewHandler(db models.Dbase) *AlertHandler {
 
 // Start needs to be called in a go-routine
 func (h *AlertHandler) Start(ctx context.Context) {
+	// start the processor pipeline
+	procPipeline := NewProcessorPipeline()
+	procPipeline.Run(ctx, h.Db, h.procChan)
+
+	// housekeeping
 	go func() {
 		t1 := time.NewTicker(EXPIRY_CHECK_INTERVAL)
 		t2 := time.NewTicker(ESCALATION_CHECK_INTERVAL)
@@ -148,6 +155,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 
 		case <-ctx.Done():
 			glog.V(4).Infof("Closing handler listen loop")
+			close(h.procChan)
 			return
 		}
 	}
@@ -282,15 +290,10 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 
 func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType) {
 	event := &AlertEvent{Alert: alert, Type: eventType}
-	gMu.Lock()
-	for alertName, recvChans := range Processors {
-		if match, _ := regexp.MatchString(alertName, alert.Name); match {
-			for _, recvChan := range recvChans {
-				recvChan <- event
-			}
-		}
+	// send the alert down the processor pipeline
+	if len(Processors) > 0 {
+		h.procChan <- event
 	}
-	gMu.Unlock()
 	// send the alert to the outputs. If the alert config or config outputs is undefined,
 	// the notifier will send it to the default output.
 	go h.Notifier.Notify(event)
