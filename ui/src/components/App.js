@@ -10,18 +10,7 @@ import AlertView from '../views/AlertView';
 
 import red from '@material-ui/core/colors/red';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
-
-const theme = createMuiTheme({
-  palette: {
-    primary: {
-      main: '#424242',
-    },
-    secondary: red,
-  },
-  status: {
-    danger: 'orange',
-  },
-});
+import theme from '../theme';
 
 export default class App extends Component {
   _redirectToHome() {
