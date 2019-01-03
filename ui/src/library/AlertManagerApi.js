@@ -27,10 +27,10 @@ export class AlertManagerApi {
     getAlertsList({
         limit=250, 
         aggregate=true, 
-        timerange_h=72, 
+        timerange_h=96, 
         sites=[], 
-        devices=[], 
-        status=[]}={}) {
+        devices=[],
+        status=[1,2,3]}={}) {
 
         var params = `?limit=${limit}`
 
