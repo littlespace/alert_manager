@@ -32,46 +32,6 @@ import IconButton from "@material-ui/core/IconButton";
 
 const queryString = require('query-string');
 
-const columns = [
-    { name: "Id",           label: "Id",         options: {display: false } },
-    { name: "Site",         label: "Site",       options: { filter: true, sort: true } },
-    { name: "Device",       label: "Device",     options: { filter: true, sort: true } },
-    { name: "Severity",     label: "Severity",   options: { filter: true, sort: true } },
-    { name: "Status",       label: "Status",     options: { filter: true, sort: true } },
-    { name: "Name",         label: "Name",       options: { filter: true, sort: false } },
-    { name: "Source",       label: "Source",     options: { filter: true, sort: false } },
-    { name: "Scope",        label: "Scope",      options: { filter: true, sort: false } },
-    { name: "Start Time",   label: "start_time", options: { 
-                                filter: false, 
-                                sort: true,
-                                customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
-    { name: "Last Update",  label: "last_active", options: {
-                                filter: false, 
-                                sort: true,
-                                customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} },
-    { name: "Link",         label: "Id",      options: { 
-                                filter: true, 
-                                sort: false,
-                                customBodyRender: (value, tableMeta, updateValue) => { return <Link to={`/alert/${value}`}>
-                                                                                            <IconButton>
-                                                                                                <LinkIcon />
-                                                                                            </IconButton>
-                                                                                             </Link> }} },
-];
-
-const options = {
-    filter: true,
-    selectableRows: true,
-    filterType: "dropdown",
-    responsive: "stacked",
-    rowsPerPage: 50,
-    print: false,
-    download: false,
-    customToolbarSelect: selectedRows => (
-        <CustomToolbarSelect selectedRows={selectedRows} />
-      )
-  };
-
 const styles  = theme => ({
     root: {
         width: '100%',
@@ -160,8 +120,7 @@ function timeConverter(UNIX_timestamp){
     return time
 }
 
-function convertAlertsToTable(data) {
-
+function convertAlertsToTable({data, columns}={}) {
     let alerts = []
 
     for( let i in data ) {
@@ -173,6 +132,15 @@ function convertAlertsToTable(data) {
     }
     return alerts
 } 
+
+function buildAlertsIndex({data}={}) {
+    let idx = []
+
+    for( let i in data ) {
+        idx.push(data[i]['Id'])
+    }
+    return idx
+}
 
 class AlertsTable extends React.Component {
 
@@ -240,6 +208,66 @@ class AlertsTable extends React.Component {
     }
 
     render(){
+        // ----------------------------------------------------------
+        // Alerts Table Definition 
+        // ----------------------------------------------------------
+        const options = {
+            filter: true,
+            selectableRows: true,
+            filterType: "dropdown",
+            responsive: "stacked",
+            rowsPerPage: 50,
+            print: false,
+            download: false,
+            customToolbarSelect: selectedRows => (
+                <CustomToolbarSelect api={this.api} idx={buildAlertsIndex({data: alerts})} selectedRows={selectedRows} />
+              )
+        };
+
+        const columns = [
+            { name: "Id",           label: "Id",         options: {display: false } },
+            { name: "Site",         label: "Site",       options: { filter: true, sort: true } },
+            { name: "Device",       label: "Device",     options: { filter: true, sort: true } },
+            { name: "Severity",     label: "Severity",   options: { 
+                                        filter: true, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
+                                            disableRipple 
+                                            size="small" 
+                                            variant="contained">
+                                            {value}
+                                        </Button> }} },
+            { name: "Status",       label: "Status",     options: { 
+                                        filter: true, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
+                                            disableRipple 
+                                            size="small" 
+                                            variant="contained">
+                                            {value}
+                                        </Button> }} },
+            { name: "Name",         label: "Name",       options: { filter: true, sort: false } },
+            { name: "Source",       label: "Source",     options: { filter: true, sort: false } },
+            { name: "Scope",        label: "Scope",      options: { filter: true, sort: false } },
+            { name: "Start Time",   label: "start_time", options: { 
+                                        filter: false, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
+            { name: "Last Update",  label: "last_active", options: {
+                                        filter: false, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} },
+            { name: "Link",         label: "Id",      options: { 
+                                        filter: true, 
+                                        sort: false,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return <Link to={`/alert/${value}`}>
+                                                                                                        <IconButton>
+                                                                                                            <LinkIcon />
+                                                                                                        </IconButton>
+                                                                                                      </Link> }} },
+        ];
+        
+
         const { alerts } = this.state;
 
         return (
@@ -280,7 +308,7 @@ class AlertsTable extends React.Component {
                 </AppBar>
                 <MUIDataTable
                     title={"Alerts"}
-                    data={convertAlertsToTable(alerts)}
+                    data={convertAlertsToTable({data: alerts, columns: columns})}
                     // columns={columnsAlerts.label}
                     columns={columns}
                     options={options}
