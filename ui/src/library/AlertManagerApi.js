@@ -25,7 +25,7 @@ export class AlertManagerApi {
 
     // Adding a method to the constructor
     getAlertsList({
-        limit=250, 
+        limit=500, 
         aggregate=true, 
         timerange_h=96, 
         sites=[], 
@@ -34,13 +34,13 @@ export class AlertManagerApi {
 
         var params = `?limit=${limit}`
 
-        if (aggregate) {
-            params = params + `&is_aggregate=true`
-        }
+        // if (aggregate) {
+        //     params = params + `&is_aggregate=true`
+        // }
 
-        if (timerange_h) {
-            params = params + `&timerange=72h`
-        }
+        // if (timerange_h) {
+        //     params = params + `&timerange=72h`
+        // }
 
         if (sites.length !== 0) {
             params = params + `&site__in=${sites.join(',')}`
@@ -63,6 +63,18 @@ export class AlertManagerApi {
         return fetch(`${this.url}${url_alerts}/${id}`)
           .then(response => response.json());
     }
+    getAlertWithHistory(id) {
+        return fetch(`${this.url}${url_alerts}?id=${id}&history=true`)
+          .then(response => response.json())
+          .then(data => data[0]);
+    }
+
+    bulkUpdateStatus({items, status}={}) {
+
+        for( var i in items) {
+           console.log(`Will update status for ${i} with ${status}`)
+       }
+   }
 
     getContributingAlerts(id) {
         return fetch(`${this.url}${url_alerts}?agg_id=${id}` )
@@ -136,6 +148,66 @@ export class AlertManagerApi {
         }
         
         let url = `${this.url}${url_alerts}/${id}?severity=${severity_to_id[severity]}`
+        
+        let obj = {
+            method: 'PATCH',
+            headers: {
+                // "Content-Type": "application/json",
+                "Authorization": `Bearer ${this.token}`
+            }
+        }
+
+        return fetch( url, obj )
+          .then(handleErrors)
+          .catch(function(error) {
+            console.log(error);
+        });
+    }
+
+    alertClear({id}={}) {
+        // api/alerts/{id}/clear
+    
+        let url = `${this.url}${url_alerts}/${id}/clear`
+        
+        let obj = {
+            method: 'PATCH',
+            headers: {
+                // "Content-Type": "application/json",
+                "Authorization": `Bearer ${this.token}`
+            }
+        }
+
+        return fetch( url, obj )
+          .then(handleErrors)
+          .catch(function(error) {
+            console.log(error);
+        });
+
+    }
+
+    alertSuppress({id, duration="1h"}={}) {
+
+        // api/alerts/{id}/suppress?duration=5m
+        let url = `${this.url}${url_alerts}/${id}/suppress?duration=${duration}`
+        
+        let obj = {
+            method: 'PATCH',
+            headers: {
+                // "Content-Type": "application/json",
+                "Authorization": `Bearer ${this.token}`
+            }
+        }
+
+        return fetch( url, obj )
+          .then(handleErrors)
+          .catch(function(error) {
+            console.log(error);
+        });
+    }
+
+    alertAcknowledge({id, owner="owner", team="team"}={}) {
+        // api/alerts/{id}/acknowledge?owner=foo&team=bar
+        let url = `${this.url}${url_alerts}/${id}/acknowledge?owner=${owner}&team=${team}`
         
         let obj = {
             method: 'PATCH',
