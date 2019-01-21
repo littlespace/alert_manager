@@ -81,24 +81,24 @@ class Menu extends React.Component {
                     }}
                 >
                 <MenuList>
-                    <MenuItemLink className={this.classes.menuItem} to="/" >
+                    {/* <MenuItemLink className={this.classes.menuItem} to="/" >
                         <ListItemIcon className={this.classes.icon}>
                             <DashboardIcon />
                         </ListItemIcon>
                         <ListItemText classes={{ primary: this.classes.primary }} inset primary="Dashboard" />
-                    </MenuItemLink>
+                    </MenuItemLink> */}
                     <MenuItemLink className={this.classes.menuItem} to="/alerts">
                         <ListItemIcon className={this.classes.icon}>
                             <ViewListIcon />
                         </ListItemIcon>
                         <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts List" />
                     </MenuItemLink>
-                    <MenuItemLink className={this.classes.menuItem} to="/">
+                    {/* <MenuItemLink className={this.classes.menuItem} to="/">
                         <ListItemIcon className={this.classes.icon}>
                             <CodeIcon />
                         </ListItemIcon>
                         <ListItemText classes={{ primary: this.classes.primary }} inset primary="..." />
-                    </MenuItemLink>
+                    </MenuItemLink> */}
                 </MenuList>
             </Drawer>
         </div>
