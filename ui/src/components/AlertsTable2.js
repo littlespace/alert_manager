@@ -3,7 +3,12 @@ import PropTypes from 'prop-types';
 
 import { Link } from 'react-router-dom'
 
-import { withStyles } from '@material-ui/core/styles';
+import {
+    createMuiTheme,
+    MuiThemeProvider,
+    withStyles
+  } from "@material-ui/core/styles";
+
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -207,13 +212,30 @@ class AlertsTable extends React.Component {
         
     }
 
+    getMuiTheme = () =>
+        createMuiTheme({
+            overrides: {
+                MUIDataTableHeadCell: {
+                    fixedHeader: {
+                        padding: "4px 12px 4px 12px"
+                    }
+                },
+                MUIDataTableBodyCell: {
+                    // root: {
+                    //     backgroundColor: "#FF0000"
+                    // }
+                }
+            }
+    });
+
+
     render(){
         // ----------------------------------------------------------
         // Alerts Table Definition 
         // ----------------------------------------------------------
         const options = {
             filter: true,
-            selectableRows: true,
+            selectableRows: false,
             filterType: "dropdown",
             responsive: "stacked",
             rowsPerPage: 50,
@@ -272,7 +294,7 @@ class AlertsTable extends React.Component {
 
         return (
             <Paper className={this.classes.paper}>
-                <AppBar position="static" color="default">
+                {/* <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
                     <FormGroup row>
                         <Typography>
@@ -305,14 +327,15 @@ class AlertsTable extends React.Component {
                         </Button>
                     </FormGroup>
                     </Toolbar>
-                </AppBar>
+                </AppBar> */}
+            <MuiThemeProvider theme={this.getMuiTheme()}>
                 <MUIDataTable
                     title={"Alerts"}
                     data={convertAlertsToTable({data: alerts, columns: columns})}
-                    // columns={columnsAlerts.label}
                     columns={columns}
                     options={options}
                 />
+            </MuiThemeProvider>
             </Paper>
         )
     }
