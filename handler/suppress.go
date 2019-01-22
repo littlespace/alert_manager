@@ -61,12 +61,13 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 
 	// load persistent rules from config
 	for _, rule := range Config.GetSuppressionRules() {
+		ents := models.Labels{}
 		for k, v := range rule.Matches {
-			ents := models.Labels{k: v}
-			r := models.NewSuppRule(ents, models.CondMap[rule.MatchCondition], rule.Reason, "alert manager", rule.Duration)
-			r.DontExpire = true
-			s.suppRules = append(s.suppRules, r)
+			ents[k] = v
 		}
+		r := models.NewSuppRule(ents, models.CondMap[rule.MatchCondition], rule.Reason, "alert manager", rule.Duration)
+		r.DontExpire = true
+		s.suppRules = append(s.suppRules, r)
 	}
 }
 

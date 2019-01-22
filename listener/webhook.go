@@ -10,6 +10,7 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/stats"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -29,6 +30,7 @@ type WebHookAlertData struct {
 	Level   string
 	Status  string
 	Source  string
+	Labels  map[string]interface{}
 }
 
 type WebHookListener struct {
@@ -49,7 +51,23 @@ func NewWebHookListener() *WebHookListener {
 	}
 }
 
+func (k *WebHookListener) sanityCheck(d *WebHookAlertData) error {
+	// alert name should only contain alpha-numeric chars, spaces or underscores
+	reg, err := regexp.Compile("[^a-zA-Z0-9_\\s]+")
+	if err != nil {
+		return err
+	}
+	processedString := reg.ReplaceAllString(d.Name, "")
+	if processedString != d.Name {
+		return fmt.Errorf("Invalid alert name: Name should only contain alpha-numeric chars, spaces or underscores")
+	}
+	return nil
+}
+
 func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent, error) {
+	if err := k.sanityCheck(d); err != nil {
+		return nil, err
+	}
 	// check if the alert exists in the definition
 	defined, ok := ah.Config.GetAlertConfig(d.Name)
 	var scope string
@@ -71,6 +89,11 @@ func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent,
 	default:
 		event.Type = ah.EventType_ACTIVE
 	}
+	if d.Labels != nil {
+		for k, v := range d.Labels {
+			event.Alert.Labels[k] = v
+		}
+	}
 	if ok {
 		if len(defined.Config.Tags) > 0 {
 			event.Alert.AddTags(defined.Config.Tags...)
@@ -80,6 +103,9 @@ func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent,
 		}
 		if defined.Config.AutoClear != nil {
 			event.Alert.AutoClear = *defined.Config.AutoClear
+		}
+		for k, v := range defined.Config.StaticLabels {
+			event.Alert.Labels[k] = v
 		}
 	}
 	return event, nil
@@ -162,7 +188,7 @@ func (k WebHookListener) httpHandler(w http.ResponseWriter, r *http.Request) {
 	event, err := k.formatAlertEvent(data)
 	if err != nil {
 		k.statRequestsError.Add(1)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

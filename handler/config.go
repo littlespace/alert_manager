@@ -34,6 +34,7 @@ type AlertConfig struct {
 		Scope            string
 		Severity         string
 		Tags             []string
+		Description      string
 		Source           string
 		AutoExpire       *bool         `yaml:"auto_expire"`
 		ExpireAfter      time.Duration `yaml:"expire_after"`
@@ -43,7 +44,8 @@ type AlertConfig struct {
 		NotifyRemind     time.Duration `yaml:"notify_remind"`
 		DisableNotify    bool          `yaml:"disable_notify"`
 		Outputs          Outs
-		AggregationRules []string `yaml:"aggregation_rules"`
+		StaticLabels     map[string]interface{} `yaml:"static_labels"`
+		AggregationRules []string               `yaml:"aggregation_rules"`
 		EscalationRules  []struct {
 			After      time.Duration
 			EscalateTo string `yaml:"escalate_to"`
@@ -55,6 +57,7 @@ type AggregationRuleConfig struct {
 	Name         string
 	Window       time.Duration
 	PollInterval time.Duration `yaml:"poll_interval"`
+	GroupBy      []string      `yaml:"group_by"`
 	Alert        AlertConfig
 }
 
