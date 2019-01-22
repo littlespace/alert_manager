@@ -168,7 +168,7 @@ func (p *Publisher) Start(ctx context.Context) {
 }
 
 func init() {
-	p := &Publisher{}
+	p := &Publisher{Notif: make(chan *ah.AlertEvent)}
 	ah.RegisterOutput(p.Name(), p.Notif)
 	am.AddOutput(p)
 }
