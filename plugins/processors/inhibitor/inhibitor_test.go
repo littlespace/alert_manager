@@ -61,7 +61,6 @@ func (tx *MockTx) Commit() error {
 
 func TestInhibit(t *testing.T) {
 	i := &Inhibitor{
-		Notif:               make(chan *ah.AlertEvent),
 		alertBuf:            make(map[string][]*models.Alert),
 		db:                  &MockDb{},
 		statAlertsInhibited: &tu.MockStat{},
