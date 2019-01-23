@@ -106,33 +106,6 @@ func NewHandler(db models.Dbase) *AlertHandler {
 	return h
 }
 
-func (h *AlertHandler) handleUnsuppressOnStart(ctx context.Context) {
-	tx := h.Db.NewTx()
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		var suppressedAlerts []*models.Alert
-		if err := tx.InSelect(models.QuerySelectByStatus, &suppressedAlerts, []int64{2}); err != nil {
-			h.statDbError.Add(1)
-			return err
-		}
-		if len(suppressedAlerts) == 0 {
-			return nil
-		}
-		for _, alert := range suppressedAlerts {
-			labels := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
-			if alert.Device.Valid {
-				labels["device"] = alert.Device.String
-			}
-			if rule := h.Suppressor.Match(labels); rule != nil {
-				go h.UnsuppWait(ctx, alert, rule.TimeLeft())
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		glog.Errorf("Unable to query suppressed alerts: %v", err)
-	}
-}
-
 // Start needs to be called in a go-routine
 func (h *AlertHandler) Start(ctx context.Context) {
 	go func() {
@@ -149,7 +122,6 @@ func (h *AlertHandler) Start(ctx context.Context) {
 			}
 		}
 	}()
-	go h.handleUnsuppressOnStart(ctx)
 	// start listening for alerts
 	for {
 		select {
@@ -182,30 +154,29 @@ func (h *AlertHandler) Start(ctx context.Context) {
 }
 
 func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
-	if alert.Id == 0 && h.checkExisting(tx, alert) {
+	if h.checkExisting(tx, alert) {
 		return nil
 	}
 	// add transforms
 	h.applyTransforms(alert)
 
 	// new alert
-	if alert.Id == 0 {
-		newId, err := tx.NewAlert(alert)
-		if err != nil {
-			h.statDbError.Add(1)
-			return fmt.Errorf("Unable to insert new alert: %v", err)
-		}
-		alert.Id = newId
-		glog.V(2).Infof("Received alert with ID: %v", alert.Id)
-		tx.NewRecord(newId, fmt.Sprintf("Alert created from source %s with severity %s",
-			alert.Source, alert.Severity.String()))
+	newId, err := tx.NewAlert(alert)
+	if err != nil {
+		h.statDbError.Add(1)
+		return fmt.Errorf("Unable to insert new alert: %v", err)
 	}
+	alert.Id = newId
+	glog.V(2).Infof("Received alert with ID: %v", alert.Id)
+	tx.NewRecord(newId, fmt.Sprintf("Alert created from source %s with severity %s",
+		alert.Source, alert.Severity.String()))
 
 	// check if alert matches an existing suppression rule based on alert labels
 	labels := models.Labels{
 		"device":     alert.Device.String,
 		"entity":     alert.Entity,
 		"alert_name": alert.Name,
+		"source":     alert.Source,
 	}
 	for k, v := range alert.Labels {
 		labels[k] = v
@@ -214,22 +185,8 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", alert.Id, rule)
 		duration := rule.TimeLeft()
 		reason := fmt.Sprintf("Alert suppressed due to matching suppression Rule %d:%s", rule.Id, rule.Name)
-		if err := h.Suppress(ctx, tx, alert, "alert_manager", reason, duration); err != nil {
-			return err
-		}
-		if rule.DontExpire {
-			ents := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
-			if alert.Device.Valid {
-				ents["device"] = alert.Device.String
-			}
-			r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, "alert_manager", duration)
-			if _, err := h.AddSuppRule(ctx, r); err != nil {
-				return err
-			}
-		}
-		return nil
+		return h.Suppress(ctx, tx, alert, "alert_manager", reason, duration)
 	}
-
 	// Send to interested parties
 	h.notifyReceivers(alert, EventType_ACTIVE)
 	return nil
@@ -303,8 +260,6 @@ func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 	if resetClear, ok := h.clearer.get(existingAlert.Id); ok {
 		resetClear <- struct{}{}
 	}
-	// Send to interested parties
-	h.notifyReceivers(existingAlert, EventMap[existingAlert.Status.String()])
 	return err == nil
 }
 
@@ -449,26 +404,18 @@ func (h *AlertHandler) Suppress(
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, duration); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
 	}
+	// create a new supp rule to suppress any future similar alerts
+	ents := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
+	if alert.Device.Valid {
+		ents["device"] = alert.Device.String
+	}
+	r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, "alert_manager", duration)
+	if _, err := h.AddSuppRule(ctx, r); err != nil {
+		return fmt.Errorf("Failed to suppress alert: %v", err)
+	}
 	tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))
 	h.notifyReceivers(alert, EventType_SUPPRESSED)
-	go h.UnsuppWait(ctx, alert, duration)
 	return nil
-}
-
-func (h *AlertHandler) UnsuppWait(ctx context.Context, alert *models.Alert, duration time.Duration) {
-	time.Sleep(duration)
-	tx := h.Db.NewTx()
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		err := h.Suppressor.UnsuppressAlert(ctx, tx, alert)
-		if err != nil {
-			return err
-		}
-		tx.NewRecord(alert.Id, "Alert unsuppressed")
-		return h.handleActive(ctx, tx, alert)
-	})
-	if err != nil {
-		glog.Errorf("Failed to unsuppress alert %d: %v", alert.Id, err)
-	}
 }
 
 func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert) error {

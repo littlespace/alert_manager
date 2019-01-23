@@ -61,12 +61,13 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 
 	// load persistent rules from config
 	for _, rule := range Config.GetSuppressionRules() {
+		ents := models.Labels{}
 		for k, v := range rule.Matches {
-			ents := models.Labels{k: v}
-			r := models.NewSuppRule(ents, models.CondMap[rule.MatchCondition], rule.Reason, "alert manager", rule.Duration)
-			r.DontExpire = true
-			s.suppRules = append(s.suppRules, r)
+			ents[k] = v
 		}
+		r := models.NewSuppRule(ents, models.CondMap[rule.MatchCondition], rule.Reason, "alert manager", rule.Duration)
+		r.DontExpire = true
+		s.suppRules = append(s.suppRules, r)
 	}
 }
 
@@ -101,12 +102,13 @@ func (s *suppressor) Match(labels models.Labels) *models.SuppressionRule {
 	for i := 0; i < len(s.suppRules); i++ {
 		rule := s.suppRules[i]
 		if rule.Match(labels) {
-			matches = append(matches, rule)
 			if rule.TimeLeft() <= 0 {
 				// rule has expired, remove from cache
 				s.suppRules = append(s.suppRules[:i], s.suppRules[i+1:]...)
 				i--
+				continue
 			}
+			matches = append(matches, rule)
 		}
 	}
 	if len(matches) > 0 {

@@ -97,9 +97,6 @@ func TestRuleMatch(t *testing.T) {
 	// test expired match - rule removal
 	labels = models.Labels{"device": "dev2"}
 	rule = s.Match(labels)
-	assert.NotNil(t, rule)
-	assert.Equal(t, rule, mockRules[3])
-	rule = s.Match(labels)
 	assert.Nil(t, rule)
 }
 

@@ -13,16 +13,17 @@ var statusToAlertStatus = map[string]string{"alerting": listener.Status_ALERTING
 
 // alertData corresponds to custom json payload sent by a configurable endpoint
 type alertData struct {
-	Id          float64 // id from the external system (optional)
-	Name        string  // Name of the alert (required)
-	Timestamp   string  // string timestamp in RFC3339 format (optional)
-	Severity    string  // either "info", "warning", or "critical" (optional)
-	Device      string  // alerting device (optional)
-	Entity      string  // alerting entity (required)
-	Description string  // descriptive msg (required)
-	Preamble    string  // preamble to prepend to the message (optional)
-	Status      string  // either "alerting" or "recover" (required)
-	Source      string  // source of the alert
+	Id          float64                // id from the external system (optional)
+	Name        string                 // Name of the alert (required)
+	Timestamp   string                 // string timestamp in RFC3339 format (optional)
+	Severity    string                 // either "info", "warning", or "critical" (optional)
+	Device      string                 // alerting device (optional)
+	Entity      string                 // alerting entity (required)
+	Description string                 // descriptive msg (required)
+	Preamble    string                 // preamble to prepend to the message (optional)
+	Status      string                 // either "alerting" or "recover" (required)
+	Source      string                 // source of the alert (optional)
+	Labels      map[string]interface{} // map of labels to attach to alert (optional)
 }
 
 type GenericParser struct {
@@ -72,6 +73,7 @@ func (p *GenericParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		Source:  d.Source,
 		Level:   sevToLevel[d.Severity],
 		Status:  statusToAlertStatus[d.Status],
+		Labels:  d.Labels,
 	}, nil
 }
 
