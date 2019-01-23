@@ -63,3 +63,5 @@ A processor is used to process a set of alerts before sending them to the final 
 An aggregator works based on aggregation rules which are described by writing [groupers](./plugins/processors/aggregator/groupers). Each grouper takes in a set of alert labels and groups them together based on a grouping function, which defines the condition for two label sets to be considered same to be grouped together. A single alert is then generated for each group of labels based on the alert config defined in the yaml spec.
 
 - [Inhibitor](./plugins/processors/inhibitor) : used to silence/suppress target alerts when specific source alerts with matching labels also exist. The inhibit rules are defined in the alert config, and specify the source matches and target matches ( see sample alert config for example ).
+
+Processors work in a pipelined fashion where multiple processors form a pipeline that process alerts sequentially in stages. For example, the inhibitor is Stage1 of the pipeline while the aggregator is Stage2. This means that each stage is able to influence/alter what the next stage in the pipeline receives.
