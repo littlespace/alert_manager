@@ -102,12 +102,13 @@ func (s *suppressor) Match(labels models.Labels) *models.SuppressionRule {
 	for i := 0; i < len(s.suppRules); i++ {
 		rule := s.suppRules[i]
 		if rule.Match(labels) {
-			matches = append(matches, rule)
 			if rule.TimeLeft() <= 0 {
 				// rule has expired, remove from cache
 				s.suppRules = append(s.suppRules[:i], s.suppRules[i+1:]...)
 				i--
+				continue
 			}
+			matches = append(matches, rule)
 		}
 	}
 	if len(matches) > 0 {

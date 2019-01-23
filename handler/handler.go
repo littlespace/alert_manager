@@ -199,6 +199,8 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		glog.V(2).Infof("Received alert with ID: %v", alert.Id)
 		tx.NewRecord(newId, fmt.Sprintf("Alert created from source %s with severity %s",
 			alert.Source, alert.Severity.String()))
+	} else if err := tx.UpdateAlert(alert); err != nil {
+		return err
 	}
 
 	// check if alert matches an existing suppression rule based on alert labels
