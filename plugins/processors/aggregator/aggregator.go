@@ -122,17 +122,6 @@ func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.A
 			return fmt.Errorf("Unable to suppress agg: %v", err)
 		}
 		tx.NewRecord(agg.Id, fmt.Sprintf("Alert Suppressed by alert_manager for %v : %s", duration, msg))
-		go func() {
-			time.Sleep(duration)
-			tx := a.db.NewTx()
-			err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-				return supp.UnsuppressAlert(ctx, tx, agg)
-			})
-			if err != nil {
-				glog.Errorf("Failed to unsuppress alert %d: %v", agg.Id, err)
-			}
-			tx.NewRecord(agg.Id, "Alert unsuppressed")
-		}()
 		return nil
 	}
 	return nil
