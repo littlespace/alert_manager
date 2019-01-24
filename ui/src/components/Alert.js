@@ -21,12 +21,42 @@ import { AlertManagerApi } from '../library/AlertManagerApi';
 import Tooltip from '@material-ui/core/Tooltip';
 import Snackbar from '@material-ui/core/Snackbar';
 import SnackbarContent from '@material-ui/core/SnackbarContent';
+import Fab from '@material-ui/core/Fab';
+import Dialog from '@material-ui/core/Dialog';
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogContentText from '@material-ui/core/DialogContentText';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import FormControl from '@material-ui/core/FormControl';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+import InputLabel from '@material-ui/core/InputLabel';
+
+/// -------------------------------------
+/// Icons 
+/// -------------------------------------
+import AlarmOffIcon from '@material-ui/icons/AlarmOff';
+import HourglassFullIcon from '@material-ui/icons/HourglassFull';
+import InfoIcon from '@material-ui/icons/Info';
+import CloseIcon from '@material-ui/icons/Close';
+import LinkIcon from "@material-ui/icons/Link";
+import DescriptionIcon from '@material-ui/icons/Description';
+import StorageIcon from '@material-ui/icons/Storage';
+import BusinessIcon from '@material-ui/icons/Business';
+import AlbumIcon from '@material-ui/icons/Album';
+import IconButton from '@material-ui/core/IconButton';
+import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 
 import green from '@material-ui/core/colors/green';
 import amber from '@material-ui/core/colors/amber';
-import IconButton from '@material-ui/core/IconButton';
-import InfoIcon from '@material-ui/icons/Info';
-import CloseIcon from '@material-ui/icons/Close';
+
+import MUIDataTable from "mui-datatables";
+import CustomToolbarSelect from "./CustomToolbarSelect";
+
+
+import List from '@material-ui/core/List';
+import ListItem from '@material-ui/core/ListItem';
+import ListItemText from '@material-ui/core/ListItemText';
+import Avatar from '@material-ui/core/Avatar';
 
 
 const styles = {
@@ -38,7 +68,7 @@ const styles = {
     },
     paper: {
         margin: '10px',
-        display: 'flex',
+        marginRight: 30,
     },
     card: {
         margin: '10px',
@@ -80,6 +110,22 @@ const styles = {
         display: 'flex',
         alignItems: 'center',
       },
+      button: {
+        // backgroundColor: amber[700],
+    },
+    alertItem: {
+        marginLeft: 0,
+        paddingLeft: 0
+    },
+    alertItemTitle: {
+        minWidth: 150,
+        maxWidth: 150,
+
+     },
+    alertItemContent: {
+        // width: 200,
+        flex: "initial"
+    }
 };
 
 function secondsToHms(d) {
@@ -111,6 +157,123 @@ function timeConverter(UNIX_timestamp){
     return time
   }
 
+
+ const alertsColumns = [
+    { name: "Id",           label: "Id",         options: { display: false } },
+    { name: "Severity",     label: "Severity",   options: { 
+        filter: true, 
+        sort: true, 
+        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
+                                                                        disableRipple 
+                                                                        size="small" 
+                                                                        variant="contained">
+                                                                        {value}
+                                                                    </Button> }} },
+    { name: "Status",       label: "Status",     options: { 
+        filter: true, 
+        sort: true,
+        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
+                                                                        disableRipple 
+                                                                        size="small" 
+                                                                        variant="contained">
+                                                                        {value}
+                                                                    </Button> }} },
+    { name: "Site",         label: "Site",       options: { filter: true, sort: true } },
+    { name: "Device",       label: "Device",     options: { filter: true, sort: true } },
+    { name: "Entity",       label: "Entity",     options: { filter: true, sort: true } },
+
+     { name: "Name",         label: "Name",       options: { filter: true, sort: false } },
+    { name: "Source",       label: "Source",     options: { filter: true, sort: false } },
+    // { name: "Scope",        label: "Scope",      options: { filter: true, sort: false } },
+    { name: "Start Time",   label: "start_time", options: { 
+                                filter: false, 
+                                sort: true,
+                                customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
+    // { name: "Last Update",  label: "last_active", options: {
+    //                             filter: false, 
+    //                             sort: true,
+    //                             customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} },
+    { name: "Link",         label: "Id",      options: { 
+                                filter: true, 
+                                sort: false,
+                                customBodyRender: (value, tableMeta, updateValue) => { return <Link to={`/alert/${value}`}>
+                                                                                            <IconButton>
+                                                                                                <LinkIcon />
+                                                                                            </IconButton>
+                                                                                             </Link> }} },
+];
+
+ const alertsOptions = {
+    filter: true,
+    selectableRows: false,
+    viewColumns: false,
+    filterType: "dropdown",
+    responsive: "stacked",
+    rowsPerPage: 50,
+    print: false,
+    download: false,
+    customToolbarSelect: selectedRows => (
+        <CustomToolbarSelect selectedRows={selectedRows} />
+      )
+  };
+
+ const historyColumns = [
+    { name: "Time",         label: "Timestamp",     options: { 
+                                                        filter: false, 
+                                                        sort: false,
+                                customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
+
+     { name: "Change",       label: "Event",         options: { filter: false, sort: false } },
+    { name: "",             label: "Timestamp",     options: { 
+                                                        filter: false, 
+                                                        sort: true,
+                                customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} }
+];
+
+ const historyOptions = {
+    filter: false,
+    selectableRows: false,
+    viewColumns: false,
+    filterType: "dropdown",
+    responsive: "stacked",
+    rowsPerPage: 20,
+    print: false,
+    download: false,
+    customToolbarSelect: selectedRows => (
+        <CustomToolbarSelect selectedRows={selectedRows} />
+      )
+  };
+
+
+
+function convertAlertsToTable(data) {
+
+     let alerts = []
+
+     for( let i in data ) {
+        alert = []
+        for( let y in alertsColumns ) {
+            alert.push(data[i][alertsColumns[y].label])   
+        }
+        alerts.push(alert)
+    }
+    return alerts
+} 
+
+function convertHistoryToTable(data) {
+
+     let historyItems = []
+
+     for( let i in data ) {
+        let historyItem = []
+        for( let y in historyColumns ) {
+            historyItem.push(data[i][historyColumns[y].label])   
+        }
+        historyItems.push(historyItem)
+    }
+    return historyItems
+}
+
 class Alert extends React.Component {
 
     constructor(props){
@@ -122,21 +285,60 @@ class Alert extends React.Component {
             severity: null,
             status_color: '#8DE565',
             data: {},
-            related_alerts: []
+            related_alerts: [],
+            suppress_time_dialog_open: false,
+            supress_time: "1h"
         };
+        this.handleSuppressTimeDialogOpen = this.handleSuppressTimeDialogOpen.bind(this);
+        this.handleSuppressTimeDialogClose = this.handleSuppressTimeDialogClose.bind(this);
+        this.suppressAlert = this.suppressAlert.bind(this);
+        this.updateAlert = this.updateAlert.bind(this);
     }
 
-    updateStatus = () => event => {
-        this.setState({ status: event.target.value });
-        this.updateStatusColor()
-        this.api.updateAlertStatus({id: this.props.id, status: event.target.value })
-        this.showSuccessMessage()
-    };
+    // updateStatus = () => event => {
+    //     this.setState({ status: event.target.value });
+    //     this.updateStatusColor()
+    //     this.api.updateAlertStatus({id: this.props.id, status: event.target.value })
+    //     this.showSuccessMessage()
+    // };
 
     updateSeverity = () => event => {
         this.setState({ severity: event.target.value });
         this.api.updateAlertSeverity({id: this.props.id, severity: event.target.value })
         this.showSuccessMessage()
+    };
+
+    clearAlert = () => event => {
+        this.api.alertClear({id: this.props.id })
+        this.showSuccessMessage()
+        setTimeout(this.updateAlert, 2000); // Update after 2s
+    };
+
+    handleSuppressTimeDialogOpen() {
+        this.setState({ suppress_time_dialog_open: true });
+        // this.api.alertSuppress({id: this.props.id, duration: "2h" })
+        // this.showSuccessMessage()
+    };
+
+    handleSuppressTimeDialogClose() {
+        this.setState({ suppress_time_dialog_open: false });
+    }
+
+    updateSuppressTime = () => event => {
+        this.setState({ suppress_time: event.target.value });
+    }
+
+    suppressAlert() {
+        this.api.alertSuppress({id: this.props.id, duration: this.state.suppress_time })
+        this.setState({ suppress_time_dialog_open: false });
+        this.showSuccessMessage()
+        setTimeout(this.updateAlert, 2000); // Update after 2s
+    }
+   
+    acknowledgeAlert = () => event => {
+        this.api.alertAcknowledge({id: this.props.id })
+        this.showSuccessMessage()
+        setTimeout(this.updateAlert, 2000); // Update after 2s
     };
 
     updateStatusColor() {
@@ -163,22 +365,24 @@ class Alert extends React.Component {
         this.setState({ snackbarUpdateMessage: true });
     };
       
-    componentDidMount(){        
+    componentDidMount() {        
 
         this.updateAlert()
-        this.api.getContributingAlerts( this.props.id )
-          .then(data => this.setState({ related_alerts: data }));
-        
-        // this.api.updateAlertOwner({id: this.props.id, owner: 'neteng', team: 'neteng'})
+        setInterval(this.updateAlert, 10000); //Refresh every 10s 
     }
 
-    updateAlert(){
-        this.api.getAlert( this.props.id )
+    updateAlert() {
+        console.log("Updating Alert Information")
+        this.api.getAlertWithHistory( this.props.id )
           .then(data => {
               this.setState({ data: data })
               this.setState({ status: data.Status })
               this.setState({ severity: data.Severity })
             });
+
+        this.api.getContributingAlerts( this.props.id )
+            .then(data => this.setState({ related_alerts: data }));
+
     }
 
     render() {
@@ -217,113 +421,178 @@ class Alert extends React.Component {
                     ]}
                     />
             </Snackbar>
+            <Dialog
+                // fullWidth={this.state.fullWidth}
+                // maxWidth={this.state.maxWidth}
+                open={this.state.suppress_time_dialog_open}
+                // onClose={this.handleClose}
+                aria-labelledby="alert-suppress-time-select"
+                >
+                <DialogTitle id="alert-suppress-time-select-title">For how long would you like to suppress this alert ? </DialogTitle>
+                <DialogContent>
+                    {/* <DialogContentText>
+                    You can set my maximum width and whether to adapt or not.
+                    </DialogContentText> */}
+                    <form className={this.classes.form} noValidate>
+                    <FormControl className={this.classes.formControl}>
+                        <Select
+                            native
+                            className={this.classes.select}
+                            value={this.state.suppress_time}
+                            onChange={this.updateSuppressTime()}
+                            input={
+                            <OutlinedInput
+                                name="suppress-time"
+                                labelWidth={50}
+                                id="suppress-time"
+                            />
+                            }
+                            >
+                            <option value={'5m'}>5m</option>
+                            <option value={'15m'}>15m</option>
+                            <option value={'30m'}>30m</option>
+                            <option value={'1h'}>1h</option>
+                            <option value={'2h'}>2h</option>
+                            <option value={'6h'}>6h</option>
+                            <option value={'24h'}>24h</option>
+                            <option value={'48h'}>48h</option>
+                        </Select>
+                    </FormControl>
+                    </form>
+                </DialogContent>
+                <DialogActions>
+                    <Button 
+                        color="default" 
+                        onClick={this.handleSuppressTimeDialogClose}>
+                        Close
+                    </Button>
+                    <Button 
+                        color="secondary" 
+                        onClick={this.suppressAlert}>
+                        Suppress
+                    </Button>
+                </DialogActions>
+            </Dialog>
             <AppBar className={this.classes.bar} position="static" color='default'>
                 <Toolbar>
                     <Tooltip title="Status">
-                    <Select
-                        native
-                        className={this.classes.select}
-                        value={this.state.status}
-                        onChange={this.updateStatus()}
-                        input={
-                        <OutlinedInput
-                            name="status"
-                            labelWidth={50}
-                            id="status-label"
-                        />
-                        }
-                    >
-                        <option value={'EXPIRED'}>EXPIRED</option>
-                        <option value={'ACTIVE'}>ACTIVE</option>
-                        <option value={'SUPPRESSED'}>SUPPRESSED</option>
-                        <option value={'CLEARED'}>CLEARED</option>
-                    </Select>
+                        <Button variant="contained" className={this.classes.button}>
+                            {this.state.status}
+                        </Button>
                     </Tooltip>
                     <Tooltip title="Severity">
-                    <Select
-                        native
-                        className={this.classes.select}
-                        value={this.state.severity}
-                        onChange={this.updateSeverity()}
-                        input={
-                        <OutlinedInput
-                            name="severity"
-                            labelWidth={50}
-                            id="severity-label"
-                        />
-                        }
-                    >
-                        <option value={'CRITICAL'}>CRITICAL</option>
-                        <option value={'WARN'}>WARN</option>
-                        <option value={'INFO'}>INFO</option>
-                    </Select>
+                        <Select
+                            native
+                            className={this.classes.select}
+                            value={this.state.severity}
+                            onChange={this.updateSeverity()}
+                            input={
+                            <OutlinedInput
+                                name="severity"
+                                labelWidth={50}
+                                id="severity-label"
+                            />
+                            }
+                        >
+                            <option value={'CRITICAL'}>CRITICAL</option>
+                            <option value={'WARN'}>WARN</option>
+                            <option value={'INFO'}>INFO</option>
+                        </Select>
                     </Tooltip>
                     <Typography variant="title" color="inherit" className={this.classes.grow}>
                         {data.Name}
                     </Typography>
+                    <Tooltip title="Acknowledge">
+                        <Fab 
+                            size="small" 
+                            color="primary" 
+                            aria-label="Acknowledge" 
+                            onClick={this.acknowledgeAlert()}
+                            className={this.classes.select}>
+                            <CheckCircleIcon />
+                        </Fab>
+                    </Tooltip>
+                    <Tooltip title="Clear">
+                        <Fab 
+                            size="small" 
+                            color="primary" 
+                            aria-label="Clear" 
+                            onClick={this.clearAlert()}
+                            className={this.classes.select}>
+                            <AlarmOffIcon />
+                        </Fab>
+                    </Tooltip>
+                    <Tooltip title="Suppress">
+                        <Fab 
+                            size="small" 
+                            color="primary" 
+                            aria-label="Suppress" 
+                            onClick={this.handleSuppressTimeDialogOpen}
+                            className={this.classes.select}>
+                            <HourglassFullIcon />
+                        </Fab>
+                    </Tooltip>
                 </Toolbar>
             </AppBar>
 
             <Card xs="6" className={this.classes.card}>
                 <CardContent>
-                    <Typography component="h4">
-                        Source: {data.Source}
-                    </Typography>
-                    <Typography variant="headline" >Description:</Typography>{data.Description}<br/>
-                    <Typography component="p">
-                        Site: {data.Site}<br/>
-                        Device: {data.Device}<br/>
-                        Entity: {data.Entity}
-                    </Typography>
-            </CardContent>
+                    <List>
+                        <ListItem className={this.classes.alertItem}>
+                            <Avatar>
+                                <DescriptionIcon />
+                            </Avatar>
+                            <ListItemText primary="Source:" className={this.classes.alertItemTitle}/>
+                            <ListItemText primary={data.Source} className={this.classes.alertItemContent}/>
+                        </ListItem>
+                        <ListItem className={this.classes.alertItem}>
+                            <Avatar>
+                                <DescriptionIcon />
+                            </Avatar>
+                            <ListItemText primary="Description:" className={this.classes.alertItemTitle}/>
+                            <ListItemText primary={data.Description} className={this.classes.alertItemContent}/>
+                        </ListItem>
+                        <ListItem  className={this.classes.alertItem}>
+                            <Avatar>
+                                <BusinessIcon />
+                            </Avatar>
+                            <ListItemText primary="Site:" className={this.classes.alertItemTitle}/>
+                            <ListItemText primary={data.Site} className={this.classes.alertItemContent}/>
+                        </ListItem>
+                        <ListItem  className={this.classes.alertItem}>
+                            <Avatar>
+                                <StorageIcon />
+                            </Avatar>
+                            <ListItemText primary="Device:" className={this.classes.alertItemTitle}/>
+                            <ListItemText primary={data.Device} className={this.classes.alertItemContent}/>
+                        </ListItem>
+                        <ListItem  className={this.classes.alertItem}>
+                            <Avatar>
+                                <AlbumIcon />
+                            </Avatar>
+                            <ListItemText primary="Entity:" className={this.classes.alertItemTitle}/>
+                            <ListItemText primary={data.Entity} className={this.classes.alertItemContent}/>
+                        </ListItem>
+                    </List>
+                </CardContent>
             </Card>
             <Typography className={this.classes.title} variant="headline">Contributing Alerts</Typography>
             <Paper className={this.classes.paper} >
-                <Table className={this.classes.table}>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Site</TableCell>
-                            <TableCell>Device</TableCell>
-                            <TableCell>Severity</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Source</TableCell>
-                            <TableCell>Scope</TableCell>
-                            <TableCell>Tags</TableCell>
-                            <TableCell>Start Time</TableCell>
-                            <TableCell>Last Update</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                    { (related_alerts instanceof Array) ? related_alerts.map(n => {
-                        return (
-                        <TableRow key={n.Id}>
-                            <TableCell>{n.Site}</TableCell>
-                            <TableCell>{n.Device}</TableCell>
-                            <TableCell>{n.Severity}</TableCell>
-                            <TableCell>
-                                <Button variant="contained" color="primary" className={this.classes.button}>
-                                    {n.Status}
-                                </Button>
-                            </TableCell>
-                            <TableCell component="th" scope="row">
-                                <Link to={`/alert/${n.Id}`}>
-                                    {n.Name}
-                                </Link>
-                            </TableCell>
-                            <TableCell>{n.Source}</TableCell>
-                            <TableCell>{n.Scope}</TableCell>
-                            <TableCell>{(n.Tags.lenght instanceof Array) ? n.Tags.map(function(item) {
-                                return <Chip label={item}/>
-                            }
-                            ): ''}</TableCell>
-                            <TableCell>{timeConverter(n.start_time)}</TableCell>
-                            <TableCell>{secondsToHms(n.last_active)}</TableCell>
-                        </TableRow>
-                        );
-                    }): ''}
-                    </TableBody>
-                </Table>
+                <MUIDataTable
+                        data={convertAlertsToTable(related_alerts)}
+                        columns={alertsColumns}
+                        options={alertsOptions}
+                    />
+            </Paper>
+            <br/>
+            <Typography className={this.classes.title} variant="headline">Change History</Typography>
+            <Paper className={this.classes.paper} >
+                <MUIDataTable
+
+                        data={convertHistoryToTable(data.History)}
+                        columns={historyColumns}
+                        options={historyOptions}
+                    />
             </Paper>
             </div>
         );

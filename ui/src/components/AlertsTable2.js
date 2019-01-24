@@ -3,7 +3,12 @@ import PropTypes from 'prop-types';
 
 import { Link } from 'react-router-dom'
 
-import { withStyles } from '@material-ui/core/styles';
+import {
+    createMuiTheme,
+    MuiThemeProvider,
+    withStyles
+  } from "@material-ui/core/styles";
+
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -31,46 +36,6 @@ import LinkIcon from "@material-ui/icons/Link";
 import IconButton from "@material-ui/core/IconButton";
 
 const queryString = require('query-string');
-
-const columns = [
-    { name: "Id",           label: "Id",         options: {display: false } },
-    { name: "Site",         label: "Site",       options: { filter: true, sort: true } },
-    { name: "Device",       label: "Device",     options: { filter: true, sort: true } },
-    { name: "Severity",     label: "Severity",   options: { filter: true, sort: true } },
-    { name: "Status",       label: "Status",     options: { filter: true, sort: true } },
-    { name: "Name",         label: "Name",       options: { filter: true, sort: false } },
-    { name: "Source",       label: "Source",     options: { filter: true, sort: false } },
-    { name: "Scope",        label: "Scope",      options: { filter: true, sort: false } },
-    { name: "Start Time",   label: "start_time", options: { 
-                                filter: false, 
-                                sort: true,
-                                customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
-    { name: "Last Update",  label: "last_active", options: {
-                                filter: false, 
-                                sort: true,
-                                customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} },
-    { name: "Link",         label: "Id",      options: { 
-                                filter: true, 
-                                sort: false,
-                                customBodyRender: (value, tableMeta, updateValue) => { return <Link to={`/alert/${value}`}>
-                                                                                            <IconButton>
-                                                                                                <LinkIcon />
-                                                                                            </IconButton>
-                                                                                             </Link> }} },
-];
-
-const options = {
-    filter: true,
-    selectableRows: true,
-    filterType: "dropdown",
-    responsive: "stacked",
-    rowsPerPage: 50,
-    print: false,
-    download: false,
-    customToolbarSelect: selectedRows => (
-        <CustomToolbarSelect selectedRows={selectedRows} />
-      )
-  };
 
 const styles  = theme => ({
     root: {
@@ -160,8 +125,7 @@ function timeConverter(UNIX_timestamp){
     return time
 }
 
-function convertAlertsToTable(data) {
-
+function convertAlertsToTable({data, columns}={}) {
     let alerts = []
 
     for( let i in data ) {
@@ -173,6 +137,15 @@ function convertAlertsToTable(data) {
     }
     return alerts
 } 
+
+function buildAlertsIndex({data}={}) {
+    let idx = []
+
+    for( let i in data ) {
+        idx.push(data[i]['Id'])
+    }
+    return idx
+}
 
 class AlertsTable extends React.Component {
 
@@ -239,12 +212,89 @@ class AlertsTable extends React.Component {
         
     }
 
+    getMuiTheme = () =>
+        createMuiTheme({
+            overrides: {
+                MUIDataTableHeadCell: {
+                    fixedHeader: {
+                        padding: "4px 12px 4px 12px"
+                    }
+                },
+                MUIDataTableBodyCell: {
+                    // root: {
+                    //     backgroundColor: "#FF0000"
+                    // }
+                }
+            }
+    });
+
+
     render(){
+        // ----------------------------------------------------------
+        // Alerts Table Definition 
+        // ----------------------------------------------------------
+        const options = {
+            filter: true,
+            selectableRows: false,
+            filterType: "dropdown",
+            responsive: "stacked",
+            rowsPerPage: 50,
+            print: false,
+            download: false,
+            customToolbarSelect: selectedRows => (
+                <CustomToolbarSelect api={this.api} idx={buildAlertsIndex({data: alerts})} selectedRows={selectedRows} />
+              )
+        };
+
+        const columns = [
+            { name: "Id",           label: "Id",         options: {display: false } },
+            { name: "Site",         label: "Site",       options: { filter: true, sort: true } },
+            { name: "Device",       label: "Device",     options: { filter: true, sort: true } },
+            { name: "Severity",     label: "Severity",   options: { 
+                                        filter: true, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
+                                            disableRipple 
+                                            size="small" 
+                                            variant="contained">
+                                            {value}
+                                        </Button> }} },
+            { name: "Status",       label: "Status",     options: { 
+                                        filter: true, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
+                                            disableRipple 
+                                            size="small" 
+                                            variant="contained">
+                                            {value}
+                                        </Button> }} },
+            { name: "Name",         label: "Name",       options: { filter: true, sort: false } },
+            { name: "Source",       label: "Source",     options: { filter: true, sort: false } },
+            { name: "Scope",        label: "Scope",      options: { filter: true, sort: false } },
+            { name: "Start Time",   label: "start_time", options: { 
+                                        filter: false, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
+            { name: "Last Update",  label: "last_active", options: {
+                                        filter: false, 
+                                        sort: true,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} },
+            { name: "Link",         label: "Id",      options: { 
+                                        filter: true, 
+                                        sort: false,
+                                        customBodyRender: (value, tableMeta, updateValue) => { return <Link to={`/alert/${value}`}>
+                                                                                                        <IconButton>
+                                                                                                            <LinkIcon />
+                                                                                                        </IconButton>
+                                                                                                      </Link> }} },
+        ];
+        
+
         const { alerts } = this.state;
 
         return (
             <Paper className={this.classes.paper}>
-                <AppBar position="static" color="default">
+                {/* <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
                     <FormGroup row>
                         <Typography>
@@ -277,14 +327,15 @@ class AlertsTable extends React.Component {
                         </Button>
                     </FormGroup>
                     </Toolbar>
-                </AppBar>
+                </AppBar> */}
+            <MuiThemeProvider theme={this.getMuiTheme()}>
                 <MUIDataTable
                     title={"Alerts"}
-                    data={convertAlertsToTable(alerts)}
-                    // columns={columnsAlerts.label}
+                    data={convertAlertsToTable({data: alerts, columns: columns})}
                     columns={columns}
                     options={options}
                 />
+            </MuiThemeProvider>
             </Paper>
         )
     }
