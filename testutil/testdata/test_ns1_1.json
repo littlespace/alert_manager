@@ -1,0 +1,68 @@
+{
+    "job": {
+      "notify_list": "5bd22ed2c94a9000014df12b",
+      "mute": false,
+      "notify_delay": 0,
+      "job_type": "tcp",
+      "last_log_removal": 1548139477,
+      "frequency": 20,
+      "rapid_recheck": false,
+      "region_scope": "fixed",
+      "id": "5c46bbc1a632f60001f2eef1",
+      "notify_repeat": 0,
+      "notify_regional": false,
+      "regions": [
+        "ams",
+        "dal",
+        "lga",
+        "sin",
+        "sjc"
+      ],
+      "policy": "all",
+      "config": {
+        "host": "128.116.112.34",
+        "port": 443
+      },
+      "status": {
+        "lga": {
+          "status": "up",
+          "since": 1548139477,
+          "fail_set": []
+        },
+        "dal": {
+          "status": "pending",
+          "since": 1548139457,
+          "fail_set": []
+        },
+        "global": {
+          "status": "up",
+          "since": 1548139477,
+          "fail_set": []
+        },
+        "sjc": {
+          "status": "pending",
+          "since": 1548139457,
+          "fail_set": []
+        },
+        "ams": {
+          "status": "pending",
+          "since": 1548139457,
+          "fail_set": []
+        },
+        "sin": {
+          "status": "pending",
+          "since": 1548139457,
+          "fail_set": []
+        }
+      },
+      "notify_failback": true,
+      "rules": [],
+      "v2": true,
+      "active": true,
+      "name": "Monitor_Name",
+      "notes": null
+    },
+    "region": "global",
+    "since": 1548139477,
+    "state": "down"
+  }
