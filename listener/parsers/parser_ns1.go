@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/listener"
 )
 
@@ -48,7 +49,7 @@ func (p *Ns1Parser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		return nil, fmt.Errorf("invalid data received, Config/Host address is mandatory")
 	}
 	if d.Job.Name == "" {
-		return nil, fmt.Errorf("invalid data received, Status/Name is mandatory")
+		return nil, fmt.Errorf("Invalid data received, Name is mandatory")
 	}
 
 	l := &listener.WebHookAlertData{
@@ -58,9 +59,11 @@ func (p *Ns1Parser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		Status:  listener.Status_ALERTING,
 		Time:    time.Now(),
 		Source:  "ns1",
-		Device:  d.Job.Config.Host,
 		Entity:  d.Job.Name,
+		Labels:  make(models.Labels),
 	}
+
+	l.Labels["VipIp"] = d.Job.Config.Host
 
 	if strings.ToLower(d.State) == "up" {
 		l.Status = listener.Status_CLEARED
