@@ -1,9 +1,10 @@
 package parsers
 
 import (
+	"testing"
+
 	"github.com/mayuresh82/alert_manager/listener"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 var testDatas = map[string]struct {
@@ -61,6 +62,18 @@ var testDatas = map[string]struct {
 			Source:  "kapacitor",
 		},
 	},
+	"ns1": {
+		raw: `{"job": {"notify_delay": 0,"job_type": "tcp","last_log_removal": 1548139477,"frequency": 20, "rapid_recheck": false, "region_scope": "fixed","id": "5c46bbc1a632f60001fwerwer", "notify_repeat": 0,"notify_regional": false,"regions": ["ams","dal","lga","sin","sjc"],"policy": "all","config": {"host": "1.6.7.35","port": 443},"status": {},"notify_failback": true,"rules": [],"v2": true,"active": true,"name": "monitornames","notes": null},"region": "global","since": 1548139477,"state": "down"}`,
+		parsed: &listener.WebHookAlertData{
+			Id:      "5c46bbc1a632f60001fwerwer",
+			Name:    "Neteng DNS Monitor Down",
+			Details: "monitornames",
+			Device:  "1.6.7.35",
+			Entity:  "monitornames",
+			Status:  listener.Status_ALERTING,
+			Source:  "ns1",
+		},
+	},
 }
 
 func TestParsing(t *testing.T) {
@@ -74,6 +87,8 @@ func TestParsing(t *testing.T) {
 			parser = &ObserviumParser{name: "observium"}
 		case "kapacitor":
 			parser = &KapacitorParser{name: "kapacitor"}
+		case "ns1":
+			parser = &Ns1Parser{name: "ns1"}
 		}
 		result, err := parser.Parse([]byte(data.raw))
 		if err != nil {
