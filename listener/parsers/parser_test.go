@@ -68,7 +68,6 @@ var testDatas = map[string]struct {
 			Id:      "5c46bbc1a632f60001fwerwer",
 			Name:    "Neteng DNS Monitor Down",
 			Details: "monitornames",
-			Device:  "1.6.7.35",
 			Entity:  "monitornames",
 			Status:  listener.Status_ALERTING,
 			Source:  "ns1",
