@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	ah "github.com/mayuresh82/alert_manager/handler"
-	"github.com/mayuresh82/alert_manager/internal/models"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
 type Clienter interface {
@@ -97,6 +98,12 @@ func (n *Netbox) apply(alert *models.Alert) {
 		l, n.err = CircuitLabels(n, alert)
 	case "bgp_peer":
 		l, n.err = BgpLabels(n, alert)
+	case "dns_monitor":
+		deviceName, err := IptoDevice(n, alert.Device.String)
+		if err == nil {
+			alert.AddDevice(deviceName)
+		}
+		l, n.err = DeviceLabels(n, alert)
 	default:
 		n.err = fmt.Errorf("Scope %s is not defined in netbox", alert.Scope)
 	}
