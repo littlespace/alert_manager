@@ -3,16 +3,17 @@ package listener
 import (
 	"context"
 	"fmt"
-	"github.com/golang/glog"
-	am "github.com/mayuresh82/alert_manager"
-	ah "github.com/mayuresh82/alert_manager/handler"
-	"github.com/mayuresh82/alert_manager/internal/models"
-	"github.com/mayuresh82/alert_manager/internal/stats"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	am "github.com/mayuresh82/alert_manager"
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/internal/stats"
 )
 
 const (
@@ -82,7 +83,9 @@ func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent,
 	}
 	event := &ah.AlertEvent{}
 	event.Alert = models.NewAlert(d.Name, d.Details, d.Entity, d.Source, scope, d.Id, d.Time, d.Level, false)
-	event.Alert.AddDevice(d.Device)
+	if d.Device != "" {
+		event.Alert.AddDevice(d.Device)
+	}
 	switch d.Status {
 	case Status_CLEARED:
 		event.Type = ah.EventType_CLEARED
