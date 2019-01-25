@@ -565,11 +565,11 @@ func TestNetboxIptoDevice(t *testing.T) {
 	}
 	assert.Equal(t, devName, "deviceA")
 
-	// // Nothing found
-	// devName, err = IptoDevice(n, "13.8.2.4")
-	// if err == nil {
-	// 	t.Fatal("an error should be returned")
-	// }
-	// assert.Equal(t, devName, "")
+	// Nothing found
+	devName, err = IptoDevice(n, "13.8.2.4")
+	if err == nil {
+		t.Fatal("an error should be returned")
+	}
+	assert.Equal(t, devName, "")
 
 }
