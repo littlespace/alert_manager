@@ -12,6 +12,14 @@ general_config:
 # does not need to be defined here for it to be accepted by alert manager. Such an
 # alert will get all default values
 alert_config:
+
+  - name: Neteng DNS Monitor Down 
+    config:
+      scope: dns_monitor
+      auto_expire: true
+      expire_after: 30m
+      notify_on_clear: true
+
   - name: BB Input Errors Test
     config:
       # scope can be used to identifthe labels to be attached to the alert
@@ -85,7 +93,8 @@ suppression_rules:
       # label k-v values to match
       matches:
         DeviceStatus: Offline
-    
+
+
 # inhibit rules let you mute certain alerts when certain other alerts are 
 # already present based on matching tags.
 inhibit_rules:

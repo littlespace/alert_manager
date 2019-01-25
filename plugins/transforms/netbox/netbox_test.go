@@ -2,12 +2,13 @@ package netbox
 
 import (
 	"bytes"
-	"github.com/mayuresh82/alert_manager/internal/models"
-	tu "github.com/mayuresh82/alert_manager/testutil"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"testing"
+
+	"github.com/mayuresh82/alert_manager/internal/models"
+	tu "github.com/mayuresh82/alert_manager/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 var testDatas = map[string][]byte{
@@ -383,6 +384,59 @@ var testDatas = map[string][]byte{
           }
       ]
   }`),
+	"/api/ipam/ip-addresses?q=13.8.2.3": []byte(`
+  {
+      "count": 1,
+      "next": null,
+      "previous": null,
+      "results": [
+          {
+              "id": 8117,
+              "family": 4,
+              "address": "13.8.2.3/32",
+              "vrf": null,
+              "tenant": null,
+              "status": {
+                  "value": 1,
+                  "label": "Active"
+              },
+              "role": null,
+              "interface": {
+                  "id": 106278,
+                  "device": {
+                      "id": 5140,
+                      "name": "deviceA",
+                      "display_name": "deviceA"
+                  },
+                  "name": "lo0.0",
+                  "form_factor": {
+                      "value": 0,
+                      "label": "Virtual"
+                  },
+                  "enabled": true,
+                  "lag": null,
+                  "mtu": null,
+                  "mac_address": null,
+                  "mgmt_only": false,
+                  "description": "",
+                  "is_connected": false,
+                  "interface_connection": null,
+                  "circuit_termination": null
+              },
+              "description": "",
+              "nat_inside": null,
+              "nat_outside": null,
+              "custom_fields": {}
+          }
+      ]
+  }`),
+	"/api/ipam/ip-addresses?q=13.8.2.4": []byte(`
+  {
+      "count": 0,
+      "next": null,
+      "previous": null,
+      "results": []
+  }`),
 }
 
 type mockClient struct{}
@@ -498,4 +552,24 @@ func TestNetboxBgp(t *testing.T) {
 		"RemoteDeviceStatus": "Active",
 	}
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
+}
+
+func TestNetboxIptoDevice(t *testing.T) {
+
+	n := &Netbox{client: &mockClient{}}
+
+	// Nothing found
+	devName, err := IptoDevice(n, "13.8.2.3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, devName, "deviceA")
+
+	// Nothing found
+	devName, err = IptoDevice(n, "13.8.2.4")
+	if err == nil {
+		t.Fatal("an error should be returned")
+	}
+	assert.Equal(t, devName, "")
+
 }

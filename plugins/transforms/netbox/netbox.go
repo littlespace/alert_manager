@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	ah "github.com/mayuresh82/alert_manager/handler"
-	"github.com/mayuresh82/alert_manager/internal/models"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
 type Clienter interface {
@@ -78,10 +79,7 @@ func (n *Netbox) query(query string) ([]byte, error) {
 }
 
 func (n *Netbox) apply(alert *models.Alert) {
-	if !alert.Device.Valid {
-		n.err = fmt.Errorf("Unable to get device from alert: field empty !")
-		return
-	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			n.err = fmt.Errorf("PANIC while applying netbox transform: %v", r)
@@ -97,6 +95,15 @@ func (n *Netbox) apply(alert *models.Alert) {
 		l, n.err = CircuitLabels(n, alert)
 	case "bgp_peer":
 		l, n.err = BgpLabels(n, alert)
+	case "dns_monitor":
+		if val, ok := alert.Labels["VipIp"]; ok {
+			deviceName, err := IptoDevice(n, val.(string))
+			if err == nil {
+				alert.AddDevice(deviceName)
+			}
+		}
+		l, n.err = DeviceLabels(n, alert)
+
 	default:
 		n.err = fmt.Errorf("Scope %s is not defined in netbox", alert.Scope)
 	}
