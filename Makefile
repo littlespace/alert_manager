@@ -1,5 +1,6 @@
 .PHONY: all alert_manager test
 
+DOCKER_IMAGE_TEST := mayuresh82/alert_manager_test
 VERSION := $(shell git describe --exact-match --tags 2>/dev/null)
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 COMMIT := $(shell git rev-parse --short HEAD)
@@ -22,3 +23,9 @@ test:
 
 linux:
 	GOOS=linux GOARCH=amd64 go build -o alert_manager_linux ./cmd/alert_manager
+
+ci-test:
+	docker build -t $(DOCKER_IMAGE_TEST):$(COMMIT) -f Dockerfile.test .
+	docker run -t \
+		-w /source \
+		$(DOCKER_IMAGE_TEST):$(COMMIT) go test -v -race -short -failfast ./...
