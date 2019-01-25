@@ -1,19 +1,17 @@
 FROM golang:alpine as builder
 RUN apk update && \
     apk upgrade && \
-    apk add --no-cache git && \
-    apk add make
-RUN mkdir -p /opt/alert_manager
-RUN mkdir -p /go/src/github.com/mayuresh82/alert_manager
-COPY . /go/src/github.com/mayuresh82/alert_manager
-WORKDIR /go/src/github.com/mayuresh82/alert_manager
+    apk add --no-cache make git alpine-sdk
+
+RUN mkdir -p /source
+COPY . /source
+WORKDIR /source
 RUN make
-RUN cp alert_manager /opt/alert_manager/
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
-COPY --from=builder /opt/alert_manager/alert_manager .
+COPY --from=builder /source/alert_manager .
 
 EXPOSE 8181/tcp 8282/tcp
 
