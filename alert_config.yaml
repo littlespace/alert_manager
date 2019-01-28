@@ -13,13 +13,6 @@ general_config:
 # alert will get all default values
 alert_config:
 
-  - name: Neteng DNS Monitor Down 
-    config:
-      scope: dns_monitor
-      auto_expire: true
-      expire_after: 30m
-      notify_on_clear: true
-
   - name: BB Input Errors Test
     config:
       # scope can be used to identifthe labels to be attached to the alert
