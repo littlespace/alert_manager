@@ -410,7 +410,7 @@ func (h *AlertHandler) Suppress(
 		ents["device"] = alert.Device.String
 	}
 	r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, "alert_manager", duration)
-	if _, err := h.AddSuppRule(ctx, r); err != nil {
+	if _, err := h.AddSuppRule(ctx, tx, r); err != nil {
 		return fmt.Errorf("Failed to suppress alert: %v", err)
 	}
 	tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))
@@ -443,22 +443,11 @@ func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *model
 }
 
 // AddSuppRule adds a new suppression rule into the suppressor
-func (h *AlertHandler) AddSuppRule(ctx context.Context, rule *models.SuppressionRule) (int64, error) {
-	tx := h.Db.NewTx()
-	var id int64
-	var er error
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		id, er = h.Suppressor.SaveRule(ctx, tx, rule)
-		return er
-	})
-	return id, err
+func (h *AlertHandler) AddSuppRule(ctx context.Context, tx models.Txn, rule *models.SuppressionRule) (int64, error) {
+	return h.Suppressor.SaveRule(ctx, tx, rule)
 }
 
 // DeleteSuppRule deletes an existing suppression rule from the suppressor
-func (h *AlertHandler) DeleteSuppRule(ctx context.Context, id int64) error {
-	tx := h.Db.NewTx()
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		return h.Suppressor.DeleteRule(ctx, tx, id)
-	})
-	return err
+func (h *AlertHandler) DeleteSuppRule(ctx context.Context, tx models.Txn, id int64) error {
+	return h.Suppressor.DeleteRule(ctx, tx, id)
 }

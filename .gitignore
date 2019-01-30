@@ -1,3 +1,4 @@
 *.swp
 bin/
 alert_manager
+vendor/

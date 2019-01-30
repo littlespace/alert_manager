@@ -295,13 +295,6 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 				reason,
 				duration,
 			)
-			// create an alert specific supp-rule to suppress all future similar alerts
-			ents := models.Labels{"alert_name": alert.Name, "entity": alert.Entity}
-			if alert.Device.Valid {
-				ents["device"] = alert.Device.String
-			}
-			r := models.NewSuppRule(ents, models.MatchCond_ALL, reason, creator, duration)
-			_, err = s.handler.AddSuppRule(ctx, r)
 		case "clear":
 			err = s.handler.Clear(ctx, tx, alert)
 		case "ack":
@@ -337,7 +330,8 @@ func (s *Server) CreateSuppRule(w http.ResponseWriter, req *http.Request) {
 		rule.Name = fmt.Sprintf("Rule - %s - %v", rule.Creator, rule.Duration)
 	}
 	rule.CreatedAt = models.MyTime{time.Now()}
-	id, err := s.handler.AddSuppRule(req.Context(), rule)
+	tx := s.handler.Db.NewTx()
+	id, err := s.handler.AddSuppRule(req.Context(), tx, rule)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create suppression rule: %v", err), http.StatusInternalServerError)
 		return
@@ -351,7 +345,8 @@ func (s *Server) CreateSuppRule(w http.ResponseWriter, req *http.Request) {
 func (s *Server) ClearSuppRule(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, _ := strconv.ParseInt(vars["id"], 10, 64)
-	if err := s.handler.DeleteSuppRule(req.Context(), id); err != nil {
+	tx := s.handler.Db.NewTx()
+	if err := s.handler.DeleteSuppRule(req.Context(), tx, id); err != nil {
 		http.Error(w, fmt.Sprintf("Unable to delete suppression rule: %v", err), http.StatusBadRequest)
 		return
 	}

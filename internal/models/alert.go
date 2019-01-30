@@ -38,10 +38,10 @@ var (
 	QuerySelectByIds        = querySelectAlerts + " WHERE id IN (?) ORDER BY id FOR UPDATE"
 	QuerySelectByStatus     = querySelectAlerts + " WHERE status IN (?) ORDER BY id FOR UPDATE"
 	QuerySelectNoOwner      = querySelectAlerts + " WHERE owner is NULL AND status=1 ORDER BY id FOR UPDATE"
-	QuerySelectByNameEntity = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND status IN (1,2) FOR UPDATE"
-	QuerySelectByDevice     = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND device=$3 AND status IN (1,2) FOR UPDATE"
+	QuerySelectByNameEntity = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND status = 1 FOR UPDATE"
+	QuerySelectByDevice     = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND device=$3 AND status = 1 FOR UPDATE"
 	QuerySelectExpired      = querySelectAlerts + ` WHERE
-    status IN (1,2) AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after ORDER BY id FOR UPDATE`
+    status = 1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after ORDER BY id FOR UPDATE`
 	QuerySelectAllAggregated = querySelectAlerts + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
 	QuerySelectSuppressed    = querySelectAlerts + ` WHERE status=2 AND id IN (
     select (entities->>'alert_id')::int from suppression_rules where rtype = 1 AND
