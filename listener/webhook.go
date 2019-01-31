@@ -60,7 +60,7 @@ func (k *WebHookListener) sanityCheck(d *WebHookAlertData) error {
 	}
 	processedString := reg.ReplaceAllString(d.Name, "")
 	if processedString != d.Name {
-		return fmt.Errorf("Invalid alert name: Name should only contain alpha-numeric chars, spaces or underscores")
+		return fmt.Errorf("Invalid alert name: %s. Name should only contain alpha-numeric chars, spaces or underscores", d.Name)
 	}
 	return nil
 }
@@ -184,12 +184,14 @@ func (k WebHookListener) httpHandler(w http.ResponseWriter, r *http.Request) {
 
 	data, err := parser.Parse(body)
 	if err != nil {
+		glog.Error(err)
 		k.statRequestsError.Add(1)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	event, err := k.formatAlertEvent(data)
 	if err != nil {
+		glog.Error(err)
 		k.statRequestsError.Add(1)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
