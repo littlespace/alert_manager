@@ -56,14 +56,12 @@ func (ag alertGroup) aggAlert() *models.Alert {
 	return agg
 }
 
-func (ag alertGroup) saveAgg(tx models.Txn) (*models.Alert, error) {
-	agg := ag.aggAlert()
+func (ag alertGroup) saveAgg(tx models.Txn, agg *models.Alert) (int64, error) {
 	var newId int64
 	newId, err := tx.NewAlert(agg)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to insert agg alert: %v", err)
+		return 0, fmt.Errorf("Unable to insert agg alert: %v", err)
 	}
-	agg.Id = newId
 	// update the agg IDs of all the original alerts
 	var origIds []int64
 	for _, o := range ag.groupedAlerts {
@@ -73,9 +71,23 @@ func (ag alertGroup) saveAgg(tx models.Txn) (*models.Alert, error) {
 	tx.NewRecord(agg.Id, fmt.Sprintf("Aggregated alert created from source alerts %v", origIds))
 	err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to update agg Ids: %v", err)
+		return 0, fmt.Errorf("Unable to update agg Ids: %v", err)
 	}
-	return agg, nil
+	return newId, nil
+}
+
+func (ag alertGroup) SuppAgg(tx models.Txn, agg *models.Alert, ruleId int64) error {
+	var origIds []int64
+	for _, o := range ag.groupedAlerts {
+		origIds = append(origIds, o.Id)
+		tx.NewRecord(o.Id, fmt.Sprintf("Alert suppressed due to matching supp rule: %d", ruleId))
+	}
+	// suppress all the original alerts
+	err := tx.InQuery(models.QueryUpdateManyStatus, models.Status_SUPPRESSED, origIds)
+	if err != nil {
+		return fmt.Errorf("Unable to update many status: %v", err)
+	}
+	return nil
 }
 
 var groupedChan = make(chan *alertGroup)
@@ -96,35 +108,24 @@ func (a *Aggregator) Name() string {
 func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error {
 	tx := a.db.NewTx()
 	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		agg, err := group.saveAgg(tx)
+		agg := group.aggAlert()
+		supp := ah.GetSuppressor(a.db)
+		labels := models.Labels{"alert_name": agg.Name}
+		rule := supp.Match(labels)
+		if rule != nil && rule.TimeLeft() > 0 {
+			glog.V(2).Infof("Found matching suppression rule for alert %s: %d:%s", agg.Name, rule.Id, rule.Name)
+			return group.SuppAgg(tx, agg, rule.Id)
+		}
+		id, err := group.saveAgg(tx, agg)
 		if err != nil {
 			return err
 		}
-		if err := a.checkSupp(ctx, tx, agg); err != nil {
-			return err
-		}
+		agg.Id = id
 		notifier := ah.GetNotifier(a.db)
-		go notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventMap[agg.Status.String()]})
+		go notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE})
 		a.statAggsActive.Add(1)
 		return nil
 	})
-}
-
-func (a *Aggregator) checkSupp(ctx context.Context, tx models.Txn, agg *models.Alert) error {
-	supp := ah.GetSuppressor(a.db)
-	labels := models.Labels{"alert_name": agg.Name}
-	rule := supp.Match(labels)
-	if rule != nil && rule.TimeLeft() > 0 {
-		duration := rule.TimeLeft()
-		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", agg.Id, rule)
-		msg := fmt.Sprintf("Alert suppressed due to matching suppression Rule %s", rule.Name)
-		if err := supp.SuppressAlert(ctx, tx, agg, duration); err != nil {
-			return fmt.Errorf("Unable to suppress agg: %v", err)
-		}
-		tx.NewRecord(agg.Id, fmt.Sprintf("Alert Suppressed by alert_manager for %v : %s", duration, msg))
-		return nil
-	}
-	return nil
 }
 
 func (a *Aggregator) checkExpired(ctx context.Context) error {

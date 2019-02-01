@@ -160,17 +160,6 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	// add transforms
 	h.applyTransforms(alert)
 
-	// new alert
-	newId, err := tx.NewAlert(alert)
-	if err != nil {
-		h.statDbError.Add(1)
-		return fmt.Errorf("Unable to insert new alert: %v", err)
-	}
-	alert.Id = newId
-	glog.V(2).Infof("Received alert with ID: %v", alert.Id)
-	tx.NewRecord(newId, fmt.Sprintf("Alert created from source %s with severity %s",
-		alert.Source, alert.Severity.String()))
-
 	// check if alert matches an existing suppression rule based on alert labels
 	labels := models.Labels{
 		"device":     alert.Device.String,
@@ -182,11 +171,19 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		labels[k] = v
 	}
 	if rule := h.Suppressor.Match(labels); rule != nil && rule.TimeLeft() > 0 {
-		glog.V(2).Infof("Found matching suppression rule for alert %d: %v", alert.Id, rule)
-		duration := rule.TimeLeft()
-		reason := fmt.Sprintf("Alert suppressed due to matching suppression Rule %d:%s", rule.Id, rule.Name)
-		return h.Suppress(ctx, tx, alert, "alert_manager", reason, duration)
+		glog.V(2).Infof("Found matching suppression rule for %s:%s:%s: %d:%s", alert.Name, alert.Entity, alert.Device.String, rule.Id, rule.Name)
+		return nil
 	}
+	// new alert
+	newId, err := tx.NewAlert(alert)
+	if err != nil {
+		h.statDbError.Add(1)
+		return fmt.Errorf("Unable to insert new alert: %v", err)
+	}
+	alert.Id = newId
+	glog.V(2).Infof("Received alert with ID: %v", alert.Id)
+	tx.NewRecord(newId, fmt.Sprintf("Alert created from source %s with severity %s",
+		alert.Source, alert.Severity.String()))
 	// Send to interested parties
 	h.notifyReceivers(alert, EventType_ACTIVE)
 	return nil

@@ -31,6 +31,7 @@ var (
 	QueryUpdateLastActive = queryUpdateAlerts + " SET last_active=? WHERE id IN (?)"
 	QueryUpdateAggId      = queryUpdateAlerts + " SET agg_id=? WHERE id IN (?)"
 	QueryUpdateStatus     = queryUpdateAlerts + " SET status=$1 WHERE id=$2 OR id IN (SELECT id from alerts WHERE agg_id=$2)"
+	QueryUpdateManyStatus = queryUpdateAlerts + " SET status=? WHERE id in (?)"
 
 	querySelectAlerts       = "SELECT * from alerts"
 	QuerySelectByNames      = querySelectAlerts + " WHERE name IN (?) AND status=1 AND agg_id=0 FOR UPDATE"

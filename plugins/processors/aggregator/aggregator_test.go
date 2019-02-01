@@ -54,8 +54,14 @@ func (t *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, err
 }
 
 func (t *MockTx) InQuery(query string, args ...interface{}) error {
-	mockAlerts["bgp_1"].AggregatorId = mockAlerts["agg_bgp_12"].Id
-	mockAlerts["bgp_2"].AggregatorId = mockAlerts["agg_bgp_12"].Id
+	switch query {
+	case models.QueryUpdateAggId:
+		mockAlerts["bgp_1"].AggregatorId = mockAlerts["agg_bgp_12"].Id
+		mockAlerts["bgp_2"].AggregatorId = mockAlerts["agg_bgp_12"].Id
+	case models.QueryUpdateManyStatus:
+		mockAlerts["bgp_1"].Status = models.Status_SUPPRESSED
+		mockAlerts["bgp_2"].Status = models.Status_SUPPRESSED
+	}
 	return nil
 }
 
@@ -110,11 +116,12 @@ func TestAlertGrouping(t *testing.T) {
 	grouper := &mockGrouper{name: "bgp_session"}
 
 	ag := alertGroup{groupedAlerts: group, grouper: grouper}
-	agg, err := ag.saveAgg(&MockTx{})
+	agg := ag.aggAlert()
+	id, err := ag.saveAgg(&MockTx{}, agg)
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	agg.Id = id
 	assert.Equal(t, agg.Name, mockAlerts["agg_bgp_12"].Name)
 	assert.Equal(t, agg.Description, mockAlerts["agg_bgp_12"].Description)
 	assert.Equal(t, agg.Source, mockAlerts["agg_bgp_12"].Source)
@@ -146,6 +153,8 @@ func TestAlertGrouping(t *testing.T) {
 	if err := a.handleGrouped(ctx, &ag); err != nil {
 		t.Fatal(err)
 	}
+	assert.Equal(t, mockAlerts["bgp_1"].Status, models.Status_SUPPRESSED)
+	assert.Equal(t, mockAlerts["bgp_2"].Status, models.Status_SUPPRESSED)
 }
 
 func TestAggExpiry(t *testing.T) {
