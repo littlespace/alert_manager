@@ -5,7 +5,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
-	"github.com/mayuresh82/alert_manager/listener"
 )
 
 // Listener is any agent that listens to alerts. Alerts are sent down a channel that
@@ -17,6 +16,7 @@ type Listener interface {
 	Uri() string
 	// Start listening for alerts
 	Listen(ctx context.Context)
+	GetParsersList() []string
 }
 
 type Processor interface {
@@ -79,7 +79,7 @@ func Init(ctx context.Context, db models.Dbase) error {
 func GetApiPluginsList() ApiPlugins {
 
 	choices := ApiPlugins{
-		Parsers:    listener.GetParsersList(),
+		Parsers:    make([]string, 0),
 		Processors: make([]string, 0, len(Processors)),
 		Outputs:    make([]string, 0, len(Outputs)),
 		Listeners:  make([]string, 0, len(Listeners)),
@@ -95,6 +95,9 @@ func GetApiPluginsList() ApiPlugins {
 
 	for k := range Listeners {
 		choices.Listeners = append(choices.Listeners, k)
+		if k == "webhook" {
+			choices.Parsers = Listeners[k].GetParsersList()
+		}
 	}
 
 	return choices

@@ -205,6 +205,15 @@ func (k *WebHookListener) Name() string {
 	return "webhook"
 }
 
+func (k *WebHookListener) GetParsersList() []string {
+
+	var plist []string
+	for _, p := range parsers {
+		plist = append(plist, p.Name())
+	}
+	return plist
+}
+
 func (k *WebHookListener) Uri() string {
 	addr := k.ListenAddr
 	if strings.HasPrefix(k.ListenAddr, ":") {
