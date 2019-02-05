@@ -3,38 +3,22 @@ package alert_manager
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/api"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
-	"os"
-	"os/signal"
-	"syscall"
+	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 // global flags
 var (
 	alertConfig = flag.String("alert-config", "", "full path to alert defintion file")
 )
-
-var (
-	Listeners  = make(map[string]Listener)
-	Processors = make(map[string]Processor)
-	Outputs    = make(map[string]Output)
-)
-
-func AddListener(l Listener) {
-	Listeners[l.Name()] = l
-}
-
-func AddProcessor(p Processor) {
-	Processors[p.Name()] = p
-}
-
-func AddOutput(o Output) {
-	Outputs[o.Name()] = o
-}
 
 func Run(config *Config) {
 	db := models.NewDB(config.Db.Addr, config.Db.Username, config.Db.Password, config.Db.DbName, config.Db.Timeout)
@@ -61,20 +45,9 @@ func Run(config *Config) {
 	handler := ah.NewHandler(db)
 	go handler.Start(ctx)
 
-	// start all the listeners
-	for name, listener := range Listeners {
-		glog.Infof("Starting Listener: %s on %s", name, listener.Uri())
-		go listener.Listen(ctx)
-	}
-	// start all the processors/outputs
-	for name, processor := range Processors {
-		glog.Infof("Starting processor: %s", name)
-		go processor.Start(ctx, db)
-	}
-	for name, output := range Outputs {
-		glog.Infof("Starting output: %s", name)
-		go output.Start(ctx)
-	}
+	//Initialize all the plugins
+	// Listener, Processors, transforms
+	plugins.Init(ctx, db)
 
 	// start the API server
 	glog.Infof("Starting API server on %s", config.Agent.ApiAddr)

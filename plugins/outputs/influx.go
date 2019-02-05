@@ -2,10 +2,11 @@ package output
 
 import (
 	"context"
-	am "github.com/mayuresh82/alert_manager"
+	"time"
+
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/reporting"
-	"time"
+	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 func (n *InfluxNotifier) parseFromEvent(event *ah.AlertEvent) *reporting.Datapoint {
@@ -93,5 +94,5 @@ func (n *InfluxNotifier) Start(ctx context.Context) {
 func init() {
 	n := &InfluxNotifier{Notif: make(chan *ah.AlertEvent)}
 	ah.RegisterOutput(n.Name(), n.Notif)
-	am.AddOutput(n)
+	plugins.AddOutput(n)
 }

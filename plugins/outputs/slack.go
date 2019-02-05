@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
-	am "github.com/mayuresh82/alert_manager"
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/golang/glog"
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 type SlackNotifier struct {
@@ -121,5 +122,5 @@ func (n *SlackNotifier) Start(ctx context.Context) {
 func init() {
 	n := &SlackNotifier{Notif: make(chan *ah.AlertEvent)}
 	ah.RegisterOutput(n.Name(), n.Notif)
-	am.AddOutput(n)
+	plugins.AddOutput(n)
 }

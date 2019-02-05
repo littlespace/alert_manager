@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
+	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 const (
@@ -45,6 +45,7 @@ type WebHookListener struct {
 }
 
 func NewWebHookListener() *WebHookListener {
+
 	return &WebHookListener{
 		statRequestsRecvd: stats.NewCounter("listener.webhook.requests_recvd"),
 		statRequestsError: stats.NewCounter("listener.webhook.requests_err"),
@@ -234,5 +235,5 @@ func (k WebHookListener) Listen(ctx context.Context) {
 
 func init() {
 	listener := NewWebHookListener()
-	am.AddListener(listener)
+	plugins.AddListener(listener)
 }
