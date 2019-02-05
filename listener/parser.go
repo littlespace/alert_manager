@@ -12,12 +12,3 @@ var parsers []Parser
 func AddParser(parser Parser) {
 	parsers = append(parsers, parser)
 }
-
-func GetParsersList() []string {
-
-	var plist []string
-	for _, p := range parsers {
-		plist = append(plist, p.Name())
-	}
-	return plist
-}
