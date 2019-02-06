@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
-	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/streadway/amqp"
 	"time"
 )
@@ -170,5 +170,5 @@ func (p *Publisher) Start(ctx context.Context) {
 func init() {
 	p := &Publisher{Notif: make(chan *ah.AlertEvent)}
 	ah.RegisterOutput(p.Name(), p.Notif)
-	am.AddOutput(p)
+	plugins.AddOutput(p)
 }
