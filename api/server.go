@@ -4,17 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
+	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 const key = "al3rtMana63r"
@@ -97,6 +99,7 @@ func (s *Server) Start(ctx context.Context) {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/auth", s.CreateToken).Methods("POST")
+	router.HandleFunc("/api/plugins", s.GetPluginsList).Methods("GET")
 	router.HandleFunc("/api/{category}", s.GetItems).Methods("GET")
 	router.HandleFunc("/api/{category}/{id}", s.Validate(s.Update)).Methods("PATCH", "OPTIONS")
 	router.HandleFunc("/api/alerts/{id}", s.GetAlert).Methods("GET")
@@ -350,4 +353,10 @@ func (s *Server) ClearSuppRule(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("Unable to delete suppression rule: %v", err), http.StatusBadRequest)
 		return
 	}
+}
+
+func (s *Server) GetPluginsList(w http.ResponseWriter, req *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(plugins.GetApiPluginsList())
 }

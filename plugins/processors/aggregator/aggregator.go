@@ -3,13 +3,14 @@ package aggregator
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/golang/glog"
-	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
+	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
-	"time"
 )
 
 const AGG_CHECK_INTERVAL = 2 * time.Minute
@@ -294,5 +295,5 @@ func init() {
 		statAggsActive: stats.NewGauge("processors.aggregator.aggs_active"),
 		statError:      stats.NewCounter("processors.aggregator.errors"),
 	}
-	am.AddProcessor(agg)
+	plugins.AddProcessor(agg)
 }

@@ -3,13 +3,14 @@ package inhibitor
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/golang/glog"
-	am "github.com/mayuresh82/alert_manager"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
-	"sync"
-	"time"
+	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 type Inhibitor struct {
@@ -142,5 +143,5 @@ func init() {
 		statAlertsInhibited: stats.NewCounter("processors.inhibitor.alerts_inhibited"),
 		statError:           stats.NewCounter("processors.inhibitor.errors"),
 	}
-	am.AddProcessor(inh)
+	plugins.AddProcessor(inh)
 }

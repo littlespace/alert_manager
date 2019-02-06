@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/go-mail/mail"
-	"github.com/golang/glog"
-	am "github.com/mayuresh82/alert_manager"
-	ah "github.com/mayuresh82/alert_manager/handler"
-	tpl "github.com/mayuresh82/alert_manager/template"
 	"html/template"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/go-mail/mail"
+	"github.com/golang/glog"
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/plugins"
+	tpl "github.com/mayuresh82/alert_manager/template"
 )
 
 type Emailer interface {
@@ -149,5 +150,5 @@ func init() {
 		Emailer: &EmailSender{},
 	}
 	ah.RegisterOutput(e.Name(), e.Notif)
-	am.AddOutput(e)
+	plugins.AddOutput(e)
 }
