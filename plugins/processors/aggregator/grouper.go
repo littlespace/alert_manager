@@ -11,7 +11,6 @@ import (
 // Grouper manages the alert buffers for the different groupers and their grouping for time-window based grouping methods.
 type Grouper struct {
 	recvBuffers map[string][]*models.Alert
-	subs        map[string][]string
 
 	sync.Mutex
 }
@@ -51,16 +50,4 @@ func (g *Grouper) removeAlert(name string, alert *models.Alert) {
 			i--
 		}
 	}
-}
-
-func (g *Grouper) addSubscription(name string, alertName string) {
-	g.Lock()
-	defer g.Unlock()
-	g.subs[name] = append(g.subs[name], alertName)
-}
-
-func (g *Grouper) subscribed(name string) []string {
-	g.Lock()
-	defer g.Unlock()
-	return g.subs[name]
 }

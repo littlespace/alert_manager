@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -81,7 +82,7 @@ func TestAlertHandlerParsing(t *testing.T) {
 	go handler.ServeHTTP(rr, req)
 
 	event := <-ah.ListenChan
-	assert.Equal(t, event.Type, ah.EventType_ACTIVE)
+	assert.Equal(t, event.Type, models.EventType_ACTIVE)
 	assert.Equal(t, event.Alert.Name, "Test Alert")
 	assert.Equal(t, event.Alert.Description, "Test Alert 123")
 	assert.Equal(t, event.Alert.Device.String, "dev1")

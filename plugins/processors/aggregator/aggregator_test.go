@@ -105,7 +105,7 @@ func (m *mockGrouper) GrouperFunc() groupers.GroupingFunc {
 	}
 }
 
-var notif = make(chan *ah.AlertEvent, 1)
+var notif = make(chan *models.AlertEvent, 1)
 
 func TestAlertGrouping(t *testing.T) {
 	group := []*models.Alert{
@@ -138,9 +138,13 @@ func TestAlertGrouping(t *testing.T) {
 	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	ctx := context.Background()
 	supp := ah.GetSuppressor(&MockDb{})
+	out := make(chan *models.AlertEvent, 1)
 	// test notif
-	a.handleGrouped(ctx, &ag)
+	a.handleGrouped(ctx, &ag, out)
 	event := <-notif
+	assert.Equal(t, event.Alert.Status.String(), "ACTIVE")
+	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
+	event = <-out
 	assert.Equal(t, event.Alert.Status.String(), "ACTIVE")
 	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
 
@@ -150,7 +154,7 @@ func TestAlertGrouping(t *testing.T) {
 		models.MatchCond_ALL,
 		"test", "test", 5*time.Minute)
 	supp.SaveRule(ctx, &MockTx{}, r)
-	if err := a.handleGrouped(ctx, &ag); err != nil {
+	if err := a.handleGrouped(ctx, &ag, out); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, mockAlerts["bgp_1"].Status, models.Status_SUPPRESSED)
@@ -175,7 +179,7 @@ func TestAggExpiry(t *testing.T) {
 	}
 	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "EXPIRED")
 	event := <-notif
-	assert.Equal(t, event.Type, ah.EventType_EXPIRED)
+	assert.Equal(t, event.Type, models.EventType_EXPIRED)
 	assert.Equal(t, event.Alert.Id, mockAlerts["agg_bgp_12"].Id)
 }
 

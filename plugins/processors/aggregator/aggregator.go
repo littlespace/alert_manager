@@ -3,17 +3,16 @@ package aggregator
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
 	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
+	"time"
 )
 
-const AGG_CHECK_INTERVAL = 2 * time.Minute
+const EXPIRY_CHECK_INTERVAL = 2 * time.Minute
 
 // alertGroup represents a set of grouped alerts for a given grouper
 type alertGroup struct {
@@ -94,7 +93,7 @@ func (ag alertGroup) SuppAgg(tx models.Txn, agg *models.Alert, ruleId int64) err
 var groupedChan = make(chan *alertGroup)
 
 type Aggregator struct {
-	Notif   chan *ah.AlertEvent
+	Notif   chan *models.AlertEvent
 	grouper *Grouper
 	db      models.Dbase
 
@@ -106,7 +105,11 @@ func (a *Aggregator) Name() string {
 	return "aggregator"
 }
 
-func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error {
+func (a *Aggregator) Stage() int {
+	return 1
+}
+
+func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out chan *models.AlertEvent) error {
 	tx := a.db.NewTx()
 	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		agg := group.aggAlert()
@@ -123,8 +126,11 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup) error
 		}
 		agg.Id = id
 		notifier := ah.GetNotifier(a.db)
-		go notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE})
+		go notifier.Notify(&models.AlertEvent{Alert: agg, Type: models.EventType_ACTIVE})
 		a.statAggsActive.Add(1)
+		if agg.Status == models.Status_ACTIVE {
+			out <- &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: agg}
+		}
 		return nil
 	})
 }
@@ -168,74 +174,20 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 				a.statAggsActive.Add(-1)
 				tx.NewRecord(aggAlert.Id, fmt.Sprintf("Alert %s", status))
 				notifier := ah.GetNotifier(a.db)
-				go notifier.Notify(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]})
+				go notifier.Notify(&models.AlertEvent{Alert: aggAlert, Type: models.EventMap[status]})
 			}
 		}
 		return nil
 	})
 }
 
-// StartPoll does grouping based on periodic querying the db for matching alerts.
-// Only one of this or Start() must be used to fix the grouping method.
-func (a *Aggregator) StartPoll(ctx context.Context, db models.Dbase) {
-	a.db = db
-	for _, alert := range ah.Config.GetConfiguredAlerts() {
-		if len(alert.Config.AggregationRules) == 0 {
-			continue
-		}
-		for _, ruleName := range alert.Config.AggregationRules {
-			a.grouper.addSubscription(ruleName, alert.Name)
-		}
-	}
-	for _, gpr := range groupers.AllGroupers {
-		go func(g groupers.Grouper) {
-			rule, _ := ah.Config.GetAggregationRuleConfig(g.Name())
-			t := time.NewTicker(rule.PollInterval)
-			for {
-				select {
-				case <-t.C:
-					var alerts []*models.Alert
-					tx := a.db.NewTx()
-					err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-						return tx.InSelect(models.QuerySelectByNames, &alerts, a.grouper.subscribed(g.Name()))
-					})
-					if err != nil {
-						glog.Errorf("Agg: Unable to query: %v", err)
-						return
-					}
-					if len(alerts) == 0 {
-						break
-					}
-					for _, group := range groupers.DoGrouping(g, alerts) {
-						groupedChan <- &alertGroup{groupedAlerts: group, grouper: g}
-					}
-				case <-ctx.Done():
-					return
-				}
-			}
-		}(gpr)
-	}
-	t := time.NewTicker(AGG_CHECK_INTERVAL)
-	for {
-		select {
-		case <-t.C:
-			if err := a.checkExpired(ctx); err != nil {
-				a.statError.Add(1)
-				glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 // Start does grouping by subscribing to alerts from the handler and grouping based
 // on configured time windows.
-func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
-	//a.StartPoll(ctx, h)
+func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) chan *models.AlertEvent {
 	a.db = db
-	t := time.NewTicker(AGG_CHECK_INTERVAL)
+	out := make(chan *models.AlertEvent)
 	go func() {
+		t := time.NewTicker(EXPIRY_CHECK_INTERVAL)
 		for {
 			select {
 			case <-t.C:
@@ -244,30 +196,22 @@ func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 					glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
 				}
 			case ag := <-groupedChan:
-				if err := a.handleGrouped(ctx, ag); err != nil {
+				if err := a.handleGrouped(ctx, ag, out); err != nil {
 					glog.Errorf("Agg: Unable to save Agg alert: %v", err)
 					a.statError.Add(1)
 				}
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()
-	// subscribe to alerts that have agg rules defined
-	for _, alert := range ah.Config.GetConfiguredAlerts() {
-		if len(alert.Config.AggregationRules) > 0 {
-			ah.RegisterProcessor(alert.Name, a.Notif)
-		}
-	}
-	for {
-		select {
-		case event := <-a.Notif:
-			// check if alert has already been agg'd
-			if event.Alert.AggregatorId != 0 {
-				break
-			}
+	go func() {
+		glog.Info("Starting processor - Aggregator")
+		for event := range in {
 			config, ok := ah.Config.GetAlertConfig(event.Alert.Name)
-			if !ok {
-				glog.Errorf("Alert config for %s not found", event.Alert.Name)
-				break
+			if !ok || event.Alert.AggregatorId != 0 || len(config.Config.AggregationRules) == 0 {
+				out <- event
+				continue
 			}
 			for _, ruleName := range config.Config.AggregationRules {
 				grouper, ok := groupers.AllGroupers[ruleName]
@@ -276,22 +220,24 @@ func (a *Aggregator) Start(ctx context.Context, db models.Dbase) {
 					continue
 				}
 				switch event.Type {
-				case ah.EventType_ACTIVE:
+				case models.EventType_ACTIVE:
 					a.grouper.addAlert(grouper.Name(), event.Alert)
-				case ah.EventType_CLEARED:
+				case models.EventType_CLEARED:
 					a.grouper.removeAlert(grouper.Name(), event.Alert)
+				default:
+					out <- event
 				}
 			}
-		case <-ctx.Done():
-			return
 		}
-	}
+		close(out)
+	}()
+	return out
 }
 
 func init() {
 	agg := &Aggregator{
-		Notif:          make(chan *ah.AlertEvent),
-		grouper:        &Grouper{recvBuffers: make(map[string][]*models.Alert), subs: make(map[string][]string)},
+		Notif:          make(chan *models.AlertEvent),
+		grouper:        &Grouper{recvBuffers: make(map[string][]*models.Alert)},
 		statAggsActive: stats.NewGauge("processors.aggregator.aggs_active"),
 		statError:      stats.NewCounter("processors.aggregator.errors"),
 	}

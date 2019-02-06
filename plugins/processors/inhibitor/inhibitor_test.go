@@ -61,7 +61,6 @@ func (tx *MockTx) Commit() error {
 
 func TestInhibit(t *testing.T) {
 	i := &Inhibitor{
-		Notif:               make(chan *ah.AlertEvent),
 		alertBuf:            make(map[string][]*models.Alert),
 		db:                  &MockDb{},
 		statAlertsInhibited: &tu.MockStat{},
@@ -72,17 +71,20 @@ func TestInhibit(t *testing.T) {
 	if !ok {
 		t.Fatal("Rule not found")
 	}
+	out := make(chan *models.AlertEvent, 1)
 	// test rule no match
 	i.addAlert("Device down", mockAlerts["link_2"])
-	i.checkRule(ctx, rule)
+	i.checkRule(ctx, rule, out)
 	assert.Equal(t, mockAlerts["link_2"].Status, models.Status_ACTIVE)
-
 	assert.Equal(t, len(i.alertBuf["Device down"]), 0)
+	event := <-out
+	assert.Equal(t, event.Type, models.EventType_ACTIVE)
+	assert.Equal(t, event.Alert.Id, mockAlerts["link_2"].Id)
 
 	// test rule match
 	i.addAlert("Device down", mockAlerts["bgp_1"])
 	i.addAlert("Device down", mockAlerts["link_1"])
-	i.checkRule(ctx, rule)
+	i.checkRule(ctx, rule, out)
 	assert.Equal(t, mockAlerts["bgp_1"].Status, models.Status_SUPPRESSED)
 	assert.Equal(t, mockAlerts["link_1"].Status, models.Status_SUPPRESSED)
 	assert.Equal(t, len(i.alertBuf["Device down"]), 0)
