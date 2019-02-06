@@ -9,20 +9,22 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/stats"
 	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
+	"regexp"
 	"time"
 )
 
 const EXPIRY_CHECK_INTERVAL = 2 * time.Minute
 
-// alertGroup represents a set of grouped alerts for a given grouper
+// alertGroup represents a set of grouped alerts for a given grouper and agg rule
 type alertGroup struct {
 	groupedAlerts []*models.Alert
 	grouper       groupers.Grouper
+	ruleName      string
 }
 
 // aggAlert generates an aggregate alert for a given alert group based on defined config.
 func (ag alertGroup) aggAlert() *models.Alert {
-	rule, _ := ah.Config.GetAggregationRuleConfig(ag.grouper.Name())
+	rule, _ := ah.Config.GetAggregationRuleConfig(ag.ruleName)
 	desc := ag.grouper.AggDesc(ag.groupedAlerts)
 	aggLabels := models.Labels{"device": []string{}, "entity": []string{}, "site": []string{}}
 	for _, o := range ag.groupedAlerts {
@@ -34,15 +36,19 @@ func (ag alertGroup) aggAlert() *models.Alert {
 			aggLabels["site"] = append(aggLabels["site"].([]string), o.Site.String)
 		}
 	}
+	sev := rule.Alert.Config.Severity
+	if sev == "" {
+		sev = "INFO"
+	}
 	agg := models.NewAlert(
 		rule.Alert.Name,
 		desc,
 		"Various",
-		rule.Alert.Config.Source,
+		rule.Name,
 		"aggregated",
 		ag.groupedAlerts[0].ExternalId,
 		time.Now(),
-		rule.Alert.Config.Severity,
+		sev,
 		true)
 
 	agg.Labels = aggLabels
@@ -181,8 +187,84 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 	})
 }
 
-// Start does grouping by subscribing to alerts from the handler and grouping based
-// on configured time windows.
+func (a *Aggregator) grouperForAlert(alert *models.Alert, ruleName string) groupers.Grouper {
+	var grouper groupers.Grouper
+	rule, ok := ah.Config.GetAggregationRuleConfig(ruleName)
+	if ok && len(rule.GroupBy) > 0 {
+		var match bool
+		for k, v := range rule.Matches {
+			lv, ok := alert.Labels[k]
+			if !ok {
+				break
+			}
+			if _, ok := v.(string); ok {
+				match, _ = regexp.MatchString(v.(string), lv.(string))
+			} else {
+				match = v == lv
+			}
+			if !match {
+				break
+			}
+		}
+		if match {
+			grouper = groupers.AllGroupers["default_label_grouper"]
+			g := grouper.(*groupers.LabelGrouper)
+			g.SetGroupby(rule.GroupBy)
+			return g
+		}
+	} else {
+		grouper = groupers.AllGroupers[ruleName]
+	}
+	return grouper
+}
+
+func (a *Aggregator) startProcess(in, out chan *models.AlertEvent) {
+	var labelRules []string
+	for _, rule := range ah.Config.GetAggRules() {
+		if len(rule.GroupBy) > 0 {
+			labelRules = append(labelRules, rule.Name)
+		}
+	}
+	glog.Info("Starting processor - Aggregator")
+	for event := range in {
+		if event.Alert.AggregatorId != 0 {
+			out <- event
+			continue
+		}
+		config, ok := ah.Config.GetAlertConfig(event.Alert.Name)
+		var rules []string
+		if ok {
+			rules = append(rules, config.Config.AggregationRules...)
+		}
+		if len(rules) == 0 {
+			// use any defined label based rules if no rule is specified or alert not configured
+			rules = append(rules, labelRules...)
+		}
+		var processed bool
+		for _, ruleName := range rules {
+			grouper := a.grouperForAlert(event.Alert, ruleName)
+			if grouper == nil {
+				glog.V(2).Infof("No grouper found for rule: %s, skipping", ruleName)
+				continue
+			}
+			processed = true
+			switch event.Type {
+			case models.EventType_ACTIVE:
+				a.grouper.addAlert(grouper, ruleName, event.Alert)
+			case models.EventType_CLEARED:
+				a.grouper.removeAlert(grouper.Name(), event.Alert)
+			default:
+				out <- event
+			}
+		}
+		if !processed {
+			out <- event
+		}
+	}
+	close(out)
+}
+
+// Process / group the alerts from the handler and grouping based on configured time windows.
 func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) chan *models.AlertEvent {
 	a.db = db
 	out := make(chan *models.AlertEvent)
@@ -205,32 +287,7 @@ func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *mode
 			}
 		}
 	}()
-	go func() {
-		glog.Info("Starting processor - Aggregator")
-		for event := range in {
-			config, ok := ah.Config.GetAlertConfig(event.Alert.Name)
-			if !ok || event.Alert.AggregatorId != 0 || len(config.Config.AggregationRules) == 0 {
-				out <- event
-				continue
-			}
-			for _, ruleName := range config.Config.AggregationRules {
-				grouper, ok := groupers.AllGroupers[ruleName]
-				if !ok {
-					glog.Errorf("No grouper found for rule: %s, skipping", ruleName)
-					continue
-				}
-				switch event.Type {
-				case models.EventType_ACTIVE:
-					a.grouper.addAlert(grouper.Name(), event.Alert)
-				case models.EventType_CLEARED:
-					a.grouper.removeAlert(grouper.Name(), event.Alert)
-				default:
-					out <- event
-				}
-			}
-		}
-		close(out)
-	}()
+	go a.startProcess(in, out)
 	return out
 }
 

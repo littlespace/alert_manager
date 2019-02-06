@@ -245,6 +245,14 @@ func (a *Alert) Clear() {
 	a.Status = Status_CLEARED
 }
 
+func (a *Alert) ExtendLabels() {
+	a.Labels["device"] = a.Device.String
+	a.Labels["entity"] = a.Entity
+	a.Labels["alert_name"] = a.Name
+	a.Labels["source"] = a.Source
+	a.Labels["scope"] = a.Scope
+}
+
 type Alerts []*Alert
 
 func (a Alerts) AnyStatusIn(status AlertStatus) bool {

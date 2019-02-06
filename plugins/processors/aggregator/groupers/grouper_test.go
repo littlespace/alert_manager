@@ -90,12 +90,35 @@ var testDatas = map[string]struct {
 			[]int64{3, 4, 5},
 		},
 	},
+	"default_label_grouper": {
+		incoming: []*models.Alert{
+			tu.MockAlert(
+				1, "Neteng High Device CPU", "", "dev1", "dev1", "src1", "device", "1", "WARN", []string{}, nil),
+			tu.MockAlert(
+				2, "Neteng LC Fail", "", "dev1", "dev1", "src2", "device", "2", "WARN", []string{}, nil),
+			tu.MockAlert(
+				3, "Neteng Device Effed", "", "dev2", "dev2", "src1", "device", "3", "WARN", []string{}, nil),
+			tu.MockAlert(
+				4, "Neteng Fan Down", "", "dev2", "if2", "src1", "device", "4", "WARN", []string{}, nil),
+		},
+		grouped: [][]int64{
+			[]int64{1, 2},
+			[]int64{3, 4},
+		},
+	},
 }
 
 func TestGrouping(t *testing.T) {
 	for name, datas := range testDatas {
 		grouper := AllGroupers[name]
+		if g, ok := grouper.(*LabelGrouper); ok {
+			g.SetGroupby([]string{"device"})
+			grouper = g
+		}
 		var aggregated [][]int64
+		for _, a := range datas.incoming {
+			a.ExtendLabels()
+		}
 		for _, group := range DoGrouping(grouper, datas.incoming) {
 			var groupedIds []int64
 			for _, a := range group {
