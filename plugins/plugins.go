@@ -19,9 +19,20 @@ type Listener interface {
 	GetParsersList() []string
 }
 
+// Processor is an alert processor thats part of a processor pipeline
 type Processor interface {
 	Name() string
-	Start(ctx context.Context, db models.Dbase)
+	Stage() int
+	Process(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) chan *models.AlertEvent
+}
+
+func GetProcessor(name string) Processor {
+	for _, p := range Processors {
+		if p.Name() == name {
+			return p
+		}
+	}
+	return nil
 }
 
 type Output interface {
@@ -38,7 +49,7 @@ type ApiPlugins struct {
 
 var (
 	Listeners  = make(map[string]Listener)
-	Processors = make(map[string]Processor)
+	Processors []Processor
 	Outputs    = make(map[string]Output)
 )
 
@@ -47,7 +58,7 @@ func AddListener(l Listener) {
 }
 
 func AddProcessor(p Processor) {
-	Processors[p.Name()] = p
+	Processors = append(Processors, p)
 }
 
 func AddOutput(o Output) {
@@ -62,12 +73,7 @@ func Init(ctx context.Context, db models.Dbase) error {
 		go listener.Listen(ctx)
 	}
 
-	// start all the processors/outputs
-	for name, processor := range Processors {
-		glog.Infof("Starting processor: %s", name)
-		go processor.Start(ctx, db)
-	}
-
+	// start all the outputs
 	for name, output := range Outputs {
 		glog.Infof("Starting output: %s", name)
 		go output.Start(ctx)
@@ -85,8 +91,8 @@ func GetApiPluginsList() ApiPlugins {
 		Listeners:  make([]string, 0, len(Listeners)),
 	}
 
-	for k := range Processors {
-		choices.Processors = append(choices.Processors, k)
+	for _, k := range Processors {
+		choices.Processors = append(choices.Processors, k.Name())
 	}
 
 	for k := range Outputs {

@@ -12,7 +12,7 @@ import (
 const remindCheckInterval = 2 * time.Minute
 
 type notification struct {
-	event        *AlertEvent
+	event        *models.AlertEvent
 	lastNotified time.Time
 }
 
@@ -51,7 +51,7 @@ func (n *notifier) loadActiveAlerts() {
 			return err
 		}
 		for _, a := range active {
-			n.notifiedAlerts[a.Id] = &notification{event: &AlertEvent{Type: EventType_ACTIVE, Alert: a}}
+			n.notifiedAlerts[a.Id] = &notification{event: &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: a}}
 		}
 		return nil
 	})
@@ -105,7 +105,7 @@ func (n *notifier) remind() {
 //    - if alert is expired then notify to configured or default outputs
 //    - if alert is suppressed then dont notify
 // - else send it to the default output
-func (n *notifier) Notify(event *AlertEvent) {
+func (n *notifier) Notify(event *models.AlertEvent) {
 	alert := event.Alert
 	alertConfig, ok := Config.GetAlertConfig(alert.Name)
 	if ok && alertConfig.Config.DisableNotify {
@@ -126,7 +126,7 @@ func (n *notifier) Notify(event *AlertEvent) {
 		notif.event = event
 	}
 	switch event.Type {
-	case EventType_ACTIVE:
+	case models.EventType_ACTIVE:
 		if alreadyNotified {
 			return
 		}
@@ -135,9 +135,9 @@ func (n *notifier) Notify(event *AlertEvent) {
 		}
 		n.reportToInflux(event)
 		n.notifiedAlerts[alert.Id] = &notification{event: event, lastNotified: time.Now()}
-	case EventType_CLEARED, EventType_EXPIRED:
+	case models.EventType_CLEARED, models.EventType_EXPIRED:
 		delete(n.notifiedAlerts, alert.Id)
-		if event.Type == EventType_CLEARED {
+		if event.Type == models.EventType_CLEARED {
 			var notifyOnClear bool
 			if ok {
 				notifyOnClear = alertConfig.Config.NotifyOnClear
@@ -147,14 +147,14 @@ func (n *notifier) Notify(event *AlertEvent) {
 				return
 			}
 		}
-	case EventType_SUPPRESSED, EventType_ACKD:
+	case models.EventType_SUPPRESSED, models.EventType_ACKD:
 		if alreadyNotified {
-			if notif.event.Type == EventType_ACTIVE && event.Type == EventType_SUPPRESSED {
+			if notif.event.Type == models.EventType_ACTIVE && event.Type == models.EventType_SUPPRESSED {
 				n.reportToInflux(event)
 			}
 			return
 		}
-		if event.Type == EventType_SUPPRESSED || event.Type == EventType_ACKD {
+		if event.Type == models.EventType_SUPPRESSED || event.Type == models.EventType_ACKD {
 			n.reportToInflux(event)
 			return
 		}
@@ -172,7 +172,7 @@ func (n *notifier) Notify(event *AlertEvent) {
 	}
 }
 
-func (n *notifier) send(event *AlertEvent, outputs []string) {
+func (n *notifier) send(event *models.AlertEvent, outputs []string) {
 	gMu.Lock()
 	for _, output := range outputs {
 		if outChan, ok := Outputs[output]; ok {
@@ -183,7 +183,7 @@ func (n *notifier) send(event *AlertEvent, outputs []string) {
 	gMu.Unlock()
 }
 
-func (n *notifier) reportToInflux(event *AlertEvent) {
+func (n *notifier) reportToInflux(event *models.AlertEvent) {
 	gMu.Lock()
 	defer gMu.Unlock()
 	if influxOut, ok := Outputs["influx"]; ok {

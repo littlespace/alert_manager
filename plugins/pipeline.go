@@ -1,4 +1,4 @@
-package handler
+package plugins
 
 import (
 	"context"
@@ -6,32 +6,10 @@ import (
 	"sort"
 )
 
-// Processor is an alert processor thats part of a processor pipeline
-type Processor interface {
-	Name() string
-	Stage() int
-	Process(ctx context.Context, db models.Dbase, in chan *AlertEvent) chan *AlertEvent
-}
-
-var Processors []Processor
-
-func GetProcessor(name string) Processor {
-	for _, p := range Processors {
-		if p.Name() == name {
-			return p
-		}
-	}
-	return nil
-}
-
-func AddProcessor(p Processor) {
-	Processors = append(Processors, p)
-}
-
 // Pipeline is a pipeline of alert processors
 type Pipeline interface {
 	Next() Processor
-	Run(ctx context.Context, db models.Dbase, in chan *AlertEvent)
+	Run(ctx context.Context, db models.Dbase, in chan *models.AlertEvent)
 }
 
 type ProcessorPipeline struct {
@@ -53,7 +31,7 @@ func (p ProcessorPipeline) Next() Processor {
 }
 
 // Run starts the processor pipeline
-func (p ProcessorPipeline) Run(ctx context.Context, db models.Dbase, in chan *AlertEvent) {
+func (p ProcessorPipeline) Run(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) {
 	processor := p.Next()
 	if processor == nil {
 		go func() {

@@ -6,53 +6,21 @@ import (
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
+	"github.com/mayuresh82/alert_manager/plugins"
 	"regexp"
 	"sort"
 	"sync"
 	"time"
 )
 
-type EventType int
-
 const (
-	EventType_ACTIVE     EventType = 1
-	EventType_EXPIRED    EventType = 2
-	EventType_SUPPRESSED EventType = 3
-	EventType_CLEARED    EventType = 4
-	EventType_ACKD       EventType = 5
-	EventType_ESCALATED  EventType = 6
-
 	EXPIRY_CHECK_INTERVAL     = 5 * time.Minute
 	ESCALATION_CHECK_INTERVAL = 3 * time.Minute
 	CLEAR_HOLDDOWN_INTERVAL   = 1 * time.Minute
 )
 
-var EventMap = map[string]EventType{
-	"ACTIVE":     EventType_ACTIVE,
-	"EXPIRED":    EventType_EXPIRED,
-	"SUPPRESSED": EventType_SUPPRESSED,
-	"CLEARED":    EventType_CLEARED,
-	"ACKD":       EventType_ACKD,
-	"ESCALATED":  EventType_ESCALATED,
-}
-
-func (e EventType) String() string {
-	for str, ev := range EventMap {
-		if e == ev {
-			return str
-		}
-	}
-	return "UNKNOWN"
-}
-
-// AlertEvent signifies a type of action on an alert
-type AlertEvent struct {
-	Alert *models.Alert
-	Type  EventType
-}
-
 // all listeners send alerts down this channel
-var ListenChan = make(chan *AlertEvent)
+var ListenChan = make(chan *models.AlertEvent)
 
 // ClearHandler keeps a track of clearing active alerts
 type ClearHandler struct {
@@ -87,7 +55,7 @@ type AlertHandler struct {
 	Db         models.Dbase
 	Notifier   *notifier
 	Suppressor *suppressor
-	procChan   chan *AlertEvent
+	procChan   chan *models.AlertEvent
 	clearer    *ClearHandler
 
 	statTransformError stats.Stat
@@ -100,7 +68,7 @@ func NewHandler(db models.Dbase) *AlertHandler {
 		Db:                 db,
 		Notifier:           GetNotifier(db),
 		Suppressor:         GetSuppressor(db),
-		procChan:           make(chan *AlertEvent),
+		procChan:           make(chan *models.AlertEvent),
 		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
 		statTransformError: stats.NewCounter("handler.transform_errors"),
 		statDbError:        stats.NewCounter("handler.db_errors"),
@@ -111,7 +79,7 @@ func NewHandler(db models.Dbase) *AlertHandler {
 // Start needs to be called in a go-routine
 func (h *AlertHandler) Start(ctx context.Context) {
 	// start the processor pipeline
-	procPipeline := NewProcessorPipeline()
+	procPipeline := plugins.NewProcessorPipeline()
 	procPipeline.Run(ctx, h.Db, h.procChan)
 
 	// housekeeping
@@ -138,9 +106,9 @@ func (h *AlertHandler) Start(ctx context.Context) {
 				alert := alertEvent.Alert
 
 				switch alertEvent.Type {
-				case EventType_ACTIVE:
+				case models.EventType_ACTIVE:
 					return h.handleActive(ctx, tx, alert)
-				case EventType_CLEARED:
+				case models.EventType_CLEARED:
 					holddown := Config.GetGeneralConfig().ClearHolddownInterval
 					if holddown == 0 {
 						holddown = CLEAR_HOLDDOWN_INTERVAL
@@ -193,7 +161,7 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	tx.NewRecord(newId, fmt.Sprintf("Alert created from source %s with severity %s",
 		alert.Source, alert.Severity.String()))
 	// Send to interested parties
-	h.notifyReceivers(alert, EventType_ACTIVE)
+	h.notifyReceivers(alert, models.EventType_ACTIVE)
 	return nil
 }
 
@@ -288,10 +256,10 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	}
 }
 
-func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType EventType) {
-	event := &AlertEvent{Alert: alert, Type: eventType}
+func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType models.EventType) {
+	event := &models.AlertEvent{Alert: alert, Type: eventType}
 	// send the alert down the processor pipeline
-	if len(Processors) > 0 {
+	if len(plugins.Processors) > 0 {
 		h.procChan <- event
 	}
 	// send the alert to the outputs. If the alert config or config outputs is undefined,
@@ -318,7 +286,7 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 			}
 			tx.NewRecord(ex.Id, "Alert expired")
 			toSend := ex // this copy needed to avoid overwriting
-			h.notifyReceivers(toSend, EventType_EXPIRED)
+			h.notifyReceivers(toSend, models.EventType_EXPIRED)
 		}
 		return nil
 	})
@@ -364,7 +332,7 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 			}
 			if changed {
 				toSend := alert // this copy needed to avoid overwriting
-				h.notifyReceivers(toSend, EventType_ESCALATED)
+				h.notifyReceivers(toSend, models.EventType_ESCALATED)
 			}
 		}
 		return nil
@@ -414,7 +382,7 @@ func (h *AlertHandler) Suppress(
 		return fmt.Errorf("Failed to suppress alert: %v", err)
 	}
 	tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))
-	h.notifyReceivers(alert, EventType_SUPPRESSED)
+	h.notifyReceivers(alert, models.EventType_SUPPRESSED)
 	return nil
 }
 
@@ -425,7 +393,7 @@ func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.A
 		return err
 	}
 	tx.NewRecord(alert.Id, "Alert cleared")
-	h.notifyReceivers(alert, EventType_CLEARED)
+	h.notifyReceivers(alert, models.EventType_CLEARED)
 	return nil
 }
 
@@ -438,7 +406,7 @@ func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *model
 	}
 	tx.NewRecord(alert.Id, fmt.Sprintf("Alert owner set to %s, team set to %s", name, teamName))
 	// Notify all the receivers
-	h.notifyReceivers(alert, EventType_ACKD)
+	h.notifyReceivers(alert, models.EventType_ACKD)
 	return nil
 }
 

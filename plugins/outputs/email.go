@@ -12,6 +12,7 @@ import (
 	"github.com/go-mail/mail"
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 	tpl "github.com/mayuresh82/alert_manager/template"
 )
@@ -48,7 +49,7 @@ func (e *EmailSender) send(addr, username, pwd, from, subject, body string, reci
 }
 
 type EmailNotifier struct {
-	Notif        chan *ah.AlertEvent
+	Notif        chan *models.AlertEvent
 	rawTpl       string
 	Emailer      Emailer
 	SmtpAddr     string `mapstructure:"smtp_addr"`
@@ -85,7 +86,7 @@ func (e *EmailNotifier) renderTemplate(data *TplData) (string, error) {
 	return buf.String(), nil
 }
 
-func (e *EmailNotifier) subject(event *ah.AlertEvent) string {
+func (e *EmailNotifier) subject(event *models.AlertEvent) string {
 	alert := event.Alert
 	var subject string
 	if alert.Device.Valid {
@@ -96,7 +97,7 @@ func (e *EmailNotifier) subject(event *ah.AlertEvent) string {
 	return subject
 }
 
-func (e *EmailNotifier) start(event *ah.AlertEvent) {
+func (e *EmailNotifier) start(event *models.AlertEvent) {
 	startTime := event.Alert.StartTime.UTC().Format("Mon Jan 2 15:04:05 MST 2006")
 	data := &TplData{
 		Subject:       e.subject(event),
@@ -145,7 +146,7 @@ func (e *EmailNotifier) Start(ctx context.Context) {
 
 func init() {
 	e := &EmailNotifier{
-		Notif:   make(chan *ah.AlertEvent),
+		Notif:   make(chan *models.AlertEvent),
 		rawTpl:  tpl.EmailTemplate,
 		Emailer: &EmailSender{},
 	}

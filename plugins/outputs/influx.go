@@ -5,11 +5,12 @@ import (
 	"time"
 
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/reporting"
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
-func (n *InfluxNotifier) parseFromEvent(event *ah.AlertEvent) *reporting.Datapoint {
+func (n *InfluxNotifier) parseFromEvent(event *models.AlertEvent) *reporting.Datapoint {
 	alert := event.Alert
 	tags := map[string]string{
 		"name":     alert.Name,
@@ -36,7 +37,7 @@ func (n *InfluxNotifier) parseFromEvent(event *ah.AlertEvent) *reporting.Datapoi
 	}
 	fields := make(map[string]interface{})
 	switch event.Type {
-	case ah.EventType_ACTIVE:
+	case models.EventType_ACTIVE:
 		fields["num_active"] = 1
 		switch alert.Severity.String() {
 		case "CRITICAL":
@@ -46,15 +47,15 @@ func (n *InfluxNotifier) parseFromEvent(event *ah.AlertEvent) *reporting.Datapoi
 		case "INFO":
 			fields["num_info"] = 1
 		}
-	case ah.EventType_SUPPRESSED:
+	case models.EventType_SUPPRESSED:
 		fields["num_suppressed"] = 1
-	case ah.EventType_EXPIRED:
+	case models.EventType_EXPIRED:
 		fields["num_expired"] = 1
-	case ah.EventType_CLEARED:
+	case models.EventType_CLEARED:
 		fields["num_cleared"] = 1
-	case ah.EventType_ACKD:
+	case models.EventType_ACKD:
 		fields["num_ackd"] = 1
-	case ah.EventType_ESCALATED:
+	case models.EventType_ESCALATED:
 		fields["num_escalated"] = 1
 	}
 	return &reporting.Datapoint{
@@ -68,7 +69,7 @@ func (n *InfluxNotifier) parseFromEvent(event *ah.AlertEvent) *reporting.Datapoi
 type InfluxNotifier struct {
 	Url         string
 	Measurement string
-	Notif       chan *ah.AlertEvent
+	Notif       chan *models.AlertEvent
 }
 
 func (n *InfluxNotifier) Name() string {
@@ -92,7 +93,7 @@ func (n *InfluxNotifier) Start(ctx context.Context) {
 }
 
 func init() {
-	n := &InfluxNotifier{Notif: make(chan *ah.AlertEvent)}
+	n := &InfluxNotifier{Notif: make(chan *models.AlertEvent)}
 	ah.RegisterOutput(n.Name(), n.Notif)
 	plugins.AddOutput(n)
 }

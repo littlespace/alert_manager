@@ -3,7 +3,6 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
@@ -26,8 +25,8 @@ func TestOutputSlack(t *testing.T) {
 	}))
 	defer ts.Close()
 	s := &SlackNotifier{Url: ts.URL, Recipient: "#test"}
-	event := &ah.AlertEvent{
-		Type:  ah.EventType_ACTIVE,
+	event := &models.AlertEvent{
+		Type:  models.EventType_ACTIVE,
 		Alert: tu.MockAlert(0, "Neteng BGP Down", "This alert has fired", "dev1", "PeerX", "src", "scp", "1", "WARN", []string{}, nil),
 	}
 
@@ -89,8 +88,8 @@ var renderedTpl = `
 func TestOutputEmail(t *testing.T) {
 	emailer := &mockEmailer{}
 	n := &EmailNotifier{Emailer: emailer, rawTpl: mockTpl}
-	event := &ah.AlertEvent{
-		Type: ah.EventType_ACTIVE,
+	event := &models.AlertEvent{
+		Type: models.EventType_ACTIVE,
 		Alert: &models.Alert{
 			Id:          1,
 			Severity:    models.Sev_CRITICAL,

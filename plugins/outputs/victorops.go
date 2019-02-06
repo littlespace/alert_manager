@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
@@ -23,7 +24,7 @@ type victorOpsMsg struct {
 }
 
 type VictorOpsNotifier struct {
-	Notif       chan *ah.AlertEvent
+	Notif       chan *models.AlertEvent
 	Url         string
 	AutoResolve bool `mapstructure:"auto_resolve"`
 }
@@ -32,14 +33,14 @@ func (n *VictorOpsNotifier) Name() string {
 	return "victorops"
 }
 
-func (n *VictorOpsNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
+func (n *VictorOpsNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
 	m := &victorOpsMsg{}
 	switch event.Type {
-	case ah.EventType_ACTIVE, ah.EventType_ESCALATED:
+	case models.EventType_ACTIVE, models.EventType_ESCALATED:
 		m.MessageType = "CRITICAL"
-	case ah.EventType_CLEARED:
+	case models.EventType_CLEARED:
 		m.MessageType = "RECOVERY"
-	case ah.EventType_ACKD:
+	case models.EventType_ACKD:
 		m.MessageType = "ACKNOWLEDGEMENT"
 	}
 
@@ -78,7 +79,7 @@ func (n *VictorOpsNotifier) Start(ctx context.Context) {
 	for {
 		select {
 		case event := <-n.Notif:
-			if event.Type == ah.EventType_CLEARED && !n.AutoResolve {
+			if event.Type == models.EventType_CLEARED && !n.AutoResolve {
 				break
 			}
 			body, err := n.formatBody(event)
@@ -94,7 +95,7 @@ func (n *VictorOpsNotifier) Start(ctx context.Context) {
 }
 
 func init() {
-	n := &VictorOpsNotifier{Notif: make(chan *ah.AlertEvent)}
+	n := &VictorOpsNotifier{Notif: make(chan *models.AlertEvent)}
 	ah.RegisterOutput(n.Name(), n.Notif)
 	plugins.AddOutput(n)
 }

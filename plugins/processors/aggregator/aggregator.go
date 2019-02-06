@@ -7,6 +7,7 @@ import (
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
+	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
 	"time"
 )
@@ -92,7 +93,7 @@ func (ag alertGroup) SuppAgg(tx models.Txn, agg *models.Alert, ruleId int64) err
 var groupedChan = make(chan *alertGroup)
 
 type Aggregator struct {
-	Notif   chan *ah.AlertEvent
+	Notif   chan *models.AlertEvent
 	grouper *Grouper
 	db      models.Dbase
 
@@ -108,7 +109,7 @@ func (a *Aggregator) Stage() int {
 	return 1
 }
 
-func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out chan *ah.AlertEvent) error {
+func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out chan *models.AlertEvent) error {
 	tx := a.db.NewTx()
 	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		agg := group.aggAlert()
@@ -125,10 +126,10 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out c
 		}
 		agg.Id = id
 		notifier := ah.GetNotifier(a.db)
-		go notifier.Notify(&ah.AlertEvent{Alert: agg, Type: ah.EventType_ACTIVE})
+		go notifier.Notify(&models.AlertEvent{Alert: agg, Type: models.EventType_ACTIVE})
 		a.statAggsActive.Add(1)
 		if agg.Status == models.Status_ACTIVE {
-			out <- &ah.AlertEvent{Type: ah.EventType_ACTIVE, Alert: agg}
+			out <- &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: agg}
 		}
 		return nil
 	})
@@ -173,7 +174,7 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 				a.statAggsActive.Add(-1)
 				tx.NewRecord(aggAlert.Id, fmt.Sprintf("Alert %s", status))
 				notifier := ah.GetNotifier(a.db)
-				go notifier.Notify(&ah.AlertEvent{Alert: aggAlert, Type: ah.EventMap[status]})
+				go notifier.Notify(&models.AlertEvent{Alert: aggAlert, Type: models.EventMap[status]})
 			}
 		}
 		return nil
@@ -182,9 +183,9 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 
 // Start does grouping by subscribing to alerts from the handler and grouping based
 // on configured time windows.
-func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *ah.AlertEvent) chan *ah.AlertEvent {
+func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) chan *models.AlertEvent {
 	a.db = db
-	out := make(chan *ah.AlertEvent)
+	out := make(chan *models.AlertEvent)
 	go func() {
 		t := time.NewTicker(EXPIRY_CHECK_INTERVAL)
 		for {
@@ -219,9 +220,9 @@ func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *ah.A
 					continue
 				}
 				switch event.Type {
-				case ah.EventType_ACTIVE:
+				case models.EventType_ACTIVE:
 					a.grouper.addAlert(grouper.Name(), event.Alert)
-				case ah.EventType_CLEARED:
+				case models.EventType_CLEARED:
 					a.grouper.removeAlert(grouper.Name(), event.Alert)
 				default:
 					out <- event
@@ -235,10 +236,10 @@ func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *ah.A
 
 func init() {
 	agg := &Aggregator{
-		Notif:          make(chan *ah.AlertEvent),
+		Notif:          make(chan *models.AlertEvent),
 		grouper:        &Grouper{recvBuffers: make(map[string][]*models.Alert)},
 		statAggsActive: stats.NewGauge("processors.aggregator.aggs_active"),
 		statError:      stats.NewCounter("processors.aggregator.errors"),
 	}
-	ah.AddProcessor(agg)
+	plugins.AddProcessor(agg)
 }

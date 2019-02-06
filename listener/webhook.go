@@ -66,7 +66,7 @@ func (k *WebHookListener) sanityCheck(d *WebHookAlertData) error {
 	return nil
 }
 
-func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent, error) {
+func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*models.AlertEvent, error) {
 	if err := k.sanityCheck(d); err != nil {
 		return nil, err
 	}
@@ -82,16 +82,16 @@ func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*ah.AlertEvent,
 	if d.Level == "" {
 		d.Level = "INFO"
 	}
-	event := &ah.AlertEvent{}
+	event := &models.AlertEvent{}
 	event.Alert = models.NewAlert(d.Name, d.Details, d.Entity, d.Source, scope, d.Id, d.Time, d.Level, false)
 	if d.Device != "" {
 		event.Alert.AddDevice(d.Device)
 	}
 	switch d.Status {
 	case Status_CLEARED:
-		event.Type = ah.EventType_CLEARED
+		event.Type = models.EventType_CLEARED
 	default:
-		event.Type = ah.EventType_ACTIVE
+		event.Type = models.EventType_ACTIVE
 	}
 	if d.Labels != nil {
 		for k, v := range d.Labels {

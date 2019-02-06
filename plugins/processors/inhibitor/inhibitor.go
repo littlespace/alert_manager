@@ -7,6 +7,7 @@ import (
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
+	"github.com/mayuresh82/alert_manager/plugins"
 	"sync"
 	"time"
 )
@@ -46,7 +47,7 @@ func (i *Inhibitor) addAlert(name string, alert *models.Alert) {
 	i.alertBuf[name] = append(i.alertBuf[name], alert)
 }
 
-func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig, out chan *ah.AlertEvent) {
+func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig, out chan *models.AlertEvent) {
 	time.Sleep(rule.Delay)
 	srcNames := []string{rule.SrcMatch.Alert}
 	tx := i.db.NewTx()
@@ -99,20 +100,20 @@ func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig, ou
 		if alert.Status == models.Status_SUPPRESSED {
 			continue
 		}
-		event := &ah.AlertEvent{Type: ah.EventType_ACTIVE, Alert: alert}
+		event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: alert}
 		out <- event
 	}
 	i.alertBuf[rule.Name] = i.alertBuf[rule.Name][:0]
 	i.Unlock()
 }
 
-func (i *Inhibitor) Process(ctx context.Context, db models.Dbase, in chan *ah.AlertEvent) chan *ah.AlertEvent {
+func (i *Inhibitor) Process(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) chan *models.AlertEvent {
 	i.db = db
-	out := make(chan *ah.AlertEvent)
+	out := make(chan *models.AlertEvent)
 	go func() {
 		glog.Info("Starting processor - Inhibitor")
 		for event := range in {
-			if event.Type != ah.EventType_ACTIVE {
+			if event.Type != models.EventType_ACTIVE {
 				out <- event
 				continue
 			}
@@ -161,5 +162,5 @@ func init() {
 		statAlertsInhibited: stats.NewCounter("processors.inhibitor.alerts_inhibited"),
 		statError:           stats.NewCounter("processors.inhibitor.errors"),
 	}
-	ah.AddProcessor(inh)
+	plugins.AddProcessor(inh)
 }

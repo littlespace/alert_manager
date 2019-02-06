@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/plugins"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -128,15 +129,15 @@ func (m *mockProcessor) Name() string { return "mockProcessor" }
 
 func (m *mockProcessor) Stage() int { return 1 }
 
-func (m *mockProcessor) Process(ctx context.Context, db models.Dbase, in chan *AlertEvent) chan *AlertEvent {
-	return make(chan *AlertEvent)
+func (m *mockProcessor) Process(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) chan *models.AlertEvent {
+	return make(chan *models.AlertEvent)
 }
 
 func TestHandlerAlertActive(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *AlertEvent, 3)
+	h.procChan = make(chan *models.AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
@@ -148,7 +149,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Equal(t, int(a2.Id), 200)
 	assert.Equal(t, a2.Labels, models.Labels{"suppress": "me"})
 	event := <-h.procChan
-	assert.Equal(t, event.Type, EventType_ACTIVE)
+	assert.Equal(t, event.Type, models.EventType_ACTIVE)
 	assert.Equal(t, int(event.Alert.Id), 200)
 
 	// test existing active alert
@@ -156,7 +157,6 @@ func TestHandlerAlertActive(t *testing.T) {
 	h.handleActive(ctx, tx, a1)
 	assert.Equal(t, int(a1.Id), 0)
 	assert.Equal(t, mockAlerts["existing_a1"].LastActive, nowTime)
-	<-h.procChan
 
 	// test new active alert - suppressed
 	rule := models.NewSuppRule(models.Labels{"device": "d2"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
@@ -169,7 +169,7 @@ func TestHandlerAlertClear(t *testing.T) {
 	m := &MockDb{}
 	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *AlertEvent, 1)
+	h.procChan = make(chan *models.AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
@@ -190,14 +190,14 @@ func TestHandlerAlertClear(t *testing.T) {
 	h.handleClear(ctx, tx, a1, 0)
 	assert.Equal(t, mockAlerts["existing_a1"].Status.String(), "CLEARED")
 	event := <-h.procChan
-	assert.Equal(t, event.Type, EventType_CLEARED)
+	assert.Equal(t, event.Type, models.EventType_CLEARED)
 	assert.Equal(t, int(event.Alert.Id), 100)
 }
 
 func TestHandlerAlertExpiry(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *AlertEvent, 1)
+	h.procChan = make(chan *models.AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
@@ -207,14 +207,14 @@ func TestHandlerAlertExpiry(t *testing.T) {
 
 	event := <-h.procChan
 	assert.Equal(t, event.Alert.Status.String(), "EXPIRED")
-	assert.Equal(t, event.Type, EventType_EXPIRED)
+	assert.Equal(t, event.Type, models.EventType_EXPIRED)
 	assert.Equal(t, int(event.Alert.Id), 300)
 }
 
 func TestHandlerAlertEscalate(t *testing.T) {
 	m := &MockDb{}
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *AlertEvent, 2)
+	h.procChan = make(chan *models.AlertEvent, 2)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
 	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
@@ -229,19 +229,19 @@ func TestHandlerAlertEscalate(t *testing.T) {
 	h.handleEscalation(ctx)
 	event := <-h.procChan
 	assert.Equal(t, event.Alert.Severity.String(), "WARN")
-	assert.Equal(t, event.Type, EventType_ESCALATED)
+	assert.Equal(t, event.Type, models.EventType_ESCALATED)
 	mockAlerts["existing_a4"] = event.Alert
 
 	// test second level escalation
 	h.handleEscalation(ctx)
 	event = <-h.procChan
 	assert.Equal(t, event.Alert.Severity.String(), "CRITICAL")
-	assert.Equal(t, event.Type, EventType_ESCALATED)
+	assert.Equal(t, event.Type, models.EventType_ESCALATED)
 }
 
 func TestMain(m *testing.M) {
 	AddTransform(&mockTransform{name: "mock", priority: 100, register: "Test Alert 2"})
-	AddProcessor(&mockProcessor{})
+	plugins.AddProcessor(&mockProcessor{})
 	flag.Parse()
 	Config = NewConfigHandler("../testutil/testdata/test_config.yaml")
 	Config.LoadConfig()

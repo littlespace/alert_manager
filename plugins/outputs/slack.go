@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
@@ -21,7 +22,7 @@ type SlackNotifier struct {
 	Token     string
 	Upload    bool
 	Action    string
-	Notif     chan *ah.AlertEvent
+	Notif     chan *models.AlertEvent
 
 	//statPostsSent stat.Stat
 	//statPostsError stat.Stat
@@ -37,10 +38,10 @@ func (n *SlackNotifier) Type() string {
 	return "output"
 }
 
-func (n *SlackNotifier) formatBody(event *ah.AlertEvent) ([]byte, error) {
+func (n *SlackNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
 	message := n.Mention
 	// dont send message on clear
-	if event.Type != ah.EventType_CLEARED {
+	if event.Type != models.EventType_CLEARED {
 		message += " " + event.Alert.Description
 	}
 	device := "None"
@@ -120,7 +121,7 @@ func (n *SlackNotifier) Start(ctx context.Context) {
 }
 
 func init() {
-	n := &SlackNotifier{Notif: make(chan *ah.AlertEvent)}
+	n := &SlackNotifier{Notif: make(chan *models.AlertEvent)}
 	ah.RegisterOutput(n.Name(), n.Notif)
 	plugins.AddOutput(n)
 }

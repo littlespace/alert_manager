@@ -71,14 +71,14 @@ func TestInhibit(t *testing.T) {
 	if !ok {
 		t.Fatal("Rule not found")
 	}
-	out := make(chan *ah.AlertEvent, 1)
+	out := make(chan *models.AlertEvent, 1)
 	// test rule no match
 	i.addAlert("Device down", mockAlerts["link_2"])
 	i.checkRule(ctx, rule, out)
 	assert.Equal(t, mockAlerts["link_2"].Status, models.Status_ACTIVE)
 	assert.Equal(t, len(i.alertBuf["Device down"]), 0)
 	event := <-out
-	assert.Equal(t, event.Type, ah.EventType_ACTIVE)
+	assert.Equal(t, event.Type, models.EventType_ACTIVE)
 	assert.Equal(t, event.Alert.Id, mockAlerts["link_2"].Id)
 
 	// test rule match

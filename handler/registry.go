@@ -16,7 +16,7 @@ var (
 	// Registered transforms
 	Transforms []Transform
 	// map of output names: registered outputs
-	Outputs = make(map[string]chan *AlertEvent)
+	Outputs = make(map[string]chan *models.AlertEvent)
 
 	gMu sync.Mutex
 )
@@ -25,7 +25,7 @@ func AddTransform(t Transform) {
 	Transforms = append(Transforms, t)
 }
 
-func RegisterOutput(outName string, outputChan chan *AlertEvent) {
+func RegisterOutput(outName string, outputChan chan *models.AlertEvent) {
 	gMu.Lock()
 	defer gMu.Unlock()
 	Outputs[outName] = outputChan
