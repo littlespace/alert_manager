@@ -137,16 +137,8 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	h.applyTransforms(alert)
 
 	// check if alert matches an existing suppression rule based on alert labels
-	labels := models.Labels{
-		"device":     alert.Device.String,
-		"entity":     alert.Entity,
-		"alert_name": alert.Name,
-		"source":     alert.Source,
-	}
-	for k, v := range alert.Labels {
-		labels[k] = v
-	}
-	if rule := h.Suppressor.Match(labels); rule != nil && rule.TimeLeft() > 0 {
+	alert.ExtendLabels()
+	if rule := h.Suppressor.Match(alert.Labels); rule != nil && rule.TimeLeft() > 0 {
 		glog.V(2).Infof("Found matching suppression rule for %s:%s:%s: %d:%s", alert.Name, alert.Entity, alert.Device.String, rule.Id, rule.Name)
 		return nil
 	}

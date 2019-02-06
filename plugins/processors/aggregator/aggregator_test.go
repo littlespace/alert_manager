@@ -17,6 +17,8 @@ var mockAlerts = map[string]*models.Alert{
 	"bgp_1":      tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "1", "INFO", []string{"a", "b"}, nil),
 	"bgp_2":      tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "2", "INFO", []string{"c", "d"}, nil),
 	"agg_bgp_12": tu.MockAlert(12, "Neteng_Aggregated BGP Down", "Alert1"+"\n"+"Alert2"+"\n", "", "Various", "bgp_session", "scope", "1", "WARN", []string{"neteng", "bgp"}, nil),
+	"a3":         tu.MockAlert(3, "Test Alert 3", "Alert3", "d3", "e3", "src3", "scp3", "3", "INFO", []string{}, nil),
+	"a4":         tu.MockAlert(4, "Test Alert 4", "Alert4", "d4", "e4", "src4", "device", "4", "INFO", []string{}, nil),
 }
 
 type MockDb struct{}
@@ -115,7 +117,7 @@ func TestAlertGrouping(t *testing.T) {
 
 	grouper := &mockGrouper{name: "bgp_session"}
 
-	ag := alertGroup{groupedAlerts: group, grouper: grouper}
+	ag := alertGroup{groupedAlerts: group, grouper: grouper, ruleName: "bgp_session"}
 	agg := ag.aggAlert()
 	id, err := ag.saveAgg(&MockTx{}, agg)
 	if err != nil {
@@ -181,6 +183,25 @@ func TestAggExpiry(t *testing.T) {
 	event := <-notif
 	assert.Equal(t, event.Type, models.EventType_EXPIRED)
 	assert.Equal(t, event.Alert.Id, mockAlerts["agg_bgp_12"].Id)
+}
+
+func TestGrouperMatch(t *testing.T) {
+	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
+	for _, a := range mockAlerts {
+		a.ExtendLabels()
+	}
+	// test configured grouper
+	grouper := a.grouperForAlert(mockAlerts["bgp_1"], "bgp_session")
+	assert.Equal(t, grouper.Name(), "bgp_session")
+	// test no grouper
+	grouper = a.grouperForAlert(mockAlerts["a3"], "label_group")
+	assert.Nil(t, grouper)
+	// test generic grouper
+	grouper = a.grouperForAlert(mockAlerts["a4"], "label_group")
+	assert.Equal(t, grouper.Name(), "default_label_grouper")
+	g := grouper.(*groupers.LabelGrouper)
+	rule, _ := ah.Config.GetAggregationRuleConfig("label_group")
+	assert.ElementsMatch(t, g.Groupby, rule.GroupBy)
 }
 
 func TestMain(m *testing.M) {

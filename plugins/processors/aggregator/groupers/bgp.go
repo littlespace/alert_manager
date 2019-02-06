@@ -42,7 +42,7 @@ func (g *bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 		}
 		if alert.Labels["LabelType"].(string) != "Bgp" {
 			glog.V(2).Infof("Bgp Agg: Found non bgp alert, skip grouping")
-			return valid
+			return []*models.Alert{}
 		}
 		valid = append(valid, alert)
 	}

@@ -147,7 +147,8 @@ func TestHandlerAlertActive(t *testing.T) {
 	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a2)
 	assert.Equal(t, int(a2.Id), 200)
-	assert.Equal(t, a2.Labels, models.Labels{"suppress": "me"})
+	l := models.Labels{"suppress": "me", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "alert_name": "Test Alert 2"}
+	assert.Equal(t, a2.Labels, l)
 	event := <-h.procChan
 	assert.Equal(t, event.Type, models.EventType_ACTIVE)
 	assert.Equal(t, int(event.Alert.Id), 200)

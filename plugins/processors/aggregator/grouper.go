@@ -15,23 +15,24 @@ type Grouper struct {
 	sync.Mutex
 }
 
-func (g *Grouper) startWindow(name string) {
-	rule, _ := ah.Config.GetAggregationRuleConfig(name)
-	<-time.After(rule.Window)
+func (g *Grouper) startWindow(grouper groupers.Grouper, ruleName string) {
+	name := grouper.Name()
+	rule, _ := ah.Config.GetAggregationRuleConfig(ruleName)
+	time.Sleep(rule.Window)
 	g.Lock()
 	defer g.Unlock()
-	grouper := groupers.AllGroupers[name]
 	for _, group := range groupers.DoGrouping(grouper, g.recvBuffers[name]) {
-		groupedChan <- &alertGroup{groupedAlerts: group, grouper: grouper}
+		groupedChan <- &alertGroup{groupedAlerts: group, grouper: grouper, ruleName: ruleName}
 	}
 	g.recvBuffers[name] = g.recvBuffers[name][:0]
 }
 
-func (g *Grouper) addAlert(name string, alert *models.Alert) {
+func (g *Grouper) addAlert(grouper groupers.Grouper, ruleName string, alert *models.Alert) {
 	g.Lock()
 	defer g.Unlock()
+	name := grouper.Name()
 	if len(g.recvBuffers[name]) == 0 {
-		go g.startWindow(name)
+		go g.startWindow(grouper, ruleName)
 	}
 	for _, a := range g.recvBuffers[name] {
 		if a.Id == alert.Id {
@@ -41,12 +42,12 @@ func (g *Grouper) addAlert(name string, alert *models.Alert) {
 	g.recvBuffers[name] = append(g.recvBuffers[name], alert)
 }
 
-func (g *Grouper) removeAlert(name string, alert *models.Alert) {
+func (g *Grouper) removeAlert(grouperName string, alert *models.Alert) {
 	g.Lock()
 	defer g.Unlock()
-	for i := 0; i < len(g.recvBuffers[name]); i++ {
-		if g.recvBuffers[name][i].Id == alert.Id {
-			g.recvBuffers[name] = append(g.recvBuffers[name][:i], g.recvBuffers[name][i+1:]...)
+	for i := 0; i < len(g.recvBuffers[grouperName]); i++ {
+		if g.recvBuffers[grouperName][i].Id == alert.Id {
+			g.recvBuffers[grouperName] = append(g.recvBuffers[grouperName][:i], g.recvBuffers[grouperName][i+1:]...)
 			i--
 		}
 	}

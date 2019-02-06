@@ -56,9 +56,8 @@ aggregation_rules:
   - name: rule1
     # how long to wait and accumulate alerts before grouping can be performed
     window: 5m
-    # how often to poll the DB for matching alerts if the poll method is used
-    # (see README)
-    poll_interval: 5m
+    # group by alert labels as opposed to a defined grouper
+    group_by: ['label1', 'label2']
     # the config for the aggregated alert
     alert:
       name: Aggregated Test Alert

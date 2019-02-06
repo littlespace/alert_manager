@@ -54,11 +54,11 @@ type AlertConfig struct {
 }
 
 type AggregationRuleConfig struct {
-	Name         string
-	Window       time.Duration
-	PollInterval time.Duration `yaml:"poll_interval"`
-	GroupBy      []string      `yaml:"group_by"`
-	Alert        AlertConfig
+	Name    string
+	Window  time.Duration
+	GroupBy []string `yaml:"group_by"`
+	Matches map[string]interface{}
+	Alert   AlertConfig
 }
 
 type SuppressionRuleConfig struct {
