@@ -1,20 +1,49 @@
-package handler
+package notifier
 
 import (
+	"flag"
+	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	tu "github.com/mayuresh82/alert_manager/testutil"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 	"time"
 )
+
+type MockDb struct{}
+
+func (m *MockDb) NewTx() models.Txn {
+	return &MockTx{}
+}
+
+func (m *MockDb) Close() error {
+	return nil
+}
+
+type MockTx struct {
+	*models.Tx
+}
+
+func (t *MockTx) Rollback() error {
+	return nil
+}
+
+func (t *MockTx) Commit() error {
+	return nil
+}
+
+func (t *MockTx) NewRecord(alertId int64, event string) (int64, error) {
+	return 1, nil
+}
 
 func TestNotify(t *testing.T) {
 	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
 	event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: mockAlert}
 	db := &MockDb{}
-	notif = &notifier{notifiedAlerts: make(map[int64]*notification), db: db}
-	notifyChan := make(chan *models.AlertEvent, 1)
-	RegisterOutput("slack", notifyChan)
+	notif := &Notifier{notifiedAlerts: make(map[int64]*notification), db: db}
+	notifyChan := make(chan *models.AlertEvent, 2)
+	ah.RegisterOutput("slack", notifyChan)
 
 	// test notify delay
 	notif.Notify(event)
@@ -33,6 +62,13 @@ func TestNotify(t *testing.T) {
 	notif.Notify(event)
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)
 
+	// test escalated
+	event.Type = models.EventType_ESCALATED
+	notif.Notify(event)
+	recvd = <-notifyChan
+	assert.Equal(t, recvd.Type, models.EventType_ESCALATED)
+	assert.Equal(t, recvd.Alert, mockAlert)
+
 	// test clear notify
 	event = &models.AlertEvent{Type: models.EventType_CLEARED, Alert: mockAlert}
 	notif.Notify(event)
@@ -45,9 +81,9 @@ func TestNotifyReminder(t *testing.T) {
 	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
 	event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: mockAlert}
 	db := &MockDb{}
-	notif = &notifier{notifiedAlerts: make(map[int64]*notification), db: db}
+	notif := &Notifier{notifiedAlerts: make(map[int64]*notification), db: db}
 	notifyChan := make(chan *models.AlertEvent, 1)
-	RegisterOutput("slack", notifyChan)
+	ah.RegisterOutput("slack", notifyChan)
 
 	// first notif
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
@@ -105,4 +141,11 @@ func TestNotifyReminder(t *testing.T) {
 
 	assert.Equal(t, len(notif.notifiedAlerts), 0)
 	notif.remind()
+}
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	ah.Config = ah.NewConfigHandler("../../../testutil/testdata/test_config.yaml")
+	ah.Config.LoadConfig()
+	os.Exit(m.Run())
 }

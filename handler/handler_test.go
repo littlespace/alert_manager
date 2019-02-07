@@ -140,7 +140,6 @@ func TestHandlerAlertActive(t *testing.T) {
 	h.procChan = make(chan *models.AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	// test new active alert
@@ -173,7 +172,6 @@ func TestHandlerAlertClear(t *testing.T) {
 	h.procChan = make(chan *models.AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	// test alert clear -non existing
@@ -201,7 +199,6 @@ func TestHandlerAlertExpiry(t *testing.T) {
 	h.procChan = make(chan *models.AlertEvent, 1)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	h.handleExpiry(ctx)
@@ -218,7 +215,6 @@ func TestHandlerAlertEscalate(t *testing.T) {
 	h.procChan = make(chan *models.AlertEvent, 2)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
-	h.Notifier = &notifier{notifiedAlerts: make(map[int64]*notification), db: m}
 	ctx := context.Background()
 
 	// test no escalation needed

@@ -1,10 +1,12 @@
-package handler
+package notifier
 
 import (
 	"context"
 	"fmt"
 	"github.com/golang/glog"
+	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/plugins"
 	"sync"
 	"time"
 )
@@ -16,31 +18,23 @@ type notification struct {
 	lastNotified time.Time
 }
 
-type notifier struct {
+type Notifier struct {
 	notifiedAlerts map[int64]*notification
 	db             models.Dbase
+	name           string
+
 	sync.Mutex
 }
 
-// Global Notifier Singleton
-var notif *notifier
-var once sync.Once
-
-func GetNotifier(db models.Dbase) *notifier {
-	once.Do(func() {
-		notif = &notifier{notifiedAlerts: make(map[int64]*notification), db: db}
-		notif.loadActiveAlerts()
-		go func() {
-			t := time.NewTicker(remindCheckInterval)
-			for range t.C {
-				notif.remind()
-			}
-		}()
-	})
-	return notif
+func (n *Notifier) Name() string {
+	return "notifier"
 }
 
-func (n *notifier) loadActiveAlerts() {
+func (n *Notifier) Stage() int {
+	return 2
+}
+
+func (n *Notifier) loadActiveAlerts() {
 	n.Lock()
 	defer n.Unlock()
 	tx := n.db.NewTx()
@@ -60,7 +54,7 @@ func (n *notifier) loadActiveAlerts() {
 	}
 }
 
-func (n *notifier) remind() {
+func (n *Notifier) remind() {
 	n.Lock()
 	defer n.Unlock()
 	var toNotify []int64
@@ -72,7 +66,7 @@ func (n *notifier) remind() {
 			// dont notify for ackd alerts
 			continue
 		}
-		if alertConfig, ok := Config.GetAlertConfig(notif.event.Alert.Name); ok {
+		if alertConfig, ok := ah.Config.GetAlertConfig(notif.event.Alert.Name); ok {
 			if alertConfig.Config.NotifyRemind == 0 {
 				continue
 			}
@@ -85,10 +79,10 @@ func (n *notifier) remind() {
 		notif := n.notifiedAlerts[a]
 		notif.lastNotified = time.Now()
 		glog.V(2).Infof("Sending notification reminder for %d:%s", notif.event.Alert.Id, notif.event.Alert.Name)
-		if alertConfig, ok := Config.GetAlertConfig(notif.event.Alert.Name); ok {
+		if alertConfig, ok := ah.Config.GetAlertConfig(notif.event.Alert.Name); ok {
 			n.send(notif.event, alertConfig.Config.Outputs.Get(notif.event.Alert.Severity.String()))
 		} else {
-			generalConf := Config.GetGeneralConfig()
+			generalConf := ah.Config.GetGeneralConfig()
 			n.send(notif.event, generalConf.DefaultOutputs.Get(notif.event.Alert.Severity.String()))
 		}
 	}
@@ -105,11 +99,10 @@ func (n *notifier) remind() {
 //    - if alert is expired then notify to configured or default outputs
 //    - if alert is suppressed then dont notify
 // - else send it to the default output
-func (n *notifier) Notify(event *models.AlertEvent) {
+func (n *Notifier) Notify(event *models.AlertEvent) {
 	alert := event.Alert
-	alertConfig, ok := Config.GetAlertConfig(alert.Name)
+	alertConfig, ok := ah.Config.GetAlertConfig(alert.Name)
 	if ok && alertConfig.Config.DisableNotify {
-		n.reportToInflux(event)
 		return
 	}
 	n.Lock()
@@ -117,8 +110,9 @@ func (n *notifier) Notify(event *models.AlertEvent) {
 	var outputs []string
 	if ok {
 		outputs = alertConfig.Config.Outputs.Get(event.Alert.Severity.String())
-	} else {
-		generalConf := Config.GetGeneralConfig()
+	}
+	if len(outputs) == 0 {
+		generalConf := ah.Config.GetGeneralConfig()
 		outputs = generalConf.DefaultOutputs.Get(event.Alert.Severity.String())
 	}
 	notif, alreadyNotified := n.notifiedAlerts[alert.Id]
@@ -133,7 +127,6 @@ func (n *notifier) Notify(event *models.AlertEvent) {
 		if ok && alert.LastActive.Sub(alert.StartTime.Time) < alertConfig.Config.NotifyDelay {
 			return
 		}
-		n.reportToInflux(event)
 		n.notifiedAlerts[alert.Id] = &notification{event: event, lastNotified: time.Now()}
 	case models.EventType_CLEARED, models.EventType_EXPIRED:
 		delete(n.notifiedAlerts, alert.Id)
@@ -143,21 +136,11 @@ func (n *notifier) Notify(event *models.AlertEvent) {
 				notifyOnClear = alertConfig.Config.NotifyOnClear
 			}
 			if !notifyOnClear {
-				n.reportToInflux(event)
 				return
 			}
 		}
 	case models.EventType_SUPPRESSED, models.EventType_ACKD:
-		if alreadyNotified {
-			if notif.event.Type == models.EventType_ACTIVE && event.Type == models.EventType_SUPPRESSED {
-				n.reportToInflux(event)
-			}
-			return
-		}
-		if event.Type == models.EventType_SUPPRESSED || event.Type == models.EventType_ACKD {
-			n.reportToInflux(event)
-			return
-		}
+		return
 	}
 	n.send(event, outputs)
 	tx := n.db.NewTx()
@@ -172,21 +155,36 @@ func (n *notifier) Notify(event *models.AlertEvent) {
 	}
 }
 
-func (n *notifier) send(event *models.AlertEvent, outputs []string) {
-	gMu.Lock()
+func (n *Notifier) send(event *models.AlertEvent, outputs []string) {
 	for _, output := range outputs {
-		if outChan, ok := Outputs[output]; ok {
+		if outChan, ok := ah.GetOutput(output); ok {
 			glog.V(2).Infof("Sending alert %s to %s", event.Alert.Name, output)
 			outChan <- event
 		}
 	}
-	gMu.Unlock()
 }
 
-func (n *notifier) reportToInflux(event *models.AlertEvent) {
-	gMu.Lock()
-	defer gMu.Unlock()
-	if influxOut, ok := Outputs["influx"]; ok {
-		influxOut <- event
-	}
+func (n *Notifier) Process(ctx context.Context, db models.Dbase, in chan *models.AlertEvent) chan *models.AlertEvent {
+	n.db = db
+	n.loadActiveAlerts()
+	go func() {
+		t := time.NewTicker(remindCheckInterval)
+		for range t.C {
+			n.remind()
+		}
+	}()
+	out := make(chan *models.AlertEvent)
+	go func() {
+		glog.Info("Starting processor - Notifier")
+		for event := range in {
+			go n.Notify(event)
+		}
+		close(out)
+	}()
+	return out
+}
+
+func init() {
+	notif := &Notifier{notifiedAlerts: make(map[int64]*notification)}
+	plugins.AddProcessor(notif)
 }

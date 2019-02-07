@@ -250,7 +250,9 @@ func (a *Alert) ExtendLabels() {
 	a.Labels["entity"] = a.Entity
 	a.Labels["alert_name"] = a.Name
 	a.Labels["source"] = a.Source
-	a.Labels["scope"] = a.Scope
+	if a.Labels["scope"] == nil {
+		a.Labels["scope"] = a.Scope
+	}
 }
 
 type Alerts []*Alert

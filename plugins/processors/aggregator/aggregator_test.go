@@ -107,8 +107,6 @@ func (m *mockGrouper) GrouperFunc() groupers.GroupingFunc {
 	}
 }
 
-var notif = make(chan *models.AlertEvent, 1)
-
 func TestAlertGrouping(t *testing.T) {
 	group := []*models.Alert{
 		tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "1", "WARN", []string{"a", "b"}, nil),
@@ -143,16 +141,13 @@ func TestAlertGrouping(t *testing.T) {
 	out := make(chan *models.AlertEvent, 1)
 	// test notif
 	a.handleGrouped(ctx, &ag, out)
-	event := <-notif
-	assert.Equal(t, event.Alert.Status.String(), "ACTIVE")
-	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
-	event = <-out
+	event := <-out
 	assert.Equal(t, event.Alert.Status.String(), "ACTIVE")
 	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
 
 	// test suppressed
 	r := models.NewSuppRule(
-		models.Labels{"alert_name": "Neteng_Aggregated BGP Down"},
+		models.Labels{"alert_name": "Neteng_Aggregated BGP Down", "entity": "Various"},
 		models.MatchCond_ALL,
 		"test", "test", 5*time.Minute)
 	supp.SaveRule(ctx, &MockTx{}, r)
@@ -166,21 +161,22 @@ func TestAlertGrouping(t *testing.T) {
 func TestAggExpiry(t *testing.T) {
 	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	ctx := context.Background()
+	out := make(chan *models.AlertEvent, 1)
 
 	// test no change
 	mockAlerts["bgp_1"].Status = models.Status_EXPIRED
-	if err := a.checkExpired(ctx); err != nil {
+	if err := a.checkExpired(ctx, out); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "ACTIVE")
 
 	// test all expired
 	mockAlerts["bgp_2"].Status = models.Status_EXPIRED
-	if err := a.checkExpired(ctx); err != nil {
+	if err := a.checkExpired(ctx, out); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, mockAlerts["agg_bgp_12"].Status.String(), "EXPIRED")
-	event := <-notif
+	event := <-out
 	assert.Equal(t, event.Type, models.EventType_EXPIRED)
 	assert.Equal(t, event.Alert.Id, mockAlerts["agg_bgp_12"].Id)
 }
@@ -206,7 +202,6 @@ func TestGrouperMatch(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	ah.Outputs["slack"] = notif
 	ah.Config = ah.NewConfigHandler("../../../testutil/testdata/test_config.yaml")
 	ah.Config.LoadConfig()
 	os.Exit(m.Run())

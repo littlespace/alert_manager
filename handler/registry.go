@@ -30,3 +30,10 @@ func RegisterOutput(outName string, outputChan chan *models.AlertEvent) {
 	defer gMu.Unlock()
 	Outputs[outName] = outputChan
 }
+
+func GetOutput(output string) (chan *models.AlertEvent, bool) {
+	gMu.Lock()
+	defer gMu.Unlock()
+	o, ok := Outputs[output]
+	return o, ok
+}

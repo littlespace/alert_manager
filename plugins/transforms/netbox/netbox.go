@@ -86,7 +86,13 @@ func (n *Netbox) apply(alert *models.Alert) {
 		}
 	}()
 	var l models.Labels
-	switch alert.Scope {
+	scope := alert.Scope
+	if scope == "" {
+		if scp, ok := alert.Labels["scope"]; ok {
+			scope = scp.(string)
+		}
+	}
+	switch scope {
 	case "device":
 		l, n.err = DeviceLabels(n, alert)
 	case "phy_interface", "agg_interface":
@@ -110,7 +116,9 @@ func (n *Netbox) apply(alert *models.Alert) {
 	if n.err != nil {
 		return
 	}
-	alert.Labels = l
+	for k, v := range l {
+		alert.Labels[k] = v
+	}
 }
 
 func (n *Netbox) Apply(alert *models.Alert) error {
