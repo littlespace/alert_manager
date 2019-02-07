@@ -51,8 +51,12 @@ func (l *LDAPAuth) Authenticate(username, password string) (bool, error) {
 		return false, fmt.Errorf("failed to connect to ldap: %v", err)
 	}
 	defer c.Close()
+	return l.doAuth(username, password, c)
+}
+
+func (l *LDAPAuth) doAuth(username, password string, c ldap.Client) (bool, error) {
 	if l.secure {
-		err = c.StartTLS(&tls.Config{InsecureSkipVerify: true})
+		err := c.StartTLS(&tls.Config{InsecureSkipVerify: true})
 		if err != nil {
 			return false, err
 		}
