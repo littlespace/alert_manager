@@ -36,6 +36,9 @@ func (ag alertGroup) aggAlert() *models.Alert {
 			aggLabels["site"] = append(aggLabels["site"].([]string), o.Site.String)
 		}
 	}
+	for k, v := range rule.Alert.Config.StaticLabels {
+		aggLabels[k] = v
+	}
 	sev := rule.Alert.Config.Severity
 	if sev == "" {
 		sev = "INFO"
@@ -131,17 +134,17 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out c
 			return err
 		}
 		agg.Id = id
-		notifier := ah.GetNotifier(a.db)
-		go notifier.Notify(&models.AlertEvent{Alert: agg, Type: models.EventType_ACTIVE})
 		a.statAggsActive.Add(1)
-		if agg.Status == models.Status_ACTIVE {
-			out <- &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: agg}
+		event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: agg}
+		out <- event
+		if influxOut, ok := ah.GetOutput("influx"); ok {
+			influxOut <- event
 		}
 		return nil
 	})
 }
 
-func (a *Aggregator) checkExpired(ctx context.Context) error {
+func (a *Aggregator) checkExpired(ctx context.Context, out chan *models.AlertEvent) error {
 	tx := a.db.NewTx()
 	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		allAggregated, err := tx.SelectAlerts(models.QuerySelectAllAggregated)
@@ -179,8 +182,7 @@ func (a *Aggregator) checkExpired(ctx context.Context) error {
 				}
 				a.statAggsActive.Add(-1)
 				tx.NewRecord(aggAlert.Id, fmt.Sprintf("Alert %s", status))
-				notifier := ah.GetNotifier(a.db)
-				go notifier.Notify(&models.AlertEvent{Alert: aggAlert, Type: models.EventMap[status]})
+				out <- &models.AlertEvent{Alert: aggAlert, Type: models.EventMap[status]}
 			}
 		}
 		return nil
@@ -227,7 +229,7 @@ func (a *Aggregator) startProcess(in, out chan *models.AlertEvent) {
 	}
 	glog.Info("Starting processor - Aggregator")
 	for event := range in {
-		if event.Alert.AggregatorId != 0 {
+		if event.Alert.AggregatorId != 0 || (event.Type != models.EventType_ACTIVE && event.Type != models.EventType_CLEARED) {
 			out <- event
 			continue
 		}
@@ -253,8 +255,6 @@ func (a *Aggregator) startProcess(in, out chan *models.AlertEvent) {
 				a.grouper.addAlert(grouper, ruleName, event.Alert)
 			case models.EventType_CLEARED:
 				a.grouper.removeAlert(grouper.Name(), event.Alert)
-			default:
-				out <- event
 			}
 		}
 		if !processed {
@@ -273,7 +273,7 @@ func (a *Aggregator) Process(ctx context.Context, db models.Dbase, in chan *mode
 		for {
 			select {
 			case <-t.C:
-				if err := a.checkExpired(ctx); err != nil {
+				if err := a.checkExpired(ctx, out); err != nil {
 					a.statError.Add(1)
 					glog.Errorf("Agg: Unable to Update Agg Alerts: %v", err)
 				}

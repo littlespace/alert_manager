@@ -53,7 +53,6 @@ func (c *ClearHandler) delete(id int64) {
 type AlertHandler struct {
 	// db handler
 	Db         models.Dbase
-	Notifier   *notifier
 	Suppressor *suppressor
 	procChan   chan *models.AlertEvent
 	clearer    *ClearHandler
@@ -66,7 +65,6 @@ type AlertHandler struct {
 func NewHandler(db models.Dbase) *AlertHandler {
 	h := &AlertHandler{
 		Db:                 db,
-		Notifier:           GetNotifier(db),
 		Suppressor:         GetSuppressor(db),
 		procChan:           make(chan *models.AlertEvent),
 		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
@@ -254,9 +252,9 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType models.Eve
 	if len(plugins.Processors) > 0 {
 		h.procChan <- event
 	}
-	// send the alert to the outputs. If the alert config or config outputs is undefined,
-	// the notifier will send it to the default output.
-	go h.Notifier.Notify(event)
+	if influxOut, ok := GetOutput("influx"); ok {
+		influxOut <- event
+	}
 }
 
 func (h *AlertHandler) handleExpiry(ctx context.Context) {
@@ -311,9 +309,7 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 				if timePassed >= rule.After {
 					changed = true
 					glog.V(2).Infof("Escalating alert %s:%d to %s", alert.Name, alert.Id, rule.EscalateTo)
-					h.Notifier.Lock()
-					alert.Severity = newSev
-					h.Notifier.Unlock()
+					alert.SetSeverity(newSev)
 					if err := tx.UpdateAlert(alert); err != nil {
 						return err
 					}
