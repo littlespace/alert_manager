@@ -120,6 +120,22 @@
   revision = "2caba252f4dc53eaf6b553000885530023f54623"
 
 [[projects]]
+  digest = "1:af07c44dc04418be522bfd4e21ca9130d58169ea084e3a883e23772003a381c4"
+  name = "gopkg.in/asn1-ber.v1"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f715ec2f112d1e4195b827ad68cf44017a3ef2b1"
+  version = "v1.3"
+
+[[projects]]
+  digest = "1:dd1abec5df03edb5ee20a8ad37bc31688becaf939e94218427486b9472636bb9"
+  name = "gopkg.in/ldap.v3"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "214f299a0ecb2a6c6f6d2b0f13977032b207dc58"
+  version = "v3.0.1"
+
+[[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -141,6 +157,7 @@
     "github.com/lib/pq",
     "github.com/mitchellh/mapstructure",
     "github.com/stretchr/testify/assert",
+    "gopkg.in/ldap.v3",
     "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"

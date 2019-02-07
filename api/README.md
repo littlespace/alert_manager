@@ -2,6 +2,9 @@
 
 The v1 basic Rest API allows for querying the alert database using any of the available fields of an alert. It also allows common alert operations and creation and deletion of suppression rules.
 
+## Authentication
+All alert write actions require authentication. Currently, basic LDAP authentication is supported. Once a user is successfully authenticated, a Json Web Token(JWT) is sent back with successful auth response, along with the expiry time. In order to perform updates and actions, the client first needs to authenticate and obtain a JWT using the *api/auth* endpoint and use it as bearer authentication in subsequent PATCH requests. Once obtained, tokens have an expiry time (usually 24 hours). It is up to the client to refresh tokens using the *api/auth/refresh* endpoint within 30 seconds on token expiration.
+
 ## Queries
 
 Query all alerts or individual alerts:
@@ -46,8 +49,6 @@ http://<am_url>/api/alerts?limit=50&offset=50 ( alerts 51-100 )
 ```
 
 ## Alert updates and actions
-In order to perform updates and actions, the client first needs to obtain a JSON Web Token (JWT) using the *api/auth* endpoint and use it as bearer authentication in subsequent PATCH requests. Once obtained, a token does not expire and is valid for as long as the server does not restart again. 
-
 First send an auth request using the correct username and password:
 ```
 POST:

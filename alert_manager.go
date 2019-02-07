@@ -53,8 +53,23 @@ func Run(config *Config) {
 	plugins.Init(ctx, db)
 
 	// start the API server
-	glog.Infof("Starting API server on %s", config.Agent.ApiAddr)
-	server := api.NewServer(config.Agent.ApiAddr, handler)
+	glog.Infof("Starting API server on %s", config.Api.ApiAddr)
+	var auth api.AuthProvider
+	var err error
+	switch config.Api.AuthProvider {
+	case "ldap":
+		auth, err = api.NewLDAPAuth(
+			config.Api.LdapUri,
+			config.Api.LdapBaseDN,
+			config.Api.LdapBindDN,
+			config.Api.LdapBinduser,
+			config.Api.LdapBindpass,
+		)
+		if err != nil {
+			glog.Errorf("Failed to init ldap: %v", err)
+		}
+	}
+	server := api.NewServer(config.Api.ApiAddr, config.Api.ApiKey, auth, handler)
 	go server.Start(ctx)
 
 	// start the reporting agent
