@@ -147,7 +147,7 @@ func TestAlertGrouping(t *testing.T) {
 
 	// test suppressed
 	r := models.NewSuppRule(
-		models.Labels{"alert_name": "Neteng_Aggregated BGP Down"},
+		models.Labels{"alert_name": "Neteng_Aggregated BGP Down", "entity": "Various"},
 		models.MatchCond_ALL,
 		"test", "test", 5*time.Minute)
 	supp.SaveRule(ctx, &MockTx{}, r)
