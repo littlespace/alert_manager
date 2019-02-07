@@ -1,0 +1,67 @@
+[agent]
+  stats_export_interval = "120s"
+  # Team name is required to enable teamview support.
+  team_name = "myTeam"
+
+[api]
+  # api listen addr
+  api_addr = ":8181"
+  # api key is used to generate tokens and needs to be unique per instane
+  api_key = "my_secret_key"
+  # if auth provider is not specified, then authentication is disabled
+  auth_provider = "ldap"
+  # ldap specific config
+  ldap_uri = "ldap://ldap.com"
+  ldap_binddn = "ldap_binddn"
+  ldap_basedn = "ldap_basedn"
+  ldap_binduser = "bind_user"
+  ldap_bindpass = "bind_pass"
+
+[db]
+  # db listen addr
+  addr = ":5432"
+  username = "alert_manager"
+  password = "alert_manager"
+  ## database name to use - needs to be present already
+  db_name = "alert_manager"
+  # connect timeout in seconds
+  timeout = 5
+
+[reporter]
+  # influxdb address to send stats. "stdout" will print to screen
+  url = "stdout"
+  flush_interval = "10s"
+
+[listeners.webhook]
+  # webhook listen addr
+  listen_addr = ":8282"
+  ## Enable http basic auth for webhook listener
+  use_auth = false
+  ## username, password for http basic auth
+  username = ""
+  password = ""
+
+
+[transforms.mytransform]
+  # transform related settings here
+
+[outputs.influx]
+  # measurement name for influxdb reporting
+  measurement = "alert_manager_alerts"
+
+[outputs.slack]
+  url = "slack_url"
+  recipient = "#alerts"
+  upload = false
+  token = ""
+
+[outputs.email]
+  smtp_addr = "smtp.foo:"
+  smtp_username = ""
+  smtp_password = ""
+  from = "alert_manager@am.com"
+  recipients = ["noc@org.com"]
+
+[outputs.victorops]
+  url = "https://victorops url"
+  auto_resolve = true
