@@ -11,9 +11,19 @@ import (
 )
 
 type AgentConfig struct {
-	ApiAddr             string        `mapstructure:"api_addr"`
 	StatsExportInterval time.Duration `mapstructure:"stats_export_interval"`
 	TeamName            string        `mapstructure:"team_name"`
+}
+
+type ApiConfig struct {
+	ApiAddr      string `mapstructure:"api_addr"`
+	ApiKey       string `mapstructure:"api_key"`
+	AuthProvider string `mapstructure:"auth_provider"`
+	LdapUri      string `mapstructure:"ldap_uri"`
+	LdapBindDN   string `mapstructure:"ldap_binddn"`
+	LdapBaseDN   string `mapstructure:"ldap_basedn"`
+	LdapBinduser string `mapstructure:"ldap_binduser"`
+	LdapBindpass string `mapstructure:"ldap_bindpass"`
 }
 
 type DbConfig struct {
@@ -24,6 +34,7 @@ type DbConfig struct {
 
 type Config struct {
 	Agent    *AgentConfig
+	Api      *ApiConfig
 	Db       *DbConfig
 	Reporter *reporting.InfluxReporter
 }
@@ -42,6 +53,14 @@ func (c *Config) UnmarshalTOML(data interface{}) error {
 				return err
 			}
 			c.Agent = a
+		case "api":
+			a := &ApiConfig{}
+			decoderConfig.Result = a
+			decoder, _ := mapstructure.NewDecoder(decoderConfig)
+			if err := decoder.Decode(v); err != nil {
+				return err
+			}
+			c.Api = a
 		case "db":
 			d := &DbConfig{}
 			decoderConfig.Result = d

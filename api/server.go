@@ -19,7 +19,13 @@ import (
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
-const key = "al3rtMana63r"
+const (
+	tokenExpiryTime = 24 * time.Hour
+)
+
+type AuthProvider interface {
+	Authenticate(userid, password string) (bool, error)
+}
 
 type User struct {
 	Username string `json:"username"`
@@ -27,7 +33,13 @@ type User struct {
 }
 
 type JwtToken struct {
-	Token string `json:"token"`
+	Token     string `json:"token"`
+	ExpiresAt int64  `json:"expires_at"`
+}
+
+type Claims struct {
+	Username string `json:"username"`
+	jwt.StandardClaims
 }
 
 func buildSelectQuery(req *http.Request) (models.Query, error) {
@@ -73,8 +85,10 @@ func buildUpdateQuery(req *http.Request, matches map[string][]string) (models.Up
 }
 
 type Server struct {
-	addr    string
-	handler *ah.AlertHandler
+	addr         string
+	handler      *ah.AlertHandler
+	authProvider AuthProvider
+	apiKey       string
 
 	statGets          stats.Stat
 	statPosts         stats.Stat
@@ -83,10 +97,12 @@ type Server struct {
 	statsAuthFailures stats.Stat
 }
 
-func NewServer(addr string, handler *ah.AlertHandler) *Server {
+func NewServer(addr, apiKey string, authProvider AuthProvider, handler *ah.AlertHandler) *Server {
 	return &Server{
 		addr:              addr,
+		apiKey:            apiKey,
 		handler:           handler,
+		authProvider:      authProvider,
 		statGets:          stats.NewCounter("api.gets"),
 		statPosts:         stats.NewCounter("api.posts"),
 		statPatches:       stats.NewCounter("api.patches"),
@@ -99,6 +115,7 @@ func (s *Server) Start(ctx context.Context) {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/auth", s.CreateToken).Methods("POST")
+	router.HandleFunc("/api/auth/refresh", s.Validate(s.RefreshToken)).Methods("GET")
 	router.HandleFunc("/api/plugins", s.GetPluginsList).Methods("GET")
 	router.HandleFunc("/api/{category}", s.GetItems).Methods("GET")
 	router.HandleFunc("/api/{category}/{id}", s.Validate(s.Update)).Methods("PATCH", "OPTIONS")
@@ -129,18 +146,20 @@ func (s *Server) Validate(next http.HandlerFunc) http.HandlerFunc {
 		if authorizationHeader != "" {
 			bearerToken := strings.Split(authorizationHeader, " ")
 			if len(bearerToken) == 2 {
-				token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
+				claims := &Claims{}
+				token, err := jwt.ParseWithClaims(bearerToken[1], claims, func(token *jwt.Token) (interface{}, error) {
 					if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 						return nil, fmt.Errorf("Error validating token")
 					}
-					return []byte(key), nil
+					return []byte(s.apiKey), nil
 				})
 				if err != nil {
 					s.statError.Add(1)
-					http.Error(w, err.Error(), http.StatusInternalServerError)
+					http.Error(w, err.Error(), http.StatusUnauthorized)
 					return
 				}
 				if token.Valid {
+					glog.V(4).Infof("Validated token for user %s", claims.Username)
 					ctx := context.WithValue(req.Context(), "decoded", token.Claims)
 					next(w, req.WithContext(ctx))
 				} else {
@@ -158,22 +177,41 @@ func (s *Server) Validate(next http.HandlerFunc) http.HandlerFunc {
 func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 	var user User
 	if req.Body == nil {
-		http.Error(w, "Empty body", http.StatusBadRequest)
-		return
+		// try to get basic auth
+		u, p, ok := req.BasicAuth()
+		if !ok {
+			http.Error(w, "Invalid credentials", http.StatusBadRequest)
+			return
+		}
+		user.Username = u
+		user.Password = p
+	} else {
+		err := json.NewDecoder(req.Body).Decode(&user)
+		if err != nil {
+			http.Error(w, "Invalid credentials", http.StatusBadRequest)
+			return
+		}
 	}
-	err := json.NewDecoder(req.Body).Decode(&user)
-	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusBadRequest)
-		return
+	if s.authProvider != nil {
+		auth, err := s.authProvider.Authenticate(user.Username, user.Password)
+		if err != nil {
+			glog.Errorf("Failed to auth %s: %v", user.Username, err)
+			http.Error(w, fmt.Sprintf("Authentication Failed: %v", err), http.StatusUnauthorized)
+			return
+		}
+		if !auth {
+			http.Error(w, "Authentication Failed", http.StatusUnauthorized)
+			return
+		}
 	}
-
-	//TODO Authenticate user provided creds against AD
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": user.Username,
-		"password": user.Password,
+	expirationTime := time.Now().Add(tokenExpiryTime).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &Claims{
+		Username: user.Username,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime,
+		},
 	})
-	tokenString, err := token.SignedString([]byte(key))
+	tokenString, err := token.SignedString([]byte(s.apiKey))
 	if err != nil {
 		s.statsAuthFailures.Add(1)
 		glog.Errorf("Api: Error generating Token: %v", err)
@@ -183,7 +221,29 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 	}
 	glog.V(2).Infof("Successfully authenticated user: %s", user.Username)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(JwtToken{Token: tokenString})
+	json.NewEncoder(w).Encode(JwtToken{Token: tokenString, ExpiresAt: expirationTime})
+}
+
+func (s *Server) RefreshToken(w http.ResponseWriter, req *http.Request) {
+	decoded := req.Context().Value("decoded")
+	claims := decoded.(*Claims)
+	if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) > 30*time.Second {
+		http.Error(w, "Renewal only allowed within 30 seconds of expiry", http.StatusBadRequest)
+		return
+	}
+	claims.ExpiresAt = time.Now().Add(tokenExpiryTime).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(s.apiKey))
+	if err != nil {
+		s.statsAuthFailures.Add(1)
+		glog.Errorf("Api: Error generating Token: %v", err)
+		http.Error(w, fmt.Sprintf("Error generating Token: %s", err.Error()), http.StatusInternalServerError)
+		s.statError.Add(1)
+		return
+	}
+	glog.V(2).Infof("Successfully renewed claims for user: %s", claims.Username)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(JwtToken{Token: tokenString, ExpiresAt: claims.ExpiresAt})
 }
 
 func (s *Server) fetchResults(q models.Querier) ([]interface{}, error) {

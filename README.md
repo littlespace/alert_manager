@@ -33,16 +33,19 @@ The only option to be specified as a CLI arg is a  bare minimum config.toml will
 Specifying An alert_config containing at least one alert definition is optional.
 
 ```
-./alert_manager -logtostderr -config config.toml -schema schema.sql -alert_config alert_config.yaml
+./alert_manager -logtostderr -config config.toml -alert_config alert_config.yaml
 ```
 
 For verbose logging:
 ```
-./alert_manager -logtostderr -v=<level> -config config.toml -schema schema.sql -alert_config alert_config.yaml
+./alert_manager -logtostderr -v=<level> -config config.toml -alert_config alert_config.yaml
 ```
 
+## Deployment
+AM deployment supports teamviews. Different teams can deploy different instances of the alert manager backend and set the team name using the config setting (agent.TeamName). A common database and UI Deployment can be used organization wide. The team name is used to partition alerts and teamviews ensure that alerts belonging to a particular team can only be viewed/actioned by members of that team.
+
 ## Listeners
-Currently a generic webhook listener is supported that receives alerts from any sources capable of sending alert data to a webhook endpoint. The webhook listener has parsers defined for decoding the json body of the alert message received externally. Currently supported [parsers](./listener/parsers)  are Grafana, Observium and Kapacitor. New parsers can be easily added.
+Currently a generic webhook listener is supported that receives alerts from any sources capable of sending alert data to a webhook endpoint. The webhook listener has parsers defined for decoding the json body of the alert message received externally. There are parsers [parsers](./listener/parsers) supported for a few alerting sources. If your source supports custom json bodies, the generic json parser can be used. New parsers can be easily added.
 
 The format of the webhook url is:
 ```

@@ -110,6 +110,15 @@ func (tx *MockTx) Exec(query string, args ...interface{}) error {
 	return nil
 }
 
+type MockAuthProvider struct{}
+
+func (m *MockAuthProvider) Authenticate(userid, password string) (bool, error) {
+	if userid == "baz" {
+		return false, nil
+	}
+	return true, nil
+}
+
 func NewMockServer() *Server {
 	d := &MockDb{}
 	return &Server{
@@ -117,6 +126,7 @@ func NewMockServer() *Server {
 			Db:         d,
 			Suppressor: ah.GetSuppressor(d),
 		},
+		authProvider:      &MockAuthProvider{},
 		statGets:          &tu.MockStat{},
 		statPosts:         &tu.MockStat{},
 		statPatches:       &tu.MockStat{},
@@ -138,9 +148,20 @@ func TestServerAuth(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, rr.Code, http.StatusBadRequest)
 
-	// test valid token
-	data, _ := json.Marshal(&User{Username: "foo", Password: "bar"})
+	// test failed auth
+	data, _ := json.Marshal(&User{Username: "baz", Password: "bar"})
 	body := bytes.NewReader(data)
+	req, err = http.NewRequest("POST", "/api/auth", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, rr.Code, http.StatusUnauthorized)
+
+	// test successful auth
+	data, _ = json.Marshal(&User{Username: "foo", Password: "bar"})
+	body = bytes.NewReader(data)
 	req, err = http.NewRequest("POST", "/api/auth", body)
 	if err != nil {
 		t.Fatal(err)
@@ -169,7 +190,7 @@ func TestServerAuth(t *testing.T) {
 	rr = httptest.NewRecorder()
 	handler = http.HandlerFunc(s.Validate(testFunc))
 	handler.ServeHTTP(rr, req)
-	assert.Equal(t, rr.Code, http.StatusInternalServerError)
+	assert.Equal(t, rr.Code, http.StatusUnauthorized)
 
 	// valid token
 	req, err = http.NewRequest("PATCH", "/api/alerts/1", nil)
