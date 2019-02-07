@@ -230,6 +230,9 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	// apply transforms in order of priority. Lower == first
 	var toApply []Transform
 	for _, transform := range Transforms {
+		if transform.GetRegister() == "" {
+			continue
+		}
 		if match, _ := regexp.MatchString(transform.GetRegister(), alert.Name); match {
 			toApply = append(toApply, transform)
 		}
@@ -260,7 +263,7 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType models.Eve
 func (h *AlertHandler) handleExpiry(ctx context.Context) {
 	tx := h.Db.NewTx()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		expired, err := tx.SelectAlerts(models.QuerySelectExpired)
+		expired, err := tx.SelectAlerts(models.AlertsQuery(models.QuerySelectExpired))
 		if err != nil {
 			return err
 		}
@@ -289,7 +292,7 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 func (h *AlertHandler) handleEscalation(ctx context.Context) {
 	tx := h.Db.NewTx()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		unAckd, err := tx.SelectAlerts(models.QuerySelectNoOwner)
+		unAckd, err := tx.SelectAlerts(models.AlertsQuery(models.QuerySelectNoOwner))
 		if err != nil {
 			return err
 		}
@@ -336,12 +339,12 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 	var err error
 	// an alert is assumed to be uniquely identified by its Id or by its Name:Device:Entity
 	if alert.Id > 0 {
-		existing, err = tx.GetAlert(models.QuerySelectById, alert.Id)
+		existing, err = tx.GetAlert(models.AlertsQuery(models.QuerySelectById), alert.Id)
 	} else {
 		if alert.Device.Valid {
-			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device.String)
+			existing, err = tx.GetAlert(models.AlertsQuery(models.QuerySelectByDevice), alert.Name, alert.Entity, alert.Device.String)
 		} else {
-			existing, err = tx.GetAlert(models.QuerySelectByNameEntity, alert.Name, alert.Entity)
+			existing, err = tx.GetAlert(models.AlertsQuery(models.QuerySelectByNameEntity), alert.Name, alert.Entity)
 		}
 	}
 	if err != nil {

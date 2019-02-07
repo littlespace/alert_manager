@@ -60,7 +60,7 @@ func (g *dcCktGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	allBgp := true
 	for _, alert := range alerts {
-		if len(alert.Labels) == 0 || alert.Status != models.Status_ACTIVE {
+		if len(alert.Labels) == 0 || alert.Labels["LabelType"] == nil || alert.Status != models.Status_ACTIVE {
 			continue
 		}
 		allBgp = allBgp && alert.Labels["LabelType"].(string) == "Bgp"

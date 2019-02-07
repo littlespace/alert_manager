@@ -37,7 +37,7 @@ func (g *bgpGrouper) AggDesc(alerts []*models.Alert) string {
 func (g *bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	for _, alert := range alerts {
-		if len(alert.Labels) == 0 || alert.Status != models.Status_ACTIVE {
+		if len(alert.Labels) == 0 || alert.Labels["LabelType"] == nil || alert.Status != models.Status_ACTIVE {
 			continue
 		}
 		if alert.Labels["LabelType"].(string) != "Bgp" {

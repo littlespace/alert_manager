@@ -49,7 +49,7 @@ func (tx *MockTx) SelectAlertsWithHistory(query string, args ...interface{}) (Al
 	return alerts, nil
 }
 
-const baseQ = "SELECT * from alerts WHERE (cast(extract(epoch from now()) as integer) - start_time) < 5"
+const baseQ = "SELECT * FROM alerts WHERE (cast(extract(epoch from now()) as integer) - start_time) < 5"
 
 var testDatas = map[string]Querier{
 	baseQ + " AND alerts.id IN ('1') AND name IN ('foo')": Query{

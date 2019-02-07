@@ -273,7 +273,7 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	err = models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		queries := req.URL.Query()
-		var err error
+		var er error
 		switch vars["action"] {
 		case "suppress":
 			if alert.Status != models.Status_ACTIVE {
@@ -292,14 +292,14 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 			}
 			creator := "alert_manager"
 			reason := "alert suppressed via API"
-			err = s.handler.Suppress(
+			er = s.handler.Suppress(
 				ctx, tx, alert,
 				creator,
 				reason,
 				duration,
 			)
 		case "clear":
-			err = s.handler.Clear(ctx, tx, alert)
+			er = s.handler.Clear(ctx, tx, alert)
 		case "ack":
 			owner, ok := queries["owner"]
 			team, ok := queries["team"]
@@ -307,13 +307,13 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 				http.Error(w, "Invalid query: expected owner and team", http.StatusBadRequest)
 				return fmt.Errorf("Invalid query: expected owner and team")
 			}
-			err = s.handler.SetOwner(ctx, tx, alert, owner[0], team[0])
+			er = s.handler.SetOwner(ctx, tx, alert, owner[0], team[0])
 		}
-		if err != nil {
-			glog.Errorf("Api: Unable to Action alerts: %v", err)
-			http.Error(w, fmt.Sprintf("Unable to Update alerts: %s", err.Error()), http.StatusInternalServerError)
+		if er != nil {
+			glog.Errorf("Api: Unable to Action alerts: %v", er)
+			http.Error(w, fmt.Sprintf("Unable to Update alerts: %s", er.Error()), http.StatusInternalServerError)
 		}
-		return err
+		return er
 	})
 	if err != nil {
 		return

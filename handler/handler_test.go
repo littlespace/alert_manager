@@ -86,9 +86,9 @@ func (tx *MockTx) Exec(query string, args ...interface{}) error {
 
 func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts, error) {
 	switch query {
-	case models.QuerySelectExpired:
+	case models.AlertsQuery(models.QuerySelectExpired):
 		return models.Alerts{mockAlerts["existing_a3"]}, nil
-	case models.QuerySelectNoOwner:
+	case models.AlertsQuery(models.QuerySelectNoOwner):
 		return models.Alerts{mockAlerts["existing_a4"]}, nil
 	}
 	return models.Alerts{}, nil
@@ -242,5 +242,6 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	Config = NewConfigHandler("../testutil/testdata/test_config.yaml")
 	Config.LoadConfig()
+	models.TeamName = "default"
 	os.Exit(m.Run())
 }

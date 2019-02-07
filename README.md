@@ -10,7 +10,7 @@ Alert manager is a modular plugin based system that allows writing different plu
 
 1. [Listener module](#listeners) Listens to and parses alerts from external sources using a webhook receiver
 2. [Transforms](#transforms) Applies a set of generic k-v labels (also called metadata) to an alert (but technically, can alter an alert's parameters in any way) which are the basis of performing advanced functions such as grouping and muting.
-3. [Processors](#processors) Processors "subscribe" to specific alerts and process them in any way that is defined in the code. Most common example is the aggregator which contains logic to group similar alerts based on labels. Incoming alerts are sent to all the registered processors at the same time, so the processors need to ensure they correctly handle them and processing actions dont collide. 
+3. [Processors](#processors) Processors operate on specific alerts and process them in any way that is defined in the code. Most common example is the aggregator which contains logic to group similar alerts based on labels. Processors work in a pipelined fashion where multiple processors form a pipeline that process alerts sequentially in stages. For example, the inhibitor is Stage1 of the pipeline while the aggregator is Stage2. This means that each stage is able to influence/alter what the next stage in the pipeline receives.
 4. [Outputs](#outputs) A set of output plugins that are used for notification.
 
 ## Installation
@@ -64,4 +64,4 @@ An aggregator works based on aggregation rules which are described by writing [g
 
 - [Inhibitor](./plugins/processors/inhibitor) : used to silence/suppress target alerts when specific source alerts with matching labels also exist. The inhibit rules are defined in the alert config, and specify the source matches and target matches ( see sample alert config for example ).
 
-Processors work in a pipelined fashion where multiple processors form a pipeline that process alerts sequentially in stages. For example, the inhibitor is Stage1 of the pipeline while the aggregator is Stage2. This means that each stage is able to influence/alter what the next stage in the pipeline receives.
+- [Notifier](./plugins/processors/notifier): sends alert notifications to the appropriate channels based on the defined alert configs.

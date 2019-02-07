@@ -60,10 +60,9 @@ func NewQuery(table string) Query {
 }
 
 func (q Query) toSQL() string {
-	baseQ := querySelectAlerts
+	baseQ := fmt.Sprintf("SELECT * FROM %s", q.Table)
 	start := "start_time"
 	if q.Table == "suppression_rules" {
-		baseQ = querySelectRules
 		start = "created_at"
 	}
 	tr, err := time.ParseDuration(q.TimeRange)

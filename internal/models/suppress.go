@@ -18,16 +18,20 @@ var CondMap = map[string]MatchCondition{"all": MatchCond_ALL, "any": MatchCond_A
 var (
 	QueryInsertRule = `INSERT INTO
     suppression_rules (
-      name, mcond, entities, created_at, duration, reason, creator
+      name, mcond, entities, created_at, duration, reason, creator, team
     ) VALUES (
-    :name, :mcond, :entities, :created_at, :duration, :reason, :creator
+    :name, :mcond, :entities, :created_at, :duration, :reason, :creator, :team
     ) RETURNING id`
 
-	querySelectRules     = "SELECT * FROM suppression_rules"
-	QuerySelectActive    = querySelectRules + " WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
+	querySelectRules     = "SELECT * FROM suppression_rules_%s"
+	QuerySelectActive    = " WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
 	queryUpdateRules     = "UPDATE suppression_rules"
 	QueryDeleteSuppRules = "DELETE FROM suppression_rules WHERE id IN (?)"
 )
+
+func RulesQuery(query string) string {
+	return fmt.Sprintf(querySelectRules, TeamName) + query
+}
 
 type SuppressionRule struct {
 	Id         int64
@@ -38,6 +42,7 @@ type SuppressionRule struct {
 	Duration   int64
 	Reason     string
 	Creator    string
+	Team       string
 	DontExpire bool
 }
 
@@ -96,6 +101,7 @@ func NewSuppRule(entities Labels, mcond MatchCondition, reason, creator string, 
 		Reason:    reason,
 		Creator:   creator,
 		Entities:  entities,
+		Team:      TeamName,
 	}
 }
 
