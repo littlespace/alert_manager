@@ -13,6 +13,7 @@ import (
 type AgentConfig struct {
 	ApiAddr             string        `mapstructure:"api_addr"`
 	StatsExportInterval time.Duration `mapstructure:"stats_export_interval"`
+	TeamName            string        `mapstructure:"team_name"`
 }
 
 type DbConfig struct {

@@ -147,7 +147,7 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out c
 func (a *Aggregator) checkExpired(ctx context.Context, out chan *models.AlertEvent) error {
 	tx := a.db.NewTx()
 	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		allAggregated, err := tx.SelectAlerts(models.QuerySelectAllAggregated)
+		allAggregated, err := tx.SelectAlerts(models.AlertsQuery(models.QuerySelectAllAggregated))
 		if err != nil {
 			return fmt.Errorf("Agg: Unable to query aggregated: %v", err)
 		}
@@ -158,9 +158,9 @@ func (a *Aggregator) checkExpired(ctx context.Context, out chan *models.AlertEve
 		}
 		// check if every group needs clear/expiry
 		for aggId, alerts := range aggGroup {
-			aggAlert, err := tx.GetAlert(models.QuerySelectById, aggId)
+			aggAlert, err := tx.GetAlert(models.AlertsQuery(models.QuerySelectById), aggId)
 			if err != nil {
-				return fmt.Errorf("Agg: Unable to query agg alert: %v", err)
+				return fmt.Errorf("Agg: Unable to query agg alert %d: %v", aggId, err)
 			}
 			rule, ok := ah.Config.GetAggregationRuleConfig(aggAlert.Source)
 			if !ok {

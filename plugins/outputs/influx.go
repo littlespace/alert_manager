@@ -27,8 +27,8 @@ func (n *InfluxNotifier) parseFromEvent(event *models.AlertEvent) *reporting.Dat
 	if alert.Owner.Valid {
 		tags["owner"] = alert.Owner.String
 	}
-	if alert.Team.Valid {
-		tags["team"] = alert.Team.String
+	if alert.Team != "" {
+		tags["team"] = alert.Team
 	}
 	if alert.IsAggregate {
 		tags["is_aggregate"] = "true"

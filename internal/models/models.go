@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var TeamName string
+
 // custom structs to allow for mocking
 type Dbase interface {
 	NewTx() Txn
@@ -42,6 +44,8 @@ func NewDB(addr, username, password, dbName string, timeout int) Dbase {
 		glog.Fatalf("Cant open DB: %v", err)
 	}
 	db.MustExec(tpl.Schema)
+	part := tpl.Partition(TeamName)
+	db.MustExec(part)
 	return &DB{db}
 }
 
