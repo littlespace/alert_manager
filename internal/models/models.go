@@ -13,8 +13,6 @@ import (
 	"time"
 )
 
-var TeamName string
-
 // custom structs to allow for mocking
 type Dbase interface {
 	NewTx() Txn
@@ -44,23 +42,29 @@ func NewDB(addr, username, password, dbName string, timeout int) Dbase {
 		glog.Fatalf("Cant open DB: %v", err)
 	}
 	db.MustExec(tpl.Schema)
-	part := tpl.Partition(TeamName)
-	db.MustExec(part)
 	return &DB{db}
+}
+
+func NewPartition(team string) string {
+	tmpl := `
+    CREATE TABLE IF NOT EXISTS alerts_%[1]s PARTITION OF alerts FOR VALUES IN ('%[1]s');
+  `
+	return fmt.Sprintf(tmpl, team)
 }
 
 type Txn interface {
 	InQuery(query string, arg ...interface{}) error
 	InSelect(query string, to interface{}, arg ...interface{}) error
 	UpdateAlert(alert *Alert) error
-	NewAlert(alert *Alert) (int64, error)
+	NewInsert(query string, item interface{}) (int64, error)
 	GetAlert(query string, args ...interface{}) (*Alert, error)
 	SelectAlerts(query string, args ...interface{}) (Alerts, error)
 	SelectAlertsWithHistory(query string, args ...interface{}) (Alerts, error)
 	AddAlertHistory(alerts Alerts) error
 	SelectRules(query string, args ...interface{}) (SuppRules, error)
-	NewSuppRule(rule *SuppressionRule) (int64, error)
 	NewRecord(alertId int64, event string) (int64, error)
+	SelectTeams(query string, args ...interface{}) (Teams, error)
+	SelectUsers(query string, args ...interface{}) (Users, error)
 	Rollback() error
 	Commit() error
 	Exec(query string, args ...interface{}) error
@@ -102,6 +106,16 @@ func WithTx(ctx context.Context, tx Txn, cb func(ctx context.Context, tx Txn) er
 		tx.Commit()
 	}
 	return err
+}
+
+func (tx *Tx) NewInsert(query string, item interface{}) (int64, error) {
+	var newId int64
+	stmt, err := tx.PrepareNamed(query)
+	if err != nil {
+		return newId, err
+	}
+	err = stmt.Get(&newId, item)
+	return newId, err
 }
 
 type MyTime struct {

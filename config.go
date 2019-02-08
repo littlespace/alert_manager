@@ -12,7 +12,6 @@ import (
 
 type AgentConfig struct {
 	StatsExportInterval time.Duration `mapstructure:"stats_export_interval"`
-	TeamName            string        `mapstructure:"team_name"`
 }
 
 type ApiConfig struct {

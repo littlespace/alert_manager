@@ -20,10 +20,6 @@ var (
 )
 
 func Run(config *Config) {
-	if config.Agent.TeamName == "" {
-		config.Agent.TeamName = "default"
-	}
-	models.TeamName = config.Agent.TeamName
 	db := models.NewDB(config.Db.Addr, config.Db.Username, config.Db.Password, config.Db.DbName, config.Db.Timeout)
 	defer db.Close()
 

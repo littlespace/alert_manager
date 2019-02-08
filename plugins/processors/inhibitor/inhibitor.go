@@ -54,7 +54,7 @@ func (i *Inhibitor) checkRule(ctx context.Context, rule ah.InhibitRuleConfig, ou
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		var alerts models.Alerts
 		var toInhibit []*models.Alert
-		err := tx.InSelect(models.AlertsQuery(models.QuerySelectByNames), &alerts, srcNames)
+		err := tx.InSelect(models.QuerySelectByNames, &alerts, srcNames)
 		if err != nil {
 			return err
 		}

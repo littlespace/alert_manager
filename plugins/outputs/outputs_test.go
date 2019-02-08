@@ -27,7 +27,7 @@ func TestOutputSlack(t *testing.T) {
 	s := &SlackNotifier{Url: ts.URL, Recipient: "#test"}
 	event := &models.AlertEvent{
 		Type:  models.EventType_ACTIVE,
-		Alert: tu.MockAlert(0, "Neteng BGP Down", "This alert has fired", "dev1", "PeerX", "src", "scp", "1", "WARN", []string{}, nil),
+		Alert: tu.MockAlert(0, "Neteng BGP Down", "This alert has fired", "dev1", "PeerX", "src", "scp", "t1", "1", "WARN", []string{}, nil),
 	}
 
 	data, err := s.formatBody(event)

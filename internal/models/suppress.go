@@ -18,20 +18,16 @@ var CondMap = map[string]MatchCondition{"all": MatchCond_ALL, "any": MatchCond_A
 var (
 	QueryInsertRule = `INSERT INTO
     suppression_rules (
-      name, mcond, entities, created_at, duration, reason, creator, team
+      name, mcond, entities, created_at, duration, reason, creator
     ) VALUES (
-    :name, :mcond, :entities, :created_at, :duration, :reason, :creator, :team
+    :name, :mcond, :entities, :created_at, :duration, :reason, :creator
     ) RETURNING id`
 
-	querySelectRules     = "SELECT * FROM suppression_rules_%s"
-	QuerySelectActive    = " WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
+	querySelectRules     = "SELECT * FROM suppression_rules"
+	QuerySelectActive    = querySelectRules + " WHERE (cast(extract(epoch from now()) as integer) - created_at) < duration"
 	queryUpdateRules     = "UPDATE suppression_rules"
 	QueryDeleteSuppRules = "DELETE FROM suppression_rules WHERE id IN (?)"
 )
-
-func RulesQuery(query string) string {
-	return fmt.Sprintf(querySelectRules, TeamName) + query
-}
 
 type SuppressionRule struct {
 	Id         int64
@@ -42,7 +38,6 @@ type SuppressionRule struct {
 	Duration   int64
 	Reason     string
 	Creator    string
-	Team       string
 	DontExpire bool
 }
 
@@ -101,7 +96,6 @@ func NewSuppRule(entities Labels, mcond MatchCondition, reason, creator string, 
 		Reason:    reason,
 		Creator:   creator,
 		Entities:  entities,
-		Team:      TeamName,
 	}
 }
 
@@ -111,14 +105,4 @@ func (tx *Tx) SelectRules(query string, args ...interface{}) (SuppRules, error) 
 	var rules SuppRules
 	err := tx.Select(&rules, query, args...)
 	return rules, err
-}
-
-func (tx *Tx) NewSuppRule(rule *SuppressionRule) (int64, error) {
-	var newId int64
-	stmt, err := tx.PrepareNamed(QueryInsertRule)
-	if err != nil {
-		return newId, err
-	}
-	err = stmt.Get(&newId, rule)
-	return newId, err
 }

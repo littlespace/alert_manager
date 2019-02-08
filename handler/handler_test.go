@@ -14,10 +14,10 @@ import (
 )
 
 var mockAlerts = map[string]*models.Alert{
-	"existing_a1": tu.MockAlert(100, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{"a", "b"}, nil),
-	"existing_a2": tu.MockAlert(200, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil),
-	"existing_a3": tu.MockAlert(300, "Test Alert 3", "", "d3", "e3", "src3", "scp3", "3", "WARN", []string{"e", "f"}, nil),
-	"existing_a4": tu.MockAlert(400, "Test Alert 4", "", "d4", "e4", "src4", "scp4", "4", "INFO", []string{"e", "f"}, nil),
+	"existing_a1": tu.MockAlert(100, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil),
+	"existing_a2": tu.MockAlert(200, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil),
+	"existing_a3": tu.MockAlert(300, "Test Alert 3", "", "d3", "e3", "src3", "scp3", "t1", "3", "WARN", []string{"e", "f"}, nil),
+	"existing_a4": tu.MockAlert(400, "Test Alert 4", "", "d4", "e4", "src4", "scp4", "t1", "4", "INFO", []string{"e", "f"}, nil),
 }
 
 var nowTime = models.MyTime{time.Now()}
@@ -36,11 +36,18 @@ type MockTx struct {
 	*models.Tx
 }
 
-func (t *MockTx) NewAlert(alert *models.Alert) (int64, error) {
-	if alert.Name == "Test Alert 1" {
-		return 100, nil
+func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
+	switch item.(type) {
+	case *models.Alert:
+		alert := item.(*models.Alert)
+		if alert.Name == "Test Alert 1" {
+			return 100, nil
+		}
+		return 200, nil
+	case *models.Team:
+		return 1, nil
 	}
-	return 200, nil
+	return 0, nil
 }
 
 func (t *MockTx) UpdateAlert(alert *models.Alert) error {
@@ -86,9 +93,9 @@ func (tx *MockTx) Exec(query string, args ...interface{}) error {
 
 func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts, error) {
 	switch query {
-	case models.AlertsQuery(models.QuerySelectExpired):
+	case models.QuerySelectExpired:
 		return models.Alerts{mockAlerts["existing_a3"]}, nil
-	case models.AlertsQuery(models.QuerySelectNoOwner):
+	case models.QuerySelectNoOwner:
 		return models.Alerts{mockAlerts["existing_a4"]}, nil
 	}
 	return models.Alerts{}, nil
@@ -96,10 +103,6 @@ func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts,
 
 func (t *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	return models.SuppRules{}, nil
-}
-
-func (t *MockTx) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
-	return 1, nil
 }
 
 func (t *MockTx) NewRecord(alertId int64, event string) (int64, error) {
@@ -143,17 +146,24 @@ func TestHandlerAlertActive(t *testing.T) {
 	ctx := context.Background()
 
 	// test new active alert
-	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
+	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a2)
 	assert.Equal(t, int(a2.Id), 200)
+	assert.Equal(t, h.teams[0].Name, "t1")
+	assert.Equal(t, h.teams[0].Id, int64(1))
 	l := models.Labels{"suppress": "me", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "alert_name": "Test Alert 2"}
 	assert.Equal(t, a2.Labels, l)
 	event := <-h.procChan
 	assert.Equal(t, event.Type, models.EventType_ACTIVE)
 	assert.Equal(t, int(event.Alert.Id), 200)
 
+	// test new team
+	a3 := tu.MockAlert(0, "Test Alert 6", "", "d6", "e6", "src6", "scp6", "t2", "2", "WARN", []string{"c", "d"}, nil)
+	h.handleActive(ctx, tx, a3)
+	assert.Equal(t, h.teams.Contains("t2"), true)
+
 	// test existing active alert
-	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{"a", "b"}, nil)
+	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
 	h.handleActive(ctx, tx, a1)
 	assert.Equal(t, int(a1.Id), 0)
 	assert.Equal(t, mockAlerts["existing_a1"].LastActive, nowTime)
@@ -161,7 +171,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	// test new active alert - suppressed
 	rule := models.NewSuppRule(models.Labels{"device": "d2"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
 	h.Suppressor.SaveRule(ctx, tx, rule)
-	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
+	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a2)
 }
 
@@ -175,12 +185,12 @@ func TestHandlerAlertClear(t *testing.T) {
 	ctx := context.Background()
 
 	// test alert clear -non existing
-	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil)
+	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleClear(ctx, tx, a2, 0)
 	assert.Equal(t, a2.Status.String(), "ACTIVE")
 
 	// test alert clear - no autoclear
-	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{"a", "b"}, nil)
+	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
 	h.handleClear(ctx, tx, a1, 0)
 	assert.Equal(t, mockAlerts["existing_a1"].Status.String(), "ACTIVE")
 
@@ -242,6 +252,5 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	Config = NewConfigHandler("../testutil/testdata/test_config.yaml")
 	Config.LoadConfig()
-	models.TeamName = "default"
 	os.Exit(m.Run())
 }

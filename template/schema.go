@@ -1,7 +1,5 @@
 package template
 
-import "fmt"
-
 var Schema = `
 CREATE TABLE IF NOT EXISTS alerts (
   id SERIAL,
@@ -29,31 +27,32 @@ CREATE TABLE IF NOT EXISTS alerts (
   ) PARTITION BY LIST(team);
 
 CREATE TABLE IF NOT EXISTS suppression_rules (
-  id SERIAL,
+  id SERIAL PRIMARY KEY,
   name VARCHAR(128) NOT NULL,
   entities JSON NOT NULL,
   mcond SMALLINT  NOT NULL,
   created_at BIGINT NOT NULL,
   duration INT NOT NULL,
   reason TEXT,
-  creator varchar(64) NOT NULL,
-  team VARCHAR(64) NOT NULL
-  ) PARTITION BY LIST(team);
+  creator varchar(64) NOT NULL);
 
 CREATE TABLE IF NOT EXISTS alert_history (
   id SERIAL PRIMARY KEY,
   timestamp BIGINT NOT NULL,
   alert_id INT NOT NULL,
   event TEXT NOT NULL);
-`
 
-func Partition(team string) string {
-	tmpl := `
-    CREATE TABLE IF NOT EXISTS alerts_%[1]s PARTITION OF alerts FOR VALUES IN ('%[1]s');
-    CREATE TABLE IF NOT EXISTS suppression_rules_%[1]s PARTITION OF suppression_rules FOR VALUES IN ('%[1]s');
-    CREATE INDEX ON alerts (id);
-    CREATE INDEX ON suppression_rules (id);
-    CREATE INDEX ON alert_history (id, alert_id);
-  `
-	return fmt.Sprintf(tmpl, team)
-}
+CREATE TABLE IF NOT EXISTS teams (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(64) NOT NULL,
+  organization VARCHAR(64));
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL,
+  name VARCHAR(64) NOT NULL,
+  team_id INT REFERENCES teams(id),
+  PRIMARY KEY (id, team_id));
+
+CREATE INDEX ON alerts (id);
+CREATE INDEX ON alert_history (alert_id);
+`

@@ -3,15 +3,13 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/golang/glog"
 	"github.com/lib/pq"
-	"strings"
 	"time"
 )
 
 var (
-	QueryInsertNew = `INSERT INTO 
+	QueryInsertAlert = `INSERT INTO
     alerts (
       name, description, entity, external_id, source, device, site, owner, team, tags, start_time, last_active,
       agg_id, auto_expire, auto_clear, expire_after, severity, status, labels, scope, is_aggregate
@@ -35,30 +33,23 @@ var (
 	QueryUpdateStatus     = queryUpdateAlerts + " SET status=$1 WHERE id=$2 OR id IN (SELECT id from alerts WHERE agg_id=$2)"
 	QueryUpdateManyStatus = queryUpdateAlerts + " SET status=? WHERE id in (?)"
 
-	querySelectAlerts       = "SELECT * from alerts_%s"
-	QuerySelectByNames      = " WHERE name IN (?) AND status=1 AND agg_id=0 FOR UPDATE"
-	QuerySelectById         = " WHERE id=$1 FOR UPDATE"
-	QuerySelectByIds        = " WHERE id IN (?) ORDER BY id FOR UPDATE"
-	QuerySelectByStatus     = " WHERE status IN (?) ORDER BY id FOR UPDATE"
-	QuerySelectNoOwner      = " WHERE owner is NULL AND status=1 ORDER BY id FOR UPDATE"
-	QuerySelectByNameEntity = " WHERE name=$1 AND entity=$2 AND status=1 FOR UPDATE"
-	QuerySelectByDevice     = " WHERE name=$1 AND entity=$2 AND device=$3 AND status=1 FOR UPDATE"
-	QuerySelectExpired      = ` WHERE
+	querySelectAlerts       = "SELECT * from alerts"
+	QuerySelectByNames      = querySelectAlerts + " WHERE name IN (?) AND status=1 AND agg_id=0 FOR UPDATE"
+	QuerySelectById         = querySelectAlerts + " WHERE id=$1 FOR UPDATE"
+	QuerySelectByIds        = querySelectAlerts + " WHERE id IN (?) ORDER BY id FOR UPDATE"
+	QuerySelectByStatus     = querySelectAlerts + " WHERE status IN (?) ORDER BY id FOR UPDATE"
+	QuerySelectNoOwner      = querySelectAlerts + " WHERE owner is NULL AND status=1 ORDER BY id FOR UPDATE"
+	QuerySelectByNameEntity = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND status=1 FOR UPDATE"
+	QuerySelectByDevice     = querySelectAlerts + " WHERE name=$1 AND entity=$2 AND device=$3 AND status=1 FOR UPDATE"
+	QuerySelectExpired      = querySelectAlerts + ` WHERE
     status=1 AND auto_expire AND (cast(extract(epoch from now()) as integer) - last_active) > expire_after ORDER BY id FOR UPDATE`
-	QuerySelectAllAggregated = " WHERE agg_id IN (SELECT id from alerts_%s WHERE is_aggregate AND status = 1)"
-	QuerySelectSuppressed    = ` WHERE status=2 AND id IN (
-    select (entities->>'alert_id')::int from suppression_rules_%s where rtype = 1 AND
+	QuerySelectAllAggregated = querySelectAlerts + " WHERE agg_id IN (SELECT id from alerts WHERE is_aggregate AND status = 1)"
+	QuerySelectSuppressed    = querySelectAlerts + ` WHERE status=2 AND id IN (
+    select (entities->>'alert_id')::int from suppression_rules where rtype = 1 AND
     creator = 'alert_manager' AND
     (cast(extract(epoch from now()) as integer) - created_at) < duration
   )`
 )
-
-func AlertsQuery(query string) string {
-	if strings.Contains(query, "%") {
-		query = fmt.Sprintf(query, TeamName)
-	}
-	return fmt.Sprintf(querySelectAlerts, TeamName) + query
-}
 
 type AlertSeverity int
 
@@ -172,7 +163,7 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&tmp)
 }
 
-func NewAlert(name, description, entity, source, scope string, extId string, startTime time.Time, sev string, isAgg bool) *Alert {
+func NewAlert(name, description, entity, source, scope, team string, extId string, startTime time.Time, sev string, isAgg bool) *Alert {
 	// sanity checks - if alert > 10 min old, set start time to now
 	if time.Now().Sub(startTime) > time.Duration(10*time.Minute) {
 		startTime = time.Now()
@@ -185,7 +176,7 @@ func NewAlert(name, description, entity, source, scope string, extId string, sta
 		Entity:      entity,
 		Source:      source,
 		Scope:       scope,
-		Team:        TeamName,
+		Team:        team,
 		StartTime:   MyTime{startTime},
 		LastActive:  MyTime{startTime},
 		Severity:    SevMap[sev],
@@ -305,16 +296,6 @@ func (a Alerts) AllInactive() bool {
 func (tx *Tx) UpdateAlert(alert *Alert) error {
 	_, err := tx.NamedExec(QueryUpdateAlertById, alert)
 	return err
-}
-
-func (tx *Tx) NewAlert(alert *Alert) (int64, error) {
-	var newId int64
-	stmt, err := tx.PrepareNamed(QueryInsertNew)
-	if err != nil {
-		return newId, err
-	}
-	err = stmt.Get(&newId, alert)
-	return newId, err
 }
 
 func (tx *Tx) GetAlert(query string, args ...interface{}) (*Alert, error) {

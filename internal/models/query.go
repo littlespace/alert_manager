@@ -66,7 +66,7 @@ func (q Query) toSQL() string {
 		start = "created_at"
 	}
 	tr, err := time.ParseDuration(q.TimeRange)
-	if err == nil && tr > 0 {
+	if err == nil && tr > 0 && q.Table != "teams" && q.Table != "users" {
 		baseQ += fmt.Sprintf(" WHERE (cast(extract(epoch from now()) as integer) - %s) < %d", start, int64(tr.Seconds()))
 	}
 	if len(q.Params) == 0 {
@@ -133,6 +133,18 @@ func (q Query) Run(tx Txn) ([]interface{}, error) {
 		var rules SuppRules
 		rules, err = tx.SelectRules(sql)
 		for _, r := range rules {
+			items = append(items, r)
+		}
+	case "teams":
+		var teams Teams
+		teams, err = tx.SelectTeams(sql)
+		for _, r := range teams {
+			items = append(items, r)
+		}
+	case "users":
+		var users Users
+		users, err = tx.SelectUsers(sql)
+		for _, r := range users {
 			items = append(items, r)
 		}
 	}
