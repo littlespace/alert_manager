@@ -66,7 +66,7 @@ func (k *WebHookListener) sanityCheck(d *WebHookAlertData) error {
 	return nil
 }
 
-func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*models.AlertEvent, error) {
+func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData, team string) (*models.AlertEvent, error) {
 	if err := k.sanityCheck(d); err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData) (*models.AlertEv
 		d.Level = "INFO"
 	}
 	event := &models.AlertEvent{}
-	event.Alert = models.NewAlert(d.Name, d.Details, d.Entity, d.Source, scope, d.Id, d.Time, d.Level, false)
+	event.Alert = models.NewAlert(d.Name, d.Details, d.Entity, d.Source, scope, team, d.Id, d.Time, d.Level, false)
 	if d.Device != "" {
 		event.Alert.AddDevice(d.Device)
 	}
@@ -169,6 +169,13 @@ func (k WebHookListener) httpHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No query found in URL", http.StatusBadRequest)
 		return
 	}
+	teams, ok := queries["team"]
+	team := "default"
+	if ok {
+		team = teams[0]
+	} else {
+		glog.V(2).Infof("No team specified in URL, using 'default'")
+	}
 	var parser Parser
 	for _, p := range parsers {
 		if p.Name() == source[0] {
@@ -190,7 +197,7 @@ func (k WebHookListener) httpHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	event, err := k.formatAlertEvent(data)
+	event, err := k.formatAlertEvent(data, team)
 	if err != nil {
 		glog.Error(err)
 		k.statRequestsError.Add(1)

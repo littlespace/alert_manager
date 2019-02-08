@@ -14,11 +14,11 @@ import (
 )
 
 var mockAlerts = map[string]*models.Alert{
-	"bgp_1":      tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "1", "INFO", []string{"a", "b"}, nil),
-	"bgp_2":      tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "2", "INFO", []string{"c", "d"}, nil),
-	"agg_bgp_12": tu.MockAlert(12, "Neteng_Aggregated BGP Down", "Alert1"+"\n"+"Alert2"+"\n", "", "Various", "bgp_session", "scope", "1", "WARN", []string{"neteng", "bgp"}, nil),
-	"a3":         tu.MockAlert(3, "Test Alert 3", "Alert3", "d3", "e3", "src3", "scp3", "3", "INFO", []string{}, nil),
-	"a4":         tu.MockAlert(4, "Test Alert 4", "Alert4", "d4", "e4", "src4", "device", "4", "INFO", []string{}, nil),
+	"bgp_1":      tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "INFO", []string{"a", "b"}, nil),
+	"bgp_2":      tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "t1", "2", "INFO", []string{"c", "d"}, nil),
+	"agg_bgp_12": tu.MockAlert(12, "Neteng_Aggregated BGP Down", "Alert1"+"\n"+"Alert2"+"\n", "", "Various", "bgp_session", "scope", "t1", "1", "WARN", []string{"neteng", "bgp"}, nil),
+	"a3":         tu.MockAlert(3, "Test Alert 3", "Alert3", "d3", "e3", "src3", "scp3", "t2", "3", "INFO", []string{}, nil),
+	"a4":         tu.MockAlert(4, "Test Alert 4", "Alert4", "d4", "e4", "src4", "device", "t2", "4", "INFO", []string{}, nil),
 }
 
 type MockDb struct{}
@@ -35,8 +35,14 @@ type MockTx struct {
 	*models.Tx
 }
 
-func (t *MockTx) NewAlert(alert *models.Alert) (int64, error) {
-	return mockAlerts["agg_bgp_12"].Id, nil
+func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
+	switch item.(type) {
+	case *models.Alert:
+		return mockAlerts["agg_bgp_12"].Id, nil
+	case *models.SuppressionRule:
+		return 1, nil
+	}
+	return 0, nil
 }
 
 func (t *MockTx) UpdateAlert(alert *models.Alert) error {
@@ -75,10 +81,6 @@ func (t *MockTx) SelectAlerts(query string, args ...interface{}) (models.Alerts,
 	return models.Alerts{mockAlerts["bgp_1"], mockAlerts["bgp_2"]}, nil
 }
 
-func (tx *MockTx) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
-	return 1, nil
-}
-
 func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	return models.SuppRules{}, nil
 }
@@ -109,8 +111,8 @@ func (m *mockGrouper) GrouperFunc() groupers.GroupingFunc {
 
 func TestAlertGrouping(t *testing.T) {
 	group := []*models.Alert{
-		tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "1", "WARN", []string{"a", "b"}, nil),
-		tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "2", "WARN", []string{"c", "d"}, nil),
+		tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil),
+		tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil),
 	}
 
 	grouper := &mockGrouper{name: "bgp_session"}
@@ -127,6 +129,7 @@ func TestAlertGrouping(t *testing.T) {
 	assert.Equal(t, agg.Source, mockAlerts["agg_bgp_12"].Source)
 	assert.Equal(t, agg.Entity, mockAlerts["agg_bgp_12"].Entity)
 	assert.Equal(t, agg.Severity, mockAlerts["agg_bgp_12"].Severity)
+	assert.Equal(t, agg.Team, mockAlerts["agg_bgp_12"].Team)
 	assert.Equal(t, agg.IsAggregate, true)
 
 	assert.Equal(t, mockAlerts["bgp_1"].AggregatorId, mockAlerts["agg_bgp_12"].Id)

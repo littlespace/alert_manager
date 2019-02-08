@@ -83,15 +83,15 @@ func (tx *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, er
 		Id:     args[0].(int64)}, nil
 }
 
-func (tx *MockTx) NewSuppRule(r *models.SuppressionRule) (int64, error) {
-	return 1, nil
-}
-
 func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
 	return models.SuppRules{
 		&models.SuppressionRule{Id: 1, Name: "rule1", Duration: 60},
 		&models.SuppressionRule{Id: 2, Name: "rule2", Duration: 60},
 	}, nil
+}
+
+func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
+	return 1, nil
 }
 
 func (tx *MockTx) NewRecord(alertId int64, event string) (int64, error) {

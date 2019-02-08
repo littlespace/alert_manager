@@ -12,13 +12,13 @@ import (
 )
 
 var mockAlerts = map[string]*models.Alert{
-	"dev_1": tu.MockAlert(1, "Neteng Device Down", "Alert1", "d1", "e1", "src1", "scp1", "1", "INFO", []string{"a", "b"},
+	"dev_1": tu.MockAlert(1, "Neteng Device Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "INFO", []string{"a", "b"},
 		models.Labels{"Name": "d1"}),
-	"bgp_1": tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "2", "INFO", []string{"c", "d"},
+	"bgp_1": tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "t1", "2", "INFO", []string{"c", "d"},
 		models.Labels{"RemoteDeviceName": "d1"}),
-	"link_1": tu.MockAlert(3, "Neteng DC Link Down", "Alert3", "d2", "e2", "src2", "scp3", "3", "WARN", []string{"e", "f"},
+	"link_1": tu.MockAlert(3, "Neteng DC Link Down", "Alert3", "d2", "e2", "src2", "scp3", "t1", "3", "WARN", []string{"e", "f"},
 		models.Labels{"ZSideDeviceName": "d1"}),
-	"link_2": tu.MockAlert(4, "Neteng DC Link Down", "Alert3", "d2", "e2", "src2", "scp2", "4", "INFO", []string{"c", "d"},
+	"link_2": tu.MockAlert(4, "Neteng DC Link Down", "Alert3", "d2", "e2", "src2", "scp2", "t1", "4", "INFO", []string{"c", "d"},
 		models.Labels{"ZSideDeviceName": "d4"}),
 }
 

@@ -72,7 +72,7 @@ func TestAlertHandlerBadRequest(t *testing.T) {
 func TestAlertHandlerParsing(t *testing.T) {
 	lis := &WebHookListener{statRequestsRecvd: &tu.MockStat{}, statRequestsError: &tu.MockStat{}}
 
-	req, err := http.NewRequest("POST", "/listener/alert/?source=mocked", bytes.NewReader([]byte("blah")))
+	req, err := http.NewRequest("POST", "/listener/alert/?source=mocked&team=foo", bytes.NewReader([]byte("blah")))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,6 +89,7 @@ func TestAlertHandlerParsing(t *testing.T) {
 	assert.Equal(t, event.Alert.Entity, "ent1")
 	assert.Equal(t, event.Alert.Severity.String(), "WARN")
 	assert.Equal(t, event.Alert.Source, "mocked")
+	assert.Equal(t, event.Alert.Team, "foo")
 }
 
 func TestMain(m *testing.M) {

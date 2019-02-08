@@ -49,7 +49,7 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 		er    error
 	)
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		if rules, er = tx.SelectRules(models.RulesQuery(models.QuerySelectActive) + " LIMIT 50"); er != nil {
+		if rules, er = tx.SelectRules(models.QuerySelectActive + " LIMIT 50"); er != nil {
 			return er
 		}
 		return nil
@@ -72,7 +72,7 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 }
 
 func (s *suppressor) SaveRule(ctx context.Context, tx models.Txn, rule *models.SuppressionRule) (int64, error) {
-	id, err := tx.NewSuppRule(rule)
+	id, err := tx.NewInsert(models.QueryInsertRule, rule)
 	if err != nil {
 		return 0, fmt.Errorf("Unable to save rule: %v", err)
 	}
@@ -134,7 +134,7 @@ func (s *suppressor) SuppressAlert(
 }
 
 func (s *suppressor) UnsuppressAlert(ctx context.Context, tx models.Txn, alert *models.Alert) error {
-	existing, err := tx.GetAlert(models.RulesQuery(models.QuerySelectById), alert.Id)
+	existing, err := tx.GetAlert(models.QuerySelectById, alert.Id)
 	if err != nil {
 		return err
 	}

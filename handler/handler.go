@@ -56,6 +56,7 @@ type AlertHandler struct {
 	Suppressor *suppressor
 	procChan   chan *models.AlertEvent
 	clearer    *ClearHandler
+	teams      models.Teams
 
 	statTransformError stats.Stat
 	statDbError        stats.Stat
@@ -63,11 +64,23 @@ type AlertHandler struct {
 
 // NewHandler returns a new alert handler which uses the supplied db
 func NewHandler(db models.Dbase) *AlertHandler {
+	tx := db.NewTx()
+	ctx := context.Background()
+	var teams models.Teams
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		var er error
+		teams, er = tx.SelectTeams(models.QuerySelectTeams)
+		return er
+	})
+	if err != nil {
+		glog.Errorf("Failed to fetch teams from db: %v", err)
+	}
 	h := &AlertHandler{
 		Db:                 db,
 		Suppressor:         GetSuppressor(db),
 		procChan:           make(chan *models.AlertEvent),
 		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
+		teams:              teams,
 		statTransformError: stats.NewCounter("handler.transform_errors"),
 		statDbError:        stats.NewCounter("handler.db_errors"),
 	}
@@ -141,7 +154,20 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		return nil
 	}
 	// new alert
-	newId, err := tx.NewAlert(alert)
+	if !h.teams.Contains(alert.Team) {
+		// create new team
+		if err := tx.Exec(models.NewPartition(alert.Team)); err != nil {
+			glog.Errorf("Failed to create new team partition: %v", err)
+		}
+		team := &models.Team{Name: alert.Team}
+		id, err := tx.NewInsert(models.QueryInsertTeam, team)
+		if err != nil {
+			glog.Errorf("Failed to create new team: %v", err)
+		}
+		team.Id = id
+		h.teams = append(h.teams, team)
+	}
+	newId, err := tx.NewInsert(models.QueryInsertAlert, alert)
 	if err != nil {
 		h.statDbError.Add(1)
 		return fmt.Errorf("Unable to insert new alert: %v", err)
@@ -263,7 +289,7 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType models.Eve
 func (h *AlertHandler) handleExpiry(ctx context.Context) {
 	tx := h.Db.NewTx()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		expired, err := tx.SelectAlerts(models.AlertsQuery(models.QuerySelectExpired))
+		expired, err := tx.SelectAlerts(models.QuerySelectExpired)
 		if err != nil {
 			return err
 		}
@@ -292,7 +318,7 @@ func (h *AlertHandler) handleExpiry(ctx context.Context) {
 func (h *AlertHandler) handleEscalation(ctx context.Context) {
 	tx := h.Db.NewTx()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		unAckd, err := tx.SelectAlerts(models.AlertsQuery(models.QuerySelectNoOwner))
+		unAckd, err := tx.SelectAlerts(models.QuerySelectNoOwner)
 		if err != nil {
 			return err
 		}
@@ -339,12 +365,12 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 	var err error
 	// an alert is assumed to be uniquely identified by its Id or by its Name:Device:Entity
 	if alert.Id > 0 {
-		existing, err = tx.GetAlert(models.AlertsQuery(models.QuerySelectById), alert.Id)
+		existing, err = tx.GetAlert(models.QuerySelectById, alert.Id)
 	} else {
 		if alert.Device.Valid {
-			existing, err = tx.GetAlert(models.AlertsQuery(models.QuerySelectByDevice), alert.Name, alert.Entity, alert.Device.String)
+			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device.String)
 		} else {
-			existing, err = tx.GetAlert(models.AlertsQuery(models.QuerySelectByNameEntity), alert.Name, alert.Entity)
+			existing, err = tx.GetAlert(models.QuerySelectByNameEntity, alert.Name, alert.Entity)
 		}
 	}
 	if err != nil {

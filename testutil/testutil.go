@@ -11,7 +11,7 @@ func (m *MockStat) Add(value int64) {}
 func (m *MockStat) Set(value int64) {}
 func (m *MockStat) Reset()          {}
 
-func MockAlert(id int64, name, desc, device, entity, source, scope, extId, sev string, tags []string, labels models.Labels) *models.Alert {
+func MockAlert(id int64, name, desc, device, entity, source, scope, team, extId, sev string, tags []string, labels models.Labels) *models.Alert {
 	start := models.MyTime{time.Now()}
 	a := &models.Alert{
 		Id:          id,
@@ -22,6 +22,7 @@ func MockAlert(id int64, name, desc, device, entity, source, scope, extId, sev s
 		Entity:      entity,
 		Source:      source,
 		Scope:       scope,
+		Team:        team,
 		ExternalId:  extId,
 		StartTime:   start,
 		LastActive:  start,

@@ -220,6 +220,7 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	glog.V(2).Infof("Successfully authenticated user: %s", user.Username)
+	// TODO save the user /team to db
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(JwtToken{Token: tokenString, ExpiresAt: expirationTime})
 }

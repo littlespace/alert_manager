@@ -41,7 +41,7 @@ func (n *Notifier) loadActiveAlerts() {
 	ctx := context.Background()
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		var active []*models.Alert
-		if err := tx.InSelect(models.AlertsQuery(models.QuerySelectByStatus), &active, []int64{1}); err != nil {
+		if err := tx.InSelect(models.QuerySelectByStatus, &active, []int64{1}); err != nil {
 			return err
 		}
 		for _, a := range active {

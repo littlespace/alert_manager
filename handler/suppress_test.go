@@ -45,7 +45,7 @@ func (tx *MockTx2) SelectRules(query string, args ...interface{}) (models.SuppRu
 	return m, nil
 }
 
-func (tx *MockTx2) NewSuppRule(rule *models.SuppressionRule) (int64, error) {
+func (tx *MockTx2) NewInsert(query string, item interface{}) (int64, error) {
 	return 1, nil
 }
 
@@ -54,7 +54,7 @@ func (tx *MockTx2) UpdateAlert(alert *models.Alert) error {
 }
 
 func (tx *MockTx2) GetAlert(query string, args ...interface{}) (*models.Alert, error) {
-	a := tu.MockAlert(args[0].(int64), "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(args[0].(int64), "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "t1", "1", "WARN", []string{}, nil)
 	a.Status = models.Status_SUPPRESSED
 	if a.Id == 2 {
 		a.Status = models.Status_CLEARED
@@ -112,7 +112,7 @@ func TestSaveRule(t *testing.T) {
 }
 
 func TestSuppAlert(t *testing.T) {
-	a1 := tu.MockAlert(1, "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "1", "WARN", []string{}, nil)
+	a1 := tu.MockAlert(1, "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "t1", "1", "WARN", []string{}, nil)
 	s := &suppressor{db: &MockDb{}}
 	ctx := context.Background()
 	tx := &MockTx2{}
@@ -136,7 +136,7 @@ func TestSuppAlert(t *testing.T) {
 	}
 	assert.Equal(t, a1.Status, models.Status_ACTIVE)
 
-	a2 := tu.MockAlert(2, "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "1", "WARN", []string{}, nil)
+	a2 := tu.MockAlert(2, "Test Alert 1", "", "dev1", "ent1", "src1", "scp1", "t1", "1", "WARN", []string{}, nil)
 	if err := s.SuppressAlert(ctx, tx, a2, 1*time.Minute); err != nil {
 		t.Fatal(err)
 	}

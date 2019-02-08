@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/golang/glog"
 	"time"
 )
 
@@ -27,17 +26,7 @@ func NewRecord(alertId int64, event string) *Record {
 }
 
 func (tx *Tx) NewRecord(alertId int64, event string) (int64, error) {
-	var newId int64
-	stmt, err := tx.PrepareNamed(QueryInsertNewRecord)
-	if err != nil {
-		glog.Errorf("Failed to create record: %v", err)
-		return newId, err
-	}
-	err = stmt.Get(&newId, NewRecord(alertId, event))
-	if err != nil {
-		glog.Errorf("Failed to create record: %v", err)
-	}
-	return newId, err
+	return tx.NewInsert(QueryInsertNewRecord, NewRecord(alertId, event))
 }
 
 func (tx *Tx) AddAlertHistory(alerts Alerts) error {

@@ -38,7 +38,7 @@ func (t *MockTx) NewRecord(alertId int64, event string) (int64, error) {
 }
 
 func TestNotify(t *testing.T) {
-	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
+	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{}, nil)
 	event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: mockAlert}
 	db := &MockDb{}
 	notif := &Notifier{notifiedAlerts: make(map[int64]*notification), db: db}
@@ -78,7 +78,7 @@ func TestNotify(t *testing.T) {
 }
 
 func TestNotifyReminder(t *testing.T) {
-	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "1", "WARN", []string{}, nil)
+	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{}, nil)
 	event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: mockAlert}
 	db := &MockDb{}
 	notif := &Notifier{notifiedAlerts: make(map[int64]*notification), db: db}

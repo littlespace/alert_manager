@@ -450,7 +450,7 @@ func (m *mockClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestNetboxDevice(t *testing.T) {
-	a := tu.MockAlert(1, "Test", "", "dev1-bb1", "ent1", "src1", "device", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-bb1", "ent1", "src1", "device", "t1", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
@@ -461,7 +461,7 @@ func TestNetboxDevice(t *testing.T) {
 }
 
 func TestNetboxIntf(t *testing.T) {
-	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "phy_interface", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "phy_interface", "t1", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
@@ -482,7 +482,7 @@ func TestNetboxIntf(t *testing.T) {
 }
 
 func TestNetboxLink(t *testing.T) {
-	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "link", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "link", "t1", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
@@ -493,7 +493,7 @@ func TestNetboxLink(t *testing.T) {
 	assert.Equal(t, a.Labels["ZSideDeviceName"], "dev2-dc1")
 	assert.Equal(t, a.Labels["ZSideInterface"], "et-0/0/31")
 
-	a = tu.MockAlert(1, "Test", "", "dev1-bb1", "et-0/0/3:0", "src1", "link", "1", "WARN", []string{}, nil)
+	a = tu.MockAlert(1, "Test", "", "dev1-bb1", "et-0/0/3:0", "src1", "link", "t1", "1", "WARN", []string{}, nil)
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +509,7 @@ func TestNetboxLink(t *testing.T) {
 
 func TestNetboxBgp(t *testing.T) {
 	// ebgp peer
-	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "AS65101 10.1.1.121", "src1", "bgp_peer", "1", "WARN", []string{}, nil)
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "AS65101 10.1.1.121", "src1", "bgp_peer", "t1", "1", "WARN", []string{}, nil)
 	n := &Netbox{client: &mockClient{}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
@@ -532,7 +532,7 @@ func TestNetboxBgp(t *testing.T) {
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 
 	// ibgp peer
-	a = tu.MockAlert(1, "Test", "", "dev1-bb1", "AS22697 13.8.1.1", "src1", "bgp_peer", "1", "WARN", []string{}, nil)
+	a = tu.MockAlert(1, "Test", "", "dev1-bb1", "AS22697 13.8.1.1", "src1", "bgp_peer", "t1", "1", "WARN", []string{}, nil)
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
