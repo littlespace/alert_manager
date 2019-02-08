@@ -42,7 +42,7 @@ For verbose logging:
 ```
 
 ## Deployment
-AM deployment supports teamviews. Different teams can deploy different instances of the alert manager backend and set the team name using the config setting (agent.TeamName). A common database and UI Deployment can be used organization wide. The team name is used to partition alerts and teamviews ensure that alerts belonging to a particular team can only be viewed/actioned by members of that team.
+AM deployment supports teamviews. Alerts are partitioned by team name which is extracted from the incoming alert webhook URL. Alert views can then be filtered by team so that members of a team can only view/action their own alerts.
 
 ## Listeners
 Currently a generic webhook listener is supported that receives alerts from any sources capable of sending alert data to a webhook endpoint. The webhook listener has parsers defined for decoding the json body of the alert message received externally. There are parsers [parsers](./listener/parsers) supported for a few alerting sources. If your source supports custom json bodies, the generic json parser can be used. New parsers can be easily added.
