@@ -29,11 +29,11 @@ func (g fibercutGrouper) GrouperFunc() GroupingFunc {
 	}
 }
 
-func (g *fibercutGrouper) Name() string {
+func (g fibercutGrouper) Name() string {
 	return g.name
 }
 
-func (g *fibercutGrouper) AggDesc(alerts []*models.Alert) string {
+func (g fibercutGrouper) AggDesc(alerts []*models.Alert) string {
 	msg := "Affected Interfaces:\n"
 	for _, a := range alerts {
 		msg += fmt.Sprintf(
@@ -44,7 +44,17 @@ func (g *fibercutGrouper) AggDesc(alerts []*models.Alert) string {
 	return msg
 }
 
-func (g *fibercutGrouper) Valid(alerts []*models.Alert) []*models.Alert {
+func (g fibercutGrouper) AggLabels(alerts []*models.Alert) models.Labels {
+	l := make(models.Labels)
+	var entities []string
+	for _, a := range alerts {
+		entities = append(entities, fmt.Sprintf("%s:%s", a.Device.String, a.Entity))
+	}
+	l["entities"] = entities
+	return l
+}
+
+func (g fibercutGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	for _, alert := range alerts {
 		if len(alert.Labels) == 0 || alert.Labels["labelType"] == nil || alert.Status != models.Status_ACTIVE {

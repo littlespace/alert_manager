@@ -39,6 +39,20 @@ func (g LabelGrouper) AggDesc(alerts []*models.Alert) string {
 	return msg
 }
 
+func (g LabelGrouper) AggLabels(alerts []*models.Alert) models.Labels {
+	l := make(models.Labels)
+	var entities []string
+	for _, a := range alerts {
+		if a.Device.Valid {
+			entities = append(entities, fmt.Sprintf("%s:%s", a.Device.String, a.Entity))
+		} else {
+			entities = append(entities, a.Entity)
+		}
+	}
+	l["entities"] = entities
+	return l
+}
+
 func (g LabelGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	for _, alert := range alerts {

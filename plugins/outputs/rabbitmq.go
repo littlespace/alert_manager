@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/streadway/amqp"
+	"sync"
 	"time"
 )
 
@@ -17,23 +19,12 @@ const (
 	routingKey   = "alerts"
 )
 
-type IncidentInfo struct {
-	Description string
-	Entity      string
-	Device      string
-	Site        string
-	Owner, Team string
-	Tags        []string
-	StartTime   time.Time `json:"start_time"`
-	Severity    string
-	Status      string
-}
-
 type Incident struct {
-	Name    string
-	Id      int64
-	Infos   []IncidentInfo
-	AddedAt time.Time `json:"added_at"`
+	Name      string
+	Id        int64
+	StartTime time.Time `json:"start_time"`
+	Data      map[string]interface{}
+	AddedAt   time.Time `json:"added_at"`
 }
 
 type Publisher struct {
@@ -43,8 +34,10 @@ type Publisher struct {
 	AmqpQueueName string        `mapstructure:"amqp_queue_name"`
 	ConnectRetry  time.Duration `mapstructure:"connect_retry"`
 	ready         bool
-	Notif         chan *ah.AlertEvent
+	Notif         chan *models.AlertEvent
 	channel       *amqp.Channel
+
+	sync.Mutex
 }
 
 func (p *Publisher) Name() string {
@@ -85,6 +78,8 @@ func (p *Publisher) uri() string {
 }
 
 func (p *Publisher) Setup() error {
+	p.Lock()
+	defer p.Unlock()
 	var conn *amqp.Connection
 	var err error
 	for {
@@ -116,30 +111,23 @@ func (p *Publisher) Setup() error {
 	return nil
 }
 
-func (p *Publisher) toIncident(event *ah.AlertEvent) *Incident {
+func (p *Publisher) toIncident(event *models.AlertEvent) *Incident {
 	alert := event.Alert
-	return &Incident{
-		Name: alert.Name,
-		Id:   alert.Id,
-		Infos: []IncidentInfo{
-			IncidentInfo{
-				Description: alert.Description,
-				Entity:      alert.Entity,
-				Device:      alert.Device.String,
-				Site:        alert.Site.String,
-				Owner:       alert.Owner.String,
-				Team:        alert.Team.String,
-				Tags:        alert.Tags,
-				StartTime:   alert.StartTime.Time,
-				Severity:    alert.Severity.String(),
-				Status:      alert.Status.String(),
-			},
-		},
-		AddedAt: time.Now(),
+	incident := &Incident{
+		Name:      alert.Name,
+		Id:        alert.Id,
+		StartTime: alert.StartTime.Time,
+		AddedAt:   time.Now(),
+		Data:      make(map[string]interface{}),
 	}
+	for k, v := range alert.Labels {
+		incident.Data[k] = v
+	}
+	return incident
 }
 
 func (p *Publisher) Start(ctx context.Context) {
+	p.Lock()
 	if !p.ready {
 		go func() {
 			if err := p.Setup(); err != nil {
@@ -147,20 +135,23 @@ func (p *Publisher) Start(ctx context.Context) {
 			}
 		}()
 	}
+	p.Unlock()
 	for {
 		select {
 		case event := <-p.Notif:
+			p.Lock()
 			if !p.ready {
 				glog.V(2).Infof("Amqp publisher not ready, skipping event")
 				break
 			}
-			if event.Type != ah.EventType_ACTIVE {
+			if event.Type != models.EventType_ACTIVE {
 				break
 			}
 			//TODO dont publish repeat notifications
 			if err := p.Publish(p.toIncident(event)); err != nil {
 				glog.Errorf("RabbitMq: Failed to publish incident: %v", err)
 			}
+			p.Unlock()
 		case <-ctx.Done():
 			return
 		}
@@ -168,7 +159,7 @@ func (p *Publisher) Start(ctx context.Context) {
 }
 
 func init() {
-	p := &Publisher{Notif: make(chan *ah.AlertEvent)}
+	p := &Publisher{Notif: make(chan *models.AlertEvent)}
 	ah.RegisterOutput(p.Name(), p.Notif)
 	plugins.AddOutput(p)
 }

@@ -104,13 +104,17 @@ type mockGrouper struct {
 	name string
 }
 
-func (m *mockGrouper) Name() string { return m.name }
+func (m mockGrouper) Name() string { return m.name }
 
-func (m *mockGrouper) AggDesc(alerts []*models.Alert) string {
+func (m mockGrouper) AggDesc(alerts []*models.Alert) string {
 	return mockAlerts["agg_bgp_12"].Description
 }
 
-func (m *mockGrouper) Valid(alerts []*models.Alert) []*models.Alert {
+func (m mockGrouper) AggLabels(alerts []*models.Alert) models.Labels {
+	return models.Labels{"entities": []string{"d1:e1", "d2:e2"}}
+}
+
+func (m mockGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	return alerts
 }
 
@@ -149,6 +153,7 @@ func TestAlertGrouping(t *testing.T) {
 
 	assert.Equal(t, agg.Labels["device"], []string{"d1", "d2"})
 	assert.Equal(t, agg.Labels["entity"], []string{"e1", "e2"})
+	assert.Equal(t, agg.Labels["entities"], []string{"d1:e1", "d2:e2"})
 
 	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	ctx := context.Background()

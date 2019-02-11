@@ -1,6 +1,7 @@
 package groupers
 
 import (
+	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
@@ -21,11 +22,11 @@ func (g bgpGrouper) GrouperFunc() GroupingFunc {
 	}
 }
 
-func (g *bgpGrouper) Name() string {
+func (g bgpGrouper) Name() string {
 	return g.name
 }
 
-func (g *bgpGrouper) AggDesc(alerts []*models.Alert) string {
+func (g bgpGrouper) AggDesc(alerts []*models.Alert) string {
 	msg := "Sessions down:\n"
 	for _, a := range alerts {
 		msg += a.Description + "\n"
@@ -33,7 +34,17 @@ func (g *bgpGrouper) AggDesc(alerts []*models.Alert) string {
 	return msg
 }
 
-func (g *bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {
+func (g bgpGrouper) AggLabels(alerts []*models.Alert) models.Labels {
+	l := make(models.Labels)
+	var entities []string
+	for _, a := range alerts {
+		entities = append(entities, fmt.Sprintf("%s:%s", a.Device.String, a.Entity))
+	}
+	l["entities"] = entities
+	return l
+}
+
+func (g bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	var nonBgpFound bool
 	for _, alert := range alerts {
