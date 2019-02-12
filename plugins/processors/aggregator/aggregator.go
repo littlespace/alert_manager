@@ -63,7 +63,7 @@ func (ag alertGroup) saveAgg(tx models.Txn, agg *models.Alert) (int64, error) {
 		return 0, fmt.Errorf("Unable to insert agg alert: %v", err)
 	}
 	agg.Id = newId
-	// update the agg IDs of all the original alerts
+	// update the aggregate IDs of all the original alerts
 	var origIds []int64
 	for _, o := range ag.groupedAlerts {
 		origIds = append(origIds, o.Id)
