@@ -15,14 +15,19 @@ import (
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
+type SlackRecipient struct {
+	Team    string
+	Channel string
+	Upload  bool
+	Token   string
+	Action  string
+	Mention string
+}
+
 type SlackNotifier struct {
-	Url       string
-	Recipient string
-	Mention   string
-	Token     string
-	Upload    bool
-	Action    string
-	Notif     chan *models.AlertEvent
+	Url        string
+	Recipients []*SlackRecipient
+	Notif      chan *models.AlertEvent
 
 	//statPostsSent stat.Stat
 	//statPostsError stat.Stat
@@ -34,12 +39,21 @@ func (n *SlackNotifier) Name() string {
 	return "slack"
 }
 
-func (n *SlackNotifier) Type() string {
-	return "output"
+func (n *SlackNotifier) getRecipient(team string) *SlackRecipient {
+	for _, recp := range n.Recipients {
+		if recp.Team == team {
+			return recp
+		}
+	}
+	return nil
 }
 
 func (n *SlackNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
-	message := n.Mention
+	recipient := n.getRecipient(event.Alert.Team)
+	if recipient == nil {
+		return []byte{}, fmt.Errorf("Failed to get recipient for team %s", event.Alert.Team)
+	}
+	message := recipient.Mention
 	// dont send message on clear
 	if event.Type != models.EventType_CLEARED {
 		message += " " + event.Alert.Description
@@ -74,8 +88,8 @@ func (n *SlackNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
 		},
 		"parse": "full", // to linkify urls, users and channels in alert message.
 	}
-	if n.Recipient != "" {
-		body["channel"] = n.Recipient
+	if recipient.Channel != "" {
+		body["channel"] = recipient.Channel
 	}
 	// TODO send imageURL via token, and uplaod file
 	// https://github.com/grafana/grafana/blob/master/pkg/services/alerting/notifiers/slack.go
@@ -110,7 +124,7 @@ func (n *SlackNotifier) Start(ctx context.Context) {
 		case event := <-n.Notif:
 			body, err := n.formatBody(event)
 			if err != nil {
-				glog.Errorf("Output: Slack: Cant get json body for alert %s", event.Alert.Name)
+				glog.Errorf("Output: Slack: Cant get json body for alert %s: %v", event.Alert.Name, err)
 				break
 			}
 			n.post(body)

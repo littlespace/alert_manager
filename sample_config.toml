@@ -51,17 +51,17 @@
 
 [outputs.slack]
   url = "slack_url"
-  recipient = "#alerts"
-  upload = false
-  token = ""
+  # per team settings/channels. Default is required.
+  recipients = [ { team = "default", channel = "#test-alert" },
+                 { team = "myteam", channel = "#channel2", upload = false, token = ""} ]
 
 [outputs.email]
   smtp_addr = "smtp.foo:"
   smtp_username = ""
   smtp_password = ""
-  from = "alert_manager@am.com"
-  recipients = ["noc@org.com"]
+  # per team recipients. Default is required.
+  recipients = [ { team = "default", from = "alert_manager@roblox.com", to = ["op@foo.com"] },
+                 { team = "myteam", from = "alert_manager@roblox.com", to = ["ops2@bar.com"] } ]
 
 [outputs.victorops]
-  url = "https://victorops url"
-  auto_resolve = true
+  recipients = [ { team = "default", url = "blah", auto_resolve = true } ]
