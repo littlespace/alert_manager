@@ -1,6 +1,6 @@
 # Alert Manager [![Build Status](https://travis-ci.com/mayuresh82/alert_manager.svg?branch=dev)](https://travis-ci.com/mayuresh82/alert_manager)
 
-Alert Manager is a tool for managing the lifecycle of alerts. It accepts alerts from external sources and handles functions such as grouping, suppression, inhibition and notification. It was written keeping in mind network related alerts that have unique characteristics but is extensible enough to be used for any kind of alert from a supported source.
+Alert Manager is a tool for managing the lifecycle of alerts. It accepts alerts from external sources and handles functions such as grouping, suppression, inhibition and notification. It was written keeping in mind network related alerts that have unique characteristics but is extensible enough to be used for any kind of alert from a supported source. Boom
 
 **Alert Manager is currently in active development**
 
