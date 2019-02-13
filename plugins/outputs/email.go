@@ -48,6 +48,12 @@ func (e *EmailSender) send(addr, username, pwd, from, subject, body string, reci
 	return nil
 }
 
+type EmailRecipient struct {
+	Team string
+	From string
+	To   []string
+}
+
 type EmailNotifier struct {
 	Notif        chan *models.AlertEvent
 	rawTpl       string
@@ -56,8 +62,7 @@ type EmailNotifier struct {
 	UseAuth      bool   `mapstructure:"use_auth"`
 	SmtpUsername string `mapstructure:"smtp_username"`
 	SmtpPassword string `mapstructure:"smtp_password"`
-	From         string
-	Recipients   []string
+	Recipients   []*EmailRecipient
 }
 
 type TplData struct {
@@ -72,6 +77,15 @@ type TplData struct {
 
 func (e *EmailNotifier) Name() string {
 	return "email"
+}
+
+func (e *EmailNotifier) getRecipient(team string) *EmailRecipient {
+	for _, recp := range e.Recipients {
+		if recp.Team == team {
+			return recp
+		}
+	}
+	return nil
 }
 
 func (e *EmailNotifier) renderTemplate(data *TplData) (string, error) {
@@ -121,14 +135,19 @@ func (e *EmailNotifier) start(event *models.AlertEvent) {
 		glog.Errorf("Output: Email: Failed to render template: %v", err)
 		return
 	}
+	recp := e.getRecipient(event.Alert.Team)
+	if recp == nil {
+		glog.Errorf("Failed to get recipient for team %s", event.Alert.Team)
+		return
+	}
 	if err := e.Emailer.send(
 		e.SmtpAddr,
 		e.SmtpUsername,
 		e.SmtpPassword,
-		e.From,
+		recp.From,
 		data.Subject,
 		body,
-		e.Recipients); err != nil {
+		recp.To); err != nil {
 		glog.Errorf("Output: Email : Unable to send email : %v", err)
 	}
 }

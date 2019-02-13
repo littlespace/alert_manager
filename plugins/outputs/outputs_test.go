@@ -24,7 +24,12 @@ func TestOutputSlack(t *testing.T) {
 		fmt.Fprintln(w, "Hello, client")
 	}))
 	defer ts.Close()
-	s := &SlackNotifier{Url: ts.URL, Recipient: "#test"}
+	s := &SlackNotifier{
+		Url: ts.URL,
+		Recipients: []*SlackRecipient{
+			&SlackRecipient{Team: "t1", Channel: "#test"},
+		},
+	}
 	event := &models.AlertEvent{
 		Type:  models.EventType_ACTIVE,
 		Alert: tu.MockAlert(0, "Neteng BGP Down", "This alert has fired", "dev1", "PeerX", "src", "scp", "t1", "1", "WARN", []string{}, nil),
@@ -62,11 +67,15 @@ func TestOutputSlack(t *testing.T) {
 
 type mockEmailer struct {
 	subject, body string
+	from          string
+	to            []string
 }
 
-func (m *mockEmailer) send(addr, username, pwd, from, subject, body string, recipents []string) error {
+func (m *mockEmailer) send(addr, username, pwd, from, subject, body string, to []string) error {
 	m.subject = subject
 	m.body = body
+	m.from = from
+	m.to = to
 	return nil
 }
 
@@ -87,7 +96,13 @@ var renderedTpl = `
 
 func TestOutputEmail(t *testing.T) {
 	emailer := &mockEmailer{}
-	n := &EmailNotifier{Emailer: emailer, rawTpl: mockTpl}
+	n := &EmailNotifier{
+		Emailer: emailer,
+		rawTpl:  mockTpl,
+		Recipients: []*EmailRecipient{
+			&EmailRecipient{Team: "t1", From: "a@foo.com", To: []string{"b@bar.com"}},
+		},
+	}
 	event := &models.AlertEvent{
 		Type: models.EventType_ACTIVE,
 		Alert: &models.Alert{
@@ -97,10 +112,13 @@ func TestOutputEmail(t *testing.T) {
 			Name:        "Test Alert",
 			Description: "Test Desc",
 			Entity:      "testent",
+			Team:        "t1",
 			StartTime:   models.MyTime{time.Unix(1136239445, 0)},
 		},
 	}
 	n.start(event)
 	assert.Equal(t, emailer.subject, "Alert Manager: [ACTIVE] Test Alert: [testent]")
 	assert.Equal(t, emailer.body, renderedTpl)
+	assert.Equal(t, emailer.from, "a@foo.com")
+	assert.Equal(t, emailer.to, []string{"b@bar.com"})
 }

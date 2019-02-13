@@ -15,6 +15,12 @@ import (
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
+type VoRecipient struct {
+	Team        string
+	Url         string
+	AutoResolve bool `mapstructure:"auto_resolve"`
+}
+
 type victorOpsMsg struct {
 	MessageType       string `json:"message_type"`
 	EntityID          string `json:"entity_id"`
@@ -24,13 +30,21 @@ type victorOpsMsg struct {
 }
 
 type VictorOpsNotifier struct {
-	Notif       chan *models.AlertEvent
-	Url         string
-	AutoResolve bool `mapstructure:"auto_resolve"`
+	Notif      chan *models.AlertEvent
+	Recipients []*VoRecipient
 }
 
 func (n *VictorOpsNotifier) Name() string {
 	return "victorops"
+}
+
+func (n *VictorOpsNotifier) getRecipient(team string) *VoRecipient {
+	for _, recp := range n.Recipients {
+		if recp.Team == team {
+			return recp
+		}
+	}
+	return nil
 }
 
 func (n *VictorOpsNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
@@ -57,11 +71,11 @@ func (n *VictorOpsNotifier) formatBody(event *models.AlertEvent) ([]byte, error)
 	return json.Marshal(m)
 }
 
-func (n *VictorOpsNotifier) post(data []byte) {
+func (n *VictorOpsNotifier) post(data []byte, url string) {
 	c := &http.Client{
 		Timeout: 2 * time.Second,
 	}
-	resp, err := c.Post(n.Url, "application/json", bytes.NewBuffer(data))
+	resp, err := c.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		glog.Errorf("Output: Unable to post to victorops: %v", err)
 		return
@@ -79,7 +93,12 @@ func (n *VictorOpsNotifier) Start(ctx context.Context) {
 	for {
 		select {
 		case event := <-n.Notif:
-			if event.Type == models.EventType_CLEARED && !n.AutoResolve {
+			recp := n.getRecipient(event.Alert.Team)
+			if recp == nil {
+				glog.Errorf("Failed to get recipient for team %s", event.Alert.Team)
+				break
+			}
+			if event.Type == models.EventType_CLEARED && !recp.AutoResolve {
 				break
 			}
 			body, err := n.formatBody(event)
@@ -87,7 +106,7 @@ func (n *VictorOpsNotifier) Start(ctx context.Context) {
 				glog.Errorf("Output: Victorops: Cant get json body for alert: %v", err)
 				break
 			}
-			n.post(body)
+			n.post(body, recp.Url)
 		case <-ctx.Done():
 			return
 		}
