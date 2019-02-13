@@ -197,6 +197,9 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 		return h.clearAlert(ctx, tx, existingAlert)
 	}
 	go func() {
+		if _, ok := h.clearer.get(existingAlert.Id); ok {
+			return
+		}
 		t := time.NewTimer(holddown)
 		resetClear := h.clearer.add(existingAlert.Id)
 		defer h.clearer.delete(existingAlert.Id)

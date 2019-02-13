@@ -76,10 +76,10 @@ func (ag alertGroup) saveAgg(tx models.Txn, agg *models.Alert) (int64, error) {
 	var origIds []int64
 	for _, o := range ag.groupedAlerts {
 		origIds = append(origIds, o.Id)
-		tx.NewRecord(o.Id, fmt.Sprintf("Alert aggregated into alert %d", agg.Id))
+		tx.NewRecord(o.Id, fmt.Sprintf("Alert aggregated into alert %d", newId))
 	}
-	tx.NewRecord(agg.Id, fmt.Sprintf("Aggregated alert created from source alerts %v", origIds))
-	err = tx.InQuery(models.QueryUpdateAggId, agg.Id, origIds)
+	tx.NewRecord(newId, fmt.Sprintf("Aggregated alert created from source alerts %v", origIds))
+	err = tx.InQuery(models.QueryUpdateAggId, newId, origIds)
 	if err != nil {
 		return 0, fmt.Errorf("Unable to update agg Ids: %v", err)
 	}

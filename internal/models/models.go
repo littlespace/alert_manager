@@ -36,7 +36,7 @@ func NewDB(addr, username, password, dbName string, timeout int) Dbase {
 	if host == "" {
 		host = "localhost"
 	}
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s connect_timeout=%d sslmode=disable", host, port, username, password, dbName, timeout)
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s connect_timeout=%d sslmode=disable lock_timeout=15000", host, port, username, password, dbName, timeout)
 	db, err := sqlx.Open("postgres", connStr)
 	if err != nil {
 		glog.Fatalf("Cant open DB: %v", err)
