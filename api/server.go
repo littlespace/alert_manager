@@ -395,12 +395,19 @@ func (s *Server) CreateSuppRule(w http.ResponseWriter, req *http.Request) {
 	}
 	rule.CreatedAt = models.MyTime{time.Now()}
 	tx := s.handler.Db.NewTx()
-	id, err := s.handler.AddSuppRule(req.Context(), tx, rule)
+	ctx := req.Context()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		id, err := s.handler.AddSuppRule(ctx, tx, rule)
+		if err != nil {
+			return err
+		}
+		rule.Id = id
+		return nil
+	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create suppression rule: %v", err), http.StatusInternalServerError)
 		return
 	}
-	rule.Id = id
 	s.statPosts.Add(1)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(rule)
@@ -410,7 +417,11 @@ func (s *Server) ClearSuppRule(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id, _ := strconv.ParseInt(vars["id"], 10, 64)
 	tx := s.handler.Db.NewTx()
-	if err := s.handler.DeleteSuppRule(req.Context(), tx, id); err != nil {
+	ctx := req.Context()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		return s.handler.DeleteSuppRule(ctx, tx, id)
+	})
+	if err != nil {
 		http.Error(w, fmt.Sprintf("Unable to delete suppression rule: %v", err), http.StatusBadRequest)
 		return
 	}
