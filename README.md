@@ -49,9 +49,9 @@ Currently a generic webhook listener is supported that receives alerts from any 
 
 The format of the webhook url is:
 ```
-http://<host>:<port>/listener/alert?source=<source>
+http://<host>:<port>/listener/alert?source=<source>&team=<team>
 ```
-The source query identifies the source of the alert, and is used to find a matching parser. The webhook listener supports http basic authentication.
+The source query identifies the source of the alert, and is used to find a matching parser. The webhook listener supports http basic authentication. The team query is optional (if not included, a team of *default* is used , which can be changed later ) and is used to partition the alert by team.
 
 
 ## Transforms
