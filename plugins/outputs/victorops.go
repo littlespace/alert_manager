@@ -19,6 +19,7 @@ type VoRecipient struct {
 	Team        string
 	Url         string
 	AutoResolve bool `mapstructure:"auto_resolve"`
+	SendAck     bool `mapstructure:"send_ack"`
 }
 
 type victorOpsMsg struct {
@@ -99,6 +100,9 @@ func (n *VictorOpsNotifier) Start(ctx context.Context) {
 				break
 			}
 			if event.Type == models.EventType_CLEARED && !recp.AutoResolve {
+				break
+			}
+			if event.Type == models.EventType_ACKD && !recp.SendAck {
 				break
 			}
 			body, err := n.formatBody(event)

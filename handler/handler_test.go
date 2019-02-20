@@ -84,6 +84,12 @@ func (t *MockTx) InQuery(query string, args ...interface{}) error {
 }
 
 func (t *MockTx) InSelect(query string, to interface{}, arg ...interface{}) error {
+	if query == models.QuerySelectByAggId {
+		if to, ok := to.(*models.Alerts); ok {
+			*to = append(*to, mockAlerts["existing_a1"])
+			*to = append(*to, mockAlerts["existing_a2"])
+		}
+	}
 	return nil
 }
 
@@ -136,13 +142,18 @@ func (m *mockProcessor) Process(ctx context.Context, db models.Dbase, in chan *m
 	return make(chan *models.AlertEvent)
 }
 
-func TestHandlerAlertActive(t *testing.T) {
+func NewTestHandler(procChanSize int) *AlertHandler {
 	m := &MockDb{}
-	tx := m.NewTx()
 	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *models.AlertEvent, 1)
+	h.procChan = make(chan *models.AlertEvent, procChanSize)
 	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
 	h.Suppressor = &suppressor{db: m}
+	return h
+}
+
+func TestHandlerAlertActive(t *testing.T) {
+	h := NewTestHandler(2)
+	tx := h.Db.NewTx()
 	ctx := context.Background()
 
 	// test new active alert
@@ -172,16 +183,13 @@ func TestHandlerAlertActive(t *testing.T) {
 	rule := models.NewSuppRule(models.Labels{"device": "d2"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
 	h.Suppressor.SaveRule(ctx, tx, rule)
 	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
-	h.handleActive(ctx, tx, a2)
+	a2.ExtendLabels()
+	assert.NotNil(t, h.Suppressor.Match(a2.Labels))
 }
 
 func TestHandlerAlertClear(t *testing.T) {
-	m := &MockDb{}
-	tx := m.NewTx()
-	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *models.AlertEvent, 1)
-	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
-	h.Suppressor = &suppressor{db: m}
+	h := NewTestHandler(1)
+	tx := h.Db.NewTx()
 	ctx := context.Background()
 
 	// test alert clear -non existing
@@ -204,11 +212,7 @@ func TestHandlerAlertClear(t *testing.T) {
 }
 
 func TestHandlerAlertExpiry(t *testing.T) {
-	m := &MockDb{}
-	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *models.AlertEvent, 1)
-	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
-	h.Suppressor = &suppressor{db: m}
+	h := NewTestHandler(1)
 	ctx := context.Background()
 
 	h.handleExpiry(ctx)
@@ -220,11 +224,7 @@ func TestHandlerAlertExpiry(t *testing.T) {
 }
 
 func TestHandlerAlertEscalate(t *testing.T) {
-	m := &MockDb{}
-	h := &AlertHandler{Db: m, statTransformError: &tu.MockStat{}, statDbError: &tu.MockStat{}}
-	h.procChan = make(chan *models.AlertEvent, 2)
-	h.clearer = &ClearHandler{actives: make(map[int64]chan struct{})}
-	h.Suppressor = &suppressor{db: m}
+	h := NewTestHandler(2)
 	ctx := context.Background()
 
 	// test no escalation needed
@@ -244,6 +244,37 @@ func TestHandlerAlertEscalate(t *testing.T) {
 	event = <-h.procChan
 	assert.Equal(t, event.Alert.Severity.String(), "CRITICAL")
 	assert.Equal(t, event.Type, models.EventType_ESCALATED)
+}
+
+func TestHandlerAlertSuppress(t *testing.T) {
+	h := NewTestHandler(3)
+	tx := h.Db.NewTx()
+	ctx := context.Background()
+	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
+	assert.Nil(t, h.Suppress(ctx, tx, a1, "test", "test", 1*time.Minute))
+	event := <-h.procChan
+	assert.Equal(t, event.Type, models.EventType_SUPPRESSED)
+	assert.Equal(t, a1.Status, models.Status_SUPPRESSED)
+	a1 = tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
+	a1.ExtendLabels()
+	assert.NotNil(t, h.Suppressor.Match(a1.Labels))
+
+	// test agg suppress
+	a2 := tu.MockAlert(100, "Test Agg Alert 2", "", "d2", "e2", "src2", "aggregated", "t1", "2", "WARN", []string{"c", "d"}, nil)
+	a2.IsAggregate = true
+	mockAlerts["existing_a1"].AggregatorId = a2.Id
+	mockAlerts["existing_a2"].AggregatorId = a2.Id
+	assert.Nil(t, h.Suppress(ctx, tx, a2, "test", "test", 1*time.Minute))
+	event = <-h.procChan
+	assert.Equal(t, event.Type, models.EventType_SUPPRESSED)
+	assert.Equal(t, event.Alert.Status, models.Status_SUPPRESSED)
+	event = <-h.procChan
+	assert.Equal(t, event.Type, models.EventType_SUPPRESSED)
+	assert.Equal(t, event.Alert.Status, models.Status_SUPPRESSED)
+
+	a1 = tu.MockAlert(100, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
+	a1.ExtendLabels()
+	assert.NotNil(t, h.Suppressor.Match(a1.Labels))
 }
 
 func TestMain(m *testing.M) {

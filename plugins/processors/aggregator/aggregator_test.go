@@ -13,12 +13,16 @@ import (
 	"time"
 )
 
-var mockAlerts = map[string]*models.Alert{
-	"bgp_1":      tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "INFO", []string{"a", "b"}, nil),
-	"bgp_2":      tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "t1", "2", "INFO", []string{"c", "d"}, nil),
-	"agg_bgp_12": tu.MockAlert(12, "Neteng_Aggregated BGP Down", "Alert1"+"\n"+"Alert2"+"\n", "", "Various", "bgp_session", "scope", "t1", "1", "WARN", []string{"neteng", "bgp"}, nil),
-	"a3":         tu.MockAlert(3, "Test Alert 3", "Alert3", "d3", "e3", "src3", "scp3", "t2", "3", "INFO", []string{}, nil),
-	"a4":         tu.MockAlert(4, "Test Alert 4", "Alert4", "d4", "e4", "src4", "device", "t2", "4", "INFO", []string{}, nil),
+var mockAlerts map[string]*models.Alert
+
+func resetMockAlerts() {
+	mockAlerts = map[string]*models.Alert{
+		"bgp_1":      tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "INFO", []string{"a", "b"}, nil),
+		"bgp_2":      tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "t1", "2", "INFO", []string{"c", "d"}, nil),
+		"agg_bgp_12": tu.MockAlert(12, "Neteng_Aggregated BGP Down", "Alert1"+"\n"+"Alert2"+"\n", "", "Various", "bgp_session", "scope", "t1", "1", "WARN", []string{"neteng", "bgp"}, nil),
+		"a3":         tu.MockAlert(3, "Test Alert 3", "Alert3", "d3", "e3", "src3", "scp3", "t2", "3", "INFO", []string{}, nil),
+		"a4":         tu.MockAlert(4, "Test Alert 4", "Alert4", "d4", "e4", "src4", "device", "t2", "4", "INFO", []string{}, nil),
+	}
 }
 
 type MockDb struct{}
@@ -58,6 +62,9 @@ func (t *MockTx) Commit() error {
 }
 
 func (t *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, error) {
+	if query == models.QuerySelectExistingAgg {
+		return mockAlerts["bgp_1"], nil
+	}
 	return mockAlerts["agg_bgp_12"], nil
 }
 
@@ -70,6 +77,10 @@ func (t *MockTx) InQuery(query string, args ...interface{}) error {
 		mockAlerts["bgp_1"].Status = models.Status_SUPPRESSED
 		mockAlerts["bgp_2"].Status = models.Status_SUPPRESSED
 	}
+	return nil
+}
+
+func (t *MockTx) Exec(query string, args ...interface{}) error {
 	return nil
 }
 
@@ -110,6 +121,7 @@ func (m *mockGrouper) GrouperFunc() groupers.GroupingFunc {
 }
 
 func TestAlertGrouping(t *testing.T) {
+	resetMockAlerts()
 	group := []*models.Alert{
 		tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil),
 		tu.MockAlert(2, "Neteng BGP Down", "Alert2", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil),
@@ -148,6 +160,18 @@ func TestAlertGrouping(t *testing.T) {
 	assert.Equal(t, event.Alert.Status.String(), "ACTIVE")
 	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
 
+	// test existing active agg
+	new := tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "INFO", []string{"a", "b"}, nil)
+	mockAlerts["bgp_1"].Status = models.Status_CLEARED
+	assert.Equal(t, a.checkExisting(new), true)
+	assert.Equal(t, new.Status, models.Status_SUPPRESSED)
+	assert.Equal(t, new.AggregatorId, mockAlerts["agg_bgp_12"].Id)
+	assert.Equal(t, mockAlerts["bgp_1"].Status, models.Status_ACTIVE)
+	// test existing inactive agg
+	mockAlerts["bgp_1"].Status = models.Status_CLEARED
+	mockAlerts["agg_bgp_12"].Status = models.Status_CLEARED
+	assert.Equal(t, a.checkExisting(new), false)
+
 	// test suppressed
 	r := models.NewSuppRule(
 		models.Labels{"alert_name": "Neteng_Aggregated BGP Down", "entity": "Various"},
@@ -162,6 +186,7 @@ func TestAlertGrouping(t *testing.T) {
 }
 
 func TestAggExpiry(t *testing.T) {
+	resetMockAlerts()
 	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	ctx := context.Background()
 	out := make(chan *models.AlertEvent, 1)
@@ -185,6 +210,7 @@ func TestAggExpiry(t *testing.T) {
 }
 
 func TestGrouperMatch(t *testing.T) {
+	resetMockAlerts()
 	a := &Aggregator{db: &MockDb{}, statAggsActive: &tu.MockStat{}, statError: &tu.MockStat{}}
 	for _, a := range mockAlerts {
 		a.ExtendLabels()

@@ -52,18 +52,19 @@ func (c *ClearHandler) delete(id int64) {
 // It also sends alerts to interested receivers
 type AlertHandler struct {
 	// db handler
-	Db         models.Dbase
-	Suppressor *suppressor
-	procChan   chan *models.AlertEvent
-	clearer    *ClearHandler
-	teams      models.Teams
+	Db            models.Dbase
+	Suppressor    *suppressor
+	procChan      chan *models.AlertEvent
+	clearer       *ClearHandler
+	clearHolddown time.Duration
+	teams         models.Teams
 
 	statTransformError stats.Stat
 	statDbError        stats.Stat
 }
 
 // NewHandler returns a new alert handler which uses the supplied db
-func NewHandler(db models.Dbase) *AlertHandler {
+func NewHandler(db models.Dbase, clearHolddown time.Duration) *AlertHandler {
 	tx := db.NewTx()
 	ctx := context.Background()
 	var teams models.Teams
@@ -80,6 +81,7 @@ func NewHandler(db models.Dbase) *AlertHandler {
 		Suppressor:         GetSuppressor(db),
 		procChan:           make(chan *models.AlertEvent),
 		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
+		clearHolddown:      clearHolddown,
 		teams:              teams,
 		statTransformError: stats.NewCounter("handler.transform_errors"),
 		statDbError:        stats.NewCounter("handler.db_errors"),
@@ -120,7 +122,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 				case models.EventType_ACTIVE:
 					return h.handleActive(ctx, tx, alert)
 				case models.EventType_CLEARED:
-					holddown := Config.GetGeneralConfig().ClearHolddownInterval
+					holddown := h.clearHolddown
 					if holddown == 0 {
 						holddown = CLEAR_HOLDDOWN_INTERVAL
 					}
@@ -389,6 +391,19 @@ func (h *AlertHandler) Suppress(
 	creator, reason string,
 	duration time.Duration,
 ) error {
+	if alert.IsAggregate {
+		var grouped models.Alerts
+		if err := tx.InSelect(models.QuerySelectByAggId, &grouped, alert.Id); err != nil {
+			return fmt.Errorf("Failed to query alerts: %v", err)
+		}
+		// suppress individual alerts
+		for _, a := range grouped {
+			reason = "Alert suppressed due to aggregated alert suppressed"
+			if err := h.Suppress(ctx, tx, a, creator, reason, duration); err != nil {
+				return fmt.Errorf("Unable to suppress alert %d: %v", a.Id, err)
+			}
+		}
+	}
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, duration); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
 	}
