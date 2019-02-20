@@ -23,9 +23,8 @@ func (o Outs) Get(sev string) []string {
 	return []string{}
 }
 
-type GeneralConfig struct {
-	DefaultOutputs        Outs          `yaml:"default_outputs"`
-	ClearHolddownInterval time.Duration `yaml:"clear_holddown_interval"`
+type OutputConfig struct {
+	Defaults Outs
 }
 
 type AlertConfig struct {
@@ -83,7 +82,7 @@ type InhibitRuleConfig struct {
 }
 
 type configs struct {
-	GeneralConfig          GeneralConfig           `yaml:"general_config"`
+	OutputConfig           OutputConfig            `yaml:"output_config"`
 	AlertConfig            []AlertConfig           `yaml:"alert_config"`
 	AggregationRuleConfigs []AggregationRuleConfig `yaml:"aggregation_rules"`
 	SuppressionRuleConfigs []SuppressionRuleConfig `yaml:"suppression_rules"`
@@ -107,12 +106,12 @@ func readConfig(file string) (configs, error) {
 }
 
 type ConfigHandler struct {
-	file          string
-	generalConfig GeneralConfig
-	alertConfigs  map[string]AlertConfig
-	aggRules      map[string]AggregationRuleConfig
-	suppRules     map[string]SuppressionRuleConfig
-	inhibitRules  map[string]InhibitRuleConfig
+	file         string
+	outputConfig OutputConfig
+	alertConfigs map[string]AlertConfig
+	aggRules     map[string]AggregationRuleConfig
+	suppRules    map[string]SuppressionRuleConfig
+	inhibitRules map[string]InhibitRuleConfig
 	sync.Mutex
 }
 
@@ -141,7 +140,7 @@ func (c *ConfigHandler) LoadConfig() {
 	if err != nil {
 		glog.Fatalf("Unable to load config file : %v", err)
 	}
-	c.generalConfig = configs.GeneralConfig
+	c.outputConfig = configs.OutputConfig
 	for _, config := range configs.AlertConfig {
 		c.alertConfigs[config.Name] = config
 	}
@@ -157,10 +156,10 @@ func (c *ConfigHandler) LoadConfig() {
 	}
 }
 
-func (c *ConfigHandler) GetGeneralConfig() GeneralConfig {
+func (c *ConfigHandler) GetOutputConfig() OutputConfig {
 	c.Lock()
 	defer c.Unlock()
-	return c.generalConfig
+	return c.outputConfig
 }
 
 func (c *ConfigHandler) GetConfiguredAlerts() []AlertConfig {

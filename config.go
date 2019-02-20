@@ -11,7 +11,8 @@ import (
 )
 
 type AgentConfig struct {
-	StatsExportInterval time.Duration `mapstructure:"stats_export_interval"`
+	StatsExportInterval   time.Duration `mapstructure:"stats_export_interval"`
+	ClearHolddownInterval time.Duration `mapstructure:"clear_holddown_interval"`
 }
 
 type ApiConfig struct {

@@ -16,6 +16,7 @@ type observiumData struct {
 	Message           string `json:"alert_message"`
 	Timestamp         string `json:"alert_timestamp_rfc3339"`
 	EntityName        string `json:"entity_name"`
+	EntityType        string `json:"entity_type"`
 	EntityDescription string `json:"entity_description"`
 	DeviceName        string `json:"device_sysname"`
 	DeviceOs          string `json:"device_os"`
@@ -47,7 +48,7 @@ func (p *ObserviumParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 	l := &listener.WebHookAlertData{
 		Id:      d.Id,
 		Name:    d.Message,
-		Details: d.Title + fmt.Sprintf(" Url: %s", d.Url),
+		Details: d.EntityType + " / " + d.EntityName + " / " + d.EntityDescription + "\n" + fmt.Sprintf("Url: %s", d.Url),
 		Device:  d.DeviceName,
 		Entity:  d.EntityName,
 		Time:    t,

@@ -122,6 +122,9 @@ func (n *SlackNotifier) Start(ctx context.Context) {
 	for {
 		select {
 		case event := <-n.Notif:
+			if event.Type == models.EventType_ACKD {
+				break
+			}
 			body, err := n.formatBody(event)
 			if err != nil {
 				glog.Errorf("Output: Slack: Cant get json body for alert %s: %v", event.Alert.Name, err)

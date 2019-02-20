@@ -82,8 +82,8 @@ func (n *Notifier) remind() {
 		if alertConfig, ok := ah.Config.GetAlertConfig(notif.event.Alert.Name); ok {
 			n.send(notif.event, alertConfig.Config.Outputs.Get(notif.event.Alert.Severity.String()))
 		} else {
-			generalConf := ah.Config.GetGeneralConfig()
-			n.send(notif.event, generalConf.DefaultOutputs.Get(notif.event.Alert.Severity.String()))
+			outputConf := ah.Config.GetOutputConfig()
+			n.send(notif.event, outputConf.Defaults.Get(notif.event.Alert.Severity.String()))
 		}
 	}
 }
@@ -112,8 +112,8 @@ func (n *Notifier) Notify(event *models.AlertEvent) {
 		outputs = alertConfig.Config.Outputs.Get(event.Alert.Severity.String())
 	}
 	if len(outputs) == 0 {
-		generalConf := ah.Config.GetGeneralConfig()
-		outputs = generalConf.DefaultOutputs.Get(event.Alert.Severity.String())
+		outputConf := ah.Config.GetOutputConfig()
+		outputs = outputConf.Defaults.Get(event.Alert.Severity.String())
 	}
 	notif, alreadyNotified := n.notifiedAlerts[alert.Id]
 	if alreadyNotified {
@@ -139,7 +139,7 @@ func (n *Notifier) Notify(event *models.AlertEvent) {
 				return
 			}
 		}
-	case models.EventType_SUPPRESSED, models.EventType_ACKD:
+	case models.EventType_SUPPRESSED:
 		return
 	}
 	n.send(event, outputs)
