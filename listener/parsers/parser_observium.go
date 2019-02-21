@@ -48,7 +48,7 @@ func (p *ObserviumParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 	l := &listener.WebHookAlertData{
 		Id:      d.Id,
 		Name:    d.Message,
-		Details: d.Title + fmt.Sprintf(" Url: %s", d.Url),
+		Details: d.Title + " / " + d.EntityDescription,
 		Device:  d.DeviceName,
 		Entity:  d.EntityName,
 		Time:    t,
