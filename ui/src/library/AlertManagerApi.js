@@ -2,9 +2,8 @@
 
 
 const url_alerts = 'api/alerts';
+const url_supprules = 'api/suppression_rules'
 const url_auth = 'api/auth';
-
-// var request = require('request');
 
 function handleErrors(response) {
     if (!response.ok) {
@@ -15,15 +14,19 @@ function handleErrors(response) {
 
 export class AlertManagerApi {
 
-    constructor(url) {
-        // this.name = name;
-        this.url = url;
+    constructor() {
+        this.url = process.env.REACT_APP_ALERT_MANAGER_SERVER;
         this.token = null;
-        // this.getWaitApiToken()
-        this.getApiToken();
+        this.fetch = this.fetch.bind(this)
+        this.login = this.login.bind(this)
+        this.getProfile = this.getProfile.bind(this)
+
+        this.checkToken()
     }
 
-    // Adding a method to the constructor
+    /// -------------------------------------------------------------------
+    /// Alerts Management Queries
+    /// -------------------------------------------------------------------
     getAlertsList({
         limit=500, 
         aggregate=true, 
@@ -83,16 +86,17 @@ export class AlertManagerApi {
 
     updateAlertOwner({id, owner, team}={}) {
 
+        // TODO 
+        // - Check if user is loggedIn
+        // - Integrate with new fetch method
+
         let url = `${this.url}${url_alerts}/${id}?owner=${owner}&team=${team}`
         
-        this.getWaitApiToken()
-
-        console.log("Token is : " + this.token)
         let obj = {
             method: 'PATCH',
             headers: {
                 // "Content-Type": "application/json",
-                "Authorization": `Bearer ${this.token}`
+                "Authorization": `Bearer ${this.getToken()}`
             }
         }
 
@@ -104,6 +108,10 @@ export class AlertManagerApi {
     }
 
     updateAlertStatus({id, status}={}) {
+
+        // TODO 
+        // - Check if user is loggedIn
+        // - Integrate with new fetch method
 
         let status_to_id = {
             ACTIVE:  1,
@@ -123,7 +131,7 @@ export class AlertManagerApi {
             method: 'PATCH',
             headers: {
                 // "Content-Type": "application/json",
-                "Authorization": `Bearer ${this.token}`
+                "Authorization": `Bearer ${this.getToken()}`
             }
         }
 
@@ -135,6 +143,10 @@ export class AlertManagerApi {
     }
 
     updateAlertSeverity({id, severity}={}) {
+
+        // TODO 
+        // - Check if user is loggedIn
+        // - Integrate with new fetch method
 
         let severity_to_id = {
             CRITICAL:  1,
@@ -166,14 +178,18 @@ export class AlertManagerApi {
 
     alertClear({id}={}) {
         // api/alerts/{id}/clear
-    
+        
+        // TODO 
+        // - Check if user is loggedIn
+        // - Integrate with new fetch method
+
         let url = `${this.url}${url_alerts}/${id}/clear`
         
         let obj = {
             method: 'PATCH',
             headers: {
                 // "Content-Type": "application/json",
-                "Authorization": `Bearer ${this.token}`
+                "Authorization": `Bearer ${this.getToken()}`
             }
         }
 
@@ -187,6 +203,10 @@ export class AlertManagerApi {
 
     alertSuppress({id, duration="1h"}={}) {
 
+        // TODO 
+        // - Check if user is loggedIn
+        // - Integrate with new fetch method
+
         // api/alerts/{id}/suppress?duration=5m
         let url = `${this.url}${url_alerts}/${id}/suppress?duration=${duration}`
         
@@ -194,7 +214,7 @@ export class AlertManagerApi {
             method: 'PATCH',
             headers: {
                 // "Content-Type": "application/json",
-                "Authorization": `Bearer ${this.token}`
+                "Authorization": `Bearer ${this.getToken()}`
             }
         }
 
@@ -224,6 +244,18 @@ export class AlertManagerApi {
         });
     }
 
+    /// -------------------------------------------------------------------
+    /// Suppression Rules
+    /// -------------------------------------------------------------------
+    getSuppressionRuleList() {
+        
+        return fetch(`${this.url}${url_supprules}`)
+          .then(response => response.json());
+    }
+
+    /// -------------------------------------------------------------------
+    /// Misc To be cleaned up
+    /// -------------------------------------------------------------------
     async getWaitApiToken() {
 
         if (this.token === null) {
@@ -263,36 +295,161 @@ export class AlertManagerApi {
         // }
     }
 
-    getApiToken() {
 
-    //     return new Promise((resolve, reject) => {
-    //         var token = fetch(this.url + url_auth, {
-    //             method: 'POST',
-    //             body: JSON.stringify({ username: "react", password: "react" })
-    //           })
-    //           .then(handleErrors)
-    //           .then(response => response.json());
-        
-    //         resolve(token);
-
-    //       });
+    getApiToken({username="react", password="react"}={}) {
 
         return fetch(this.url + url_auth, {
             method: 'POST',
-            body: JSON.stringify({ username: "react", password: "react" })
+            body: JSON.stringify({ username: username, password: password })
           })
           .then(handleErrors)
           .then(response => response.json())
-          .then(data => this.setApiToken( data ) )
+          .then(data => this.setApiToken( data ))
           .catch(function(error) {
             console.log(error);
-            });
+        });
         
     }
 
     setApiToken( data ) {
         this.token = data.token;
         console.log(this.token);
+    }
+    
+    /// -------------------------------------------------------------------
+    /// Authentication and Session Management
+    /// -------------------------------------------------------------------
+    login(username, password) {
+
+        console.log(`Will try to authenticate to ${this.url}api/auth`)
+
+        this.setUsername(username)
+        
+        return this.fetch(`${this.url}api/auth`, {
+        method: 'POST',
+        body: JSON.stringify({ 
+            username: username, 
+            password: password })
+        }).then(res => {
+            this.setToken(res.token)
+            console.log(`Saved token ${res.token}`)
+        })
+
+        //   return this.fetch(`${this.domain}/user`, {
+        //     method: 'GET'
+        //   })
+        // }).then(res => {
+        //   this.setProfile(res)
+        //   return Promise.resolve(res)
+        // })
+    }
+
+    loggedIn(){
+        // Checks if there is a saved token and it's still valid
+        const token = this.getToken()
+        return !!token // && !isTokenExpired(token) // handwaiving here
+    }
+
+    setProfile(profile){
+        // Saves profile data to localStorage
+        localStorage.setItem('profile', JSON.stringify(profile))
+    }
+
+    getProfile(){
+        // Retrieves the profile data from localStorage
+        const profile = localStorage.getItem('profile')
+        return profile ? JSON.parse(localStorage.profile) : {}
+    }
+
+    setToken(idToken){
+        // Saves user token to localStorage
+        localStorage.setItem('id_token', idToken)
+    }
+
+    getToken(){
+        // Retrieves the user token from localStorage
+        return localStorage.getItem('id_token')
+    }
+
+    setUsername(username){
+        localStorage.setItem('username', username)
+    }
+
+    getUsername(){
+        // Retrieves the user token from localStorage
+        return localStorage.getItem('username')
+    }
+
+    logout(){
+        // Clear user token and profile data from localStorage
+        localStorage.removeItem('id_token');
+        localStorage.removeItem('username');
+    }
+
+    checkToken(){
+
+        console.log("Checking if token is valid")
+        if (!this.getToken()) {
+            return false
+        }
+
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + this.getToken()
+        }
+
+        return fetch(`${this.url}api/auth/refresh `, headers)
+            .then(response => {
+                if (response.status >= 400) {
+                    console.log("Token is valid")
+                    return true
+                } else if (response.status >= 401) {
+                    console.log("Token is NOT valid")
+                    return false
+                } else {
+                    var error = new Error(response.statusText)
+                    error.response = response
+                    throw error
+                }
+            })
+
+
+    }
+    /// -------------------------------------------------------------------
+    /// Base request management
+    /// -------------------------------------------------------------------
+
+    _checkStatus(response) {
+        // raises an error in case response status is not a success
+        if (response.status >= 200 && response.status < 300) {
+            return response
+        } else if (response.status == 401) {
+            return false
+        } else {
+            var error = new Error(response.statusText)
+            error.response = response
+            throw error
+        }
+    }
+
+    fetch(url, options){
+        // performs api calls sending the required authentication headers
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+
+        if (this.loggedIn()){
+            headers['Authorization'] = 'Bearer ' + this.getToken()
+        }
+
+        return fetch(url, {
+        headers,
+        ...options
+        })
+        .then(this._checkStatus)
+        .then(response => response.json())
     }
 }
 

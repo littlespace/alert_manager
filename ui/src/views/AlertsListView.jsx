@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import AlertsTable from "../components/AlertsTable2";
-import TopBar from "../components/TopBar"
+import AlertsTable from "../components/Alerts/AlertsTable";
 import Menu from "../components/Menu"
 
 const styles = theme => ({
@@ -33,9 +32,6 @@ class AlertsListView extends React.Component {
     render() {
         return (
             <div>
-                <div>
-                    <TopBar />
-                </div>
                 <div className={this.classes.root}>
                     <Menu />
                     <AlertsTable className={this.classes.content}/>

@@ -17,7 +17,7 @@ import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
 import Chip from '@material-ui/core/Chip';
-import { AlertManagerApi } from '../library/AlertManagerApi';
+import { AlertManagerApi } from '../../library/AlertManagerApi';
 import Tooltip from '@material-ui/core/Tooltip';
 import Snackbar from '@material-ui/core/Snackbar';
 import SnackbarContent from '@material-ui/core/SnackbarContent';
@@ -45,13 +45,13 @@ import BusinessIcon from '@material-ui/icons/Business';
 import AlbumIcon from '@material-ui/icons/Album';
 import IconButton from '@material-ui/core/IconButton';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
+import GroupIcon from '@material-ui/icons/Group';
 
 import green from '@material-ui/core/colors/green';
 import amber from '@material-ui/core/colors/amber';
 
 import MUIDataTable from "mui-datatables";
-import CustomToolbarSelect from "./CustomToolbarSelect";
-
+import CustomToolbarSelect from "../CustomToolbarSelect";
 
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -279,7 +279,7 @@ class Alert extends React.Component {
     constructor(props){
         super(props);
         this.classes = this.props.classes;
-        this.api = new AlertManagerApi(process.env.REACT_APP_ALERT_MANAGER_SERVER);
+        this.api = new AlertManagerApi();
         this.state = {
             status: null,
             severity: null,
@@ -539,6 +539,13 @@ class Alert extends React.Component {
             <Card xs="6" className={this.classes.card}>
                 <CardContent>
                     <List>
+                        <ListItem className={this.classes.alertItem}>
+                            <Avatar>
+                                <GroupIcon />
+                            </Avatar>
+                            <ListItemText primary="Team:" className={this.classes.alertItemTitle}/>
+                            <ListItemText primary={data.Team} className={this.classes.alertItemContent}/>
+                        </ListItem>
                         <ListItem className={this.classes.alertItem}>
                             <Avatar>
                                 <DescriptionIcon />

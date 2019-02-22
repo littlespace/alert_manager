@@ -16,12 +16,21 @@ import Toolbar from '@material-ui/core/Toolbar';
 
 import SearchIcon from '@material-ui/icons/Search';
 
-
-import { AlertManagerApi } from '../library/AlertManagerApi';
+import { AlertManagerApi } from '../../library/AlertManagerApi';
 import { Typography, Chip } from '@material-ui/core';
 
-import SelectSitesList from './SelectSitesList'
-import SelectDevicesList from './SelectDevicesList'
+import SelectAlertStatusList from '../Select/SelectAlertStatusList'
+// import SelectDevicesList from '../Select/SelectDevicesList'
+
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+import Checkbox from '@material-ui/core/Checkbox';
+
+import Badge from '@material-ui/core/Badge';
+
+import { 
+    timeConverter, 
+    secondsToHms 
+} from '../../library/utils';
 
 const queryString = require('query-string');
 
@@ -35,9 +44,17 @@ const styles  = theme => ({
         margin: '10px',
         // paddingBottom: '10px',
     },
+    badge: {
+        margin: theme.spacing.unit * 2,
+      },
+    select: {
+        padding: "5px",
+    },
     button: {
         padding: '4px 8px',
         minHeight: '10px',
+        marginRight: '15px',
+        marginLeft: '15px',
     },
     searchButton: {
         width: '40px',
@@ -79,56 +96,28 @@ function dynamicSort(property) {
     }
 }
 
-function secondsToHms(d) {
-
-    var now = Math.floor(Date.now() / 1000)
-
-    d = now - Number(d);
-    var h = Math.floor(d / 3600);
-    var m = Math.floor(d % 3600 / 60);
-    var s = Math.floor(d % 3600 % 60);
-
-    var hDisplay = h > 0 ? h + (h === 1 ? "h, " : "h, ") : "";
-    var mDisplay = m > 0 ? m + (m === 1 ? "m, " : "m, ") : "";
-    var sDisplay = s > 0 ? s + (s === 1 ? "s" : "s") : "";
-    return hDisplay + mDisplay + sDisplay; 
-}
-
-function timeConverter(UNIX_timestamp){
-    var a = new Date(UNIX_timestamp * 1000);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var year = a.getFullYear();
-    var month = months[a.getMonth()];
-    var date = a.getDate();
-    var hour = a.getHours();
-    var min = a.getMinutes();
-    var sec = a.getSeconds();
-    var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
-
-    return time
-    // var date = new Date(UNIX_timestamp * 1000);
-
-    // return date;
-  }
-
 class AlertsTable extends React.Component {
 
     static contextTypes = {
         router: PropTypes.object
-      }
+    }
 
     constructor(props, context) {
         super(props, context);
         this.classes = this.props.classes;
-        // this.history = this.props.history;
-        this.api = new AlertManagerApi(process.env.REACT_APP_ALERT_MANAGER_SERVER);
+        this.api = new AlertManagerApi();
         
         var url_params_parsed = queryString.parse(this.context.router.history.location.search);
         
         this.state = {
+            ShowActive: true,
+            ShowSuppressed: false,
+            ShowExpired: false,
+            NbrActive: 0,
+            NbrSuppressed: 0,
+            NbrExpired: 0,
             alerts: [],
-            filter_sites: (url_params_parsed.site instanceof Array) ? url_params_parsed.site.split(',') : [],
-            filter_devices: (url_params_parsed.device instanceof Array) ? url_params_parsed.device.split(',') : [],
+            // filter_status: (url_params_parsed.status instanceof Array) ? url_params_parsed.status.split(',') : [1],
         };
         
     }
@@ -137,36 +126,60 @@ class AlertsTable extends React.Component {
     }
 
     updateAlertsList = () => {
-        this.api.getAlertsList({sites: this.state.filter_sites, devices: this.state.filter_devices})
-          .then(data => this.setState({ alerts: data.sort(dynamicSort('-last_active')) }));
-
+        // this.api.getAlertsList({status: this.state.filter_status })
+        this.api.getAlertsList()
+            .then(data => this.processAlertsList(data));
+       
         this.updateUrl();
+    }
+
+    processAlertsList(data) {
+
+        // let alerts = []
+        let NbrActive = 0
+        let NbrExpired = 0
+        let NbrSuppressed = 0
+        let NbrCleared = 0
+
+        for(var i in data) {
+
+            // Ignore all sites that are not listed in sites_location
+            if (data[i].Status == "ACTIVE") {
+                NbrActive++;
+            } else if (data[i].Status == "SUPPRESSED") {
+                NbrSuppressed++;
+            } else if (data[i].Status == "EXPIRED") {
+                NbrExpired++;
+            }
+        }
+
+        this.setState({ 
+            alerts: data.sort(dynamicSort('-last_active')),
+            NbrActive: NbrActive,
+            NbrExpired: NbrExpired,
+            NbrSuppressed: NbrSuppressed
+         })
 
     }
+
+    handleChange = name => event => {
+        this.setState({ [name]: event.target.checked });
+      };
 
     updateUrl = () => {
         var url_alone = '/alerts'
         var url_params = '/alerts?'
         var first = true
 
-        if (this.state.filter_sites.length > 0) {
-            if (first === true) {
-                first = false
-            } else {
-                url_params = url_params + '&' 
-            }
-            url_params = url_params + "site=" + this.state.filter_sites.join(',')
-        }
+        // if (this.state.filter_status.length > 0) {
+        //     if (first === true) {
+        //         first = false
+        //     } else {
+        //         url_params = url_params + '&' 
+        //     }
+        //     url_params = url_params + "status=" + this.state.filter_status.join(',')
+        // }
 
-        if (this.state.filter_devices.length > 0) {
-            if (first === true) {
-                first = false
-            } else {
-                url_params = url_params + '&' 
-            }
-            url_params = url_params + "device=" + this.state.filter_devices.join(',')
-        }
-        
         // Update url in browser
         if (first === true) {
             this.context.router.history.push(url_alone)
@@ -177,31 +190,84 @@ class AlertsTable extends React.Component {
     }
 
     render(){
-        const { alerts } = this.state;
+        let filteredAlerts = this.state.alerts.filter(
+            (alert) => {
 
+                if (alert.Status == "ACTIVE" && this.state.ShowActive) {
+                    return true
+                } else if  (alert.Status == "SUPPRESSED" && this.state.ShowSuppressed) {
+                    return true
+                } else if  (alert.Status == "EXPIRED" && this.state.ShowExpired) {
+                    return true
+                } else {
+                    return false
+                } 
+                    
+            }
+        )
+        let NbrActive = this.state.NbrActive;
+        let NbrExpired = this.state.NbrExpired;
+        let NbrSuppressed = this.state.NbrSuppressed;
+        
         return (
             <Paper className={this.classes.paper}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
-                        <Typography>
+                        {/* <Typography>
                             Filters:
-                        </Typography>
-                        <SelectSitesList 
-                            value={this.state.filter_sites} 
+                        </Typography> */}
+                        <Badge showZero className={this.classes.badge} badgeContent={NbrActive} color="primary">
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                checked={this.state.ShowActive}
+                                onChange={this.handleChange('ShowActive')}
+                                value="Active"
+                                className={this.classes.select}
+                                />
+                            }
+                            
+                            label="Active"
+                            />
+                        </Badge>
+                        <Badge showZero className={this.classes.badge} badgeContent={NbrSuppressed} color="primary">
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                    checked={this.state.ShowSuppressed}
+                                    onChange={this.handleChange('ShowSuppressed')}
+                                    value="Suppressed"
+                                    className={this.classes.select}
+                                    />
+                                }
+                                label="Suppressed"
+                                />
+                        </Badge>
+                        <Badge showZero className={this.classes.badge} badgeContent={NbrExpired} color="primary">
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                    checked={this.state.ShowExpired}
+                                    onChange={this.handleChange('ShowExpired')}
+                                    value="Expired"
+                                    className={this.classes.select}
+                                    />
+                                }
+                                label="Expired"
+                                />
+                        </Badge>
+
+                        {/* <SelectAlertStatusList 
+                            classe={this.classes.button}
+                            value={this.state.filter_status} 
                             onChange={event => {
-                                this.setState({
-                                    filter_sites: event.target.value,
-                                });
-                                } } />
-                        <SelectDevicesList 
-                            value={this.state.filter_devices} 
-                            onChange={event => {
-                                this.setState({
-                                    filter_devices: event.target.value,
-                                });
-                                } } />
-                    
-                        <Button 
+                                    this.setState({
+                                        filter_status: event.target.value,
+                                    })
+                                }} /> */}
+                      
+    
+                        {/* <Button 
                             className={this.classes.searchButton}
                             variant="fab" 
                             color="secondary" 
@@ -209,7 +275,7 @@ class AlertsTable extends React.Component {
                             onClick={this.updateAlertsList}
                             >
                             <SearchIcon />
-                        </Button>
+                        </Button> */}
                     </Toolbar>
                 </AppBar>
                 <Table className={this.props.table}>
@@ -231,7 +297,7 @@ class AlertsTable extends React.Component {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                    { alerts.map(n => {
+                    { filteredAlerts.map(n => {
                         return (
                         <TableRow key={n.Id} className={this.classes[alert_mapping[n.Severity]]} >
                             {/* <TableCell>{n.Id}</TableCell> */}

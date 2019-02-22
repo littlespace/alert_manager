@@ -11,4 +11,7 @@ export default createMuiTheme({
     status: {
       danger: 'orange',
     },
+    typography: {
+      useNextVariants: true,
+    }
   });

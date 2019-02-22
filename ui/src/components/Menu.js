@@ -57,7 +57,9 @@ const styles = theme => ({
     },
   },
   primary: {},
-  icon: {},
+  icon: {
+    marginRight: "0px"
+  },
 });
 
 class Menu extends React.Component {
@@ -91,14 +93,14 @@ class Menu extends React.Component {
                         <ListItemIcon className={this.classes.icon}>
                             <ViewListIcon />
                         </ListItemIcon>
-                        <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts List" />
+                        <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts" />
                     </MenuItemLink>
-                    {/* <MenuItemLink className={this.classes.menuItem} to="/">
+                    <MenuItemLink className={this.classes.menuItem} to="/suppression-rules">
                         <ListItemIcon className={this.classes.icon}>
                             <CodeIcon />
                         </ListItemIcon>
-                        <ListItemText classes={{ primary: this.classes.primary }} inset primary="..." />
-                    </MenuItemLink> */}
+                        <ListItemText classes={{ primary:this.classes.primary }} inset primary="Suppression Rules" />
+                    </MenuItemLink>
                 </MenuList>
             </Drawer>
         </div>
@@ -106,20 +108,3 @@ class Menu extends React.Component {
 }
 
 export default withStyles(styles)(Menu);
-
-            {/* <List component="nav">
-                <ListItem button>
-                <ListItemText primary="Inbox" />
-                </ListItem>
-                <Divider />
-                <ListItem button divider>
-                <ListItemText primary="Drafts" />
-                </ListItem>
-                <ListItem button>
-                <ListItemText primary="Trash" />
-                </ListItem>
-                <Divider light />
-                <ListItem button>
-                <ListItemText primary="Spam" />
-                </ListItem>
-            </List> */}

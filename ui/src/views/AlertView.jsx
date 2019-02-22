@@ -1,7 +1,6 @@
 
 import React from "react";
-import Alert from "../components/Alert";
-import TopBar from "../components/TopBar"
+import Alert from "../components/Alerts/Alert";
 import Menu from "../components/Menu"
 import { withStyles } from '@material-ui/core/styles';
 
@@ -34,9 +33,6 @@ class AlertView extends React.Component {
     render() {
         return (
         <div >
-            <div>
-                <TopBar />
-            </div>
             <div className={this.classes.root}>
                 <Menu />
                 <Alert id={this.props.match.params.id} className={this.classes.content}/>
