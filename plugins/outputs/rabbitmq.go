@@ -21,6 +21,7 @@ const (
 
 type Incident struct {
 	Name      string
+	Type      string
 	Id        int64
 	StartTime time.Time `json:"start_time"`
 	Data      map[string]interface{}
@@ -115,6 +116,7 @@ func (p *Publisher) toIncident(event *models.AlertEvent) *Incident {
 	alert := event.Alert
 	incident := &Incident{
 		Name:      alert.Name,
+		Type:      event.Type.String(),
 		Id:        alert.Id,
 		StartTime: alert.StartTime.Time,
 		AddedAt:   time.Now(),
