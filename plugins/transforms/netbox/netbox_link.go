@@ -133,10 +133,6 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 		labels["ZSideAgg"] = iLabels["PeerAgg"]
 	}
 
-	if labels["Role"].(string) == "dc" {
-		return labels, nil
-	}
-
 	if iLabels["Type"].(string) == "agg" {
 		// pull a/z, provider info from children
 		children := ifaceData["childs"].(map[string]interface{})
@@ -152,6 +148,9 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 			ifaceData = ifaceD.(map[string]interface{})
 			break
 		}
+	}
+	if ifaceData["circuit_termination"] == nil || ifaceData["circuit_id"] == nil {
+		return labels, nil
 	}
 	term := ifaceData["circuit_termination"].(map[string]interface{})
 	if term["term_side"].(string) == "Z" {
