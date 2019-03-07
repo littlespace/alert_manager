@@ -456,6 +456,7 @@ class Alert extends React.Component {
                             <option value={'6h'}>6h</option>
                             <option value={'24h'}>24h</option>
                             <option value={'48h'}>48h</option>
+                            <option value={'168h'}>7d</option>
                         </Select>
                     </FormControl>
                     </form>
