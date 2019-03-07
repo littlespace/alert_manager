@@ -225,15 +225,15 @@ export class AlertManagerApi {
         });
     }
 
-    alertAcknowledge({id, owner="owner", team="team"}={}) {
+    alertAcknowledge({id, owner="owner", team="neteng"}={}) {
         // api/alerts/{id}/acknowledge?owner=foo&team=bar
-        let url = `${this.url}${url_alerts}/${id}/acknowledge?owner=${owner}&team=${team}`
+        let url = `${this.url}${url_alerts}/${id}/ack?owner=${owner}&team=${team}`
         
         let obj = {
             method: 'PATCH',
             headers: {
                 // "Content-Type": "application/json",
-                "Authorization": `Bearer ${this.token}`
+                "Authorization": `Bearer ${this.getToken()}`
             }
         }
 

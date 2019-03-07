@@ -59,6 +59,12 @@ import ListItemText from '@material-ui/core/ListItemText';
 import Avatar from '@material-ui/core/Avatar';
 
 
+import { 
+    timeConverter, 
+    secondsToHms 
+} from '../../library/utils';
+
+
 const styles = {
     root: {
         flexGrow: 1,
@@ -128,35 +134,7 @@ const styles = {
     }
 };
 
-function secondsToHms(d) {
-
-    var now = Math.floor(Date.now() / 1000)
-
-    d = now - Number(d);
-    var h = Math.floor(d / 3600);
-    var m = Math.floor(d % 3600 / 60);
-    var s = Math.floor(d % 3600 % 60);
-
-    var hDisplay = h > 0 ? h + (h === 1 ? " hour, " : " hours, ") : "";
-    var mDisplay = m > 0 ? m + (m === 1 ? " minute, " : " minutes, ") : "";
-    var sDisplay = s > 0 ? s + (s === 1 ? " second" : " seconds") : "";
-    return hDisplay + mDisplay + sDisplay; 
-}
-
-function timeConverter(UNIX_timestamp){
-    var a = new Date(UNIX_timestamp * 1000);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var year = a.getFullYear();
-    var month = months[a.getMonth()];
-    var date = a.getDate();
-    var hour = a.getHours();
-    var min = a.getMinutes();
-    var sec = a.getSeconds();
-    var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
-
-    return time
-  }
-
+const Auth = new AlertManagerApi()
 
  const alertsColumns = [
     { name: "Id",           label: "Id",         options: { display: false } },
@@ -336,7 +314,7 @@ class Alert extends React.Component {
     }
    
     acknowledgeAlert = () => event => {
-        this.api.alertAcknowledge({id: this.props.id })
+        this.api.alertAcknowledge({id: this.props.id, owner: Auth.getUsername() })
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
     };
