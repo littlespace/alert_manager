@@ -81,6 +81,9 @@ func (p *Publisher) uri() string {
 func (p *Publisher) Setup() error {
 	p.Lock()
 	defer p.Unlock()
+	if p.ready {
+		return nil
+	}
 	var conn *amqp.Connection
 	var err error
 	for {
@@ -129,31 +132,26 @@ func (p *Publisher) toIncident(event *models.AlertEvent) *Incident {
 }
 
 func (p *Publisher) Start(ctx context.Context) {
-	p.Lock()
-	if !p.ready {
-		go func() {
-			if err := p.Setup(); err != nil {
-				glog.Errorf("Failed to start amqp publisher: %v", err)
-			}
-		}()
+	if err := p.Setup(); err != nil {
+		glog.Errorf("Failed to start amqp publisher: %v", err)
 	}
-	p.Unlock()
 	for {
 		select {
 		case event := <-p.Notif:
 			p.Lock()
 			if !p.ready {
 				glog.V(2).Infof("Amqp publisher not ready, skipping event")
+				p.Unlock()
 				break
 			}
-			if event.Type != models.EventType_ACTIVE {
+			p.Unlock()
+			if event.Type != models.EventType_ACTIVE && event.Type != models.EventType_CLEARED {
 				break
 			}
 			//TODO dont publish repeat notifications
 			if err := p.Publish(p.toIncident(event)); err != nil {
 				glog.Errorf("RabbitMq: Failed to publish incident: %v", err)
 			}
-			p.Unlock()
 		case <-ctx.Done():
 			return
 		}
