@@ -66,6 +66,15 @@ aggregation_rules:
       name: Neteng_Aggregated Test Alert
       severity: WARN
 
+suppression_rules:
+    - name: Dummy SuppRule
+      duration: 5m
+      reason: Suppress alerts based on this rule
+      match_condition: any
+      matches:
+        RemoteDeviceStatus: Offline
+        LocalDeviceStatus: Offline
+
 inhibit_rules:
     - name: Device down
       source_match:
