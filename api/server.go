@@ -121,6 +121,7 @@ func (s *Server) Start(ctx context.Context) {
 	router.HandleFunc("/api/{category}/{id}", s.Validate(s.Update)).Methods("PATCH", "OPTIONS")
 	router.HandleFunc("/api/alerts/{id}", s.GetAlert).Methods("GET")
 	router.HandleFunc("/api/alerts/{id}/{action}", s.Validate(s.ActionAlert)).Methods("PATCH", "OPTIONS")
+	router.HandleFunc("/api/suppression_rules/persistent", s.GetPersistentRules).Methods("GET")
 	router.HandleFunc("/api/suppression_rules", s.Validate(s.CreateSuppRule)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/suppression_rules/{id}/clear", s.Validate(s.ClearSuppRule)).Methods("DELETE", "OPTIONS")
 
@@ -428,7 +429,11 @@ func (s *Server) ClearSuppRule(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) GetPluginsList(w http.ResponseWriter, req *http.Request) {
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(plugins.GetApiPluginsList())
+}
+
+func (s *Server) GetPersistentRules(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s.handler.Suppressor.GetPersistentRules())
 }

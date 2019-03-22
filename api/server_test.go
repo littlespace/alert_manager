@@ -317,6 +317,7 @@ func TestSuppRule(t *testing.T) {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/suppression_rules", s.CreateSuppRule).Methods("POST")
 	router.HandleFunc("/api/suppression_rules/{id}/clear", s.ClearSuppRule).Methods("DELETE")
+	router.HandleFunc("/api/suppression_rules/persistent", s.GetPersistentRules).Methods("GET")
 
 	req, _ := http.NewRequest("POST", "/api/suppression_rules", nil)
 	body, _ := json.Marshal(&map[string]interface{}{
@@ -343,6 +344,21 @@ func TestSuppRule(t *testing.T) {
 	router.ServeHTTP(rr, req)
 	_, ok := mockRules["rule1"]
 	assert.Equal(t, ok, false)
+
+	// test persistent rules
+	req, _ = http.NewRequest("GET", "/api/suppression_rules/persistent", nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	b := []interface{}{}
+	if err := json.NewDecoder(rr.Result().Body).Decode(&b); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, len(b), 1)
+	c := b[0].(map[string]interface{})
+	assert.Equal(t, c["Id"].(float64), float64(0))
+	assert.Equal(t, c["Name"].(string), "Dummy SuppRule")
+	assert.Equal(t, c["Creator"].(string), "alert manager")
+	assert.Equal(t, c["DontExpire"].(bool), true)
 }
 
 func TestMain(m *testing.M) {

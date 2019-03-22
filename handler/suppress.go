@@ -66,9 +66,22 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 			ents[k] = v
 		}
 		r := models.NewSuppRule(ents, models.CondMap[rule.MatchCondition], rule.Reason, "alert manager", rule.Duration)
+		r.Name = rule.Name
 		r.DontExpire = true
 		s.suppRules = append(s.suppRules, r)
 	}
+}
+
+func (s *suppressor) GetPersistentRules() []*models.SuppressionRule {
+	var rules []*models.SuppressionRule
+	s.Lock()
+	defer s.Unlock()
+	for _, r := range s.suppRules {
+		if r.DontExpire {
+			rules = append(rules, r)
+		}
+	}
+	return rules
 }
 
 func (s *suppressor) SaveRule(ctx context.Context, tx models.Txn, rule *models.SuppressionRule) (int64, error) {
