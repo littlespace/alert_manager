@@ -44,16 +44,6 @@ func (g fibercutGrouper) AggDesc(alerts []*models.Alert) string {
 	return msg
 }
 
-func (g fibercutGrouper) AggLabels(alerts []*models.Alert) models.Labels {
-	l := make(models.Labels)
-	var entities []string
-	for _, a := range alerts {
-		entities = append(entities, fmt.Sprintf("%s:%s", a.Device.String, a.Entity))
-	}
-	l["entities"] = entities
-	return l
-}
-
 func (g fibercutGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	for _, alert := range alerts {

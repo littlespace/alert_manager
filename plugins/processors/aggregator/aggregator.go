@@ -40,9 +40,6 @@ func (ag alertGroup) aggAlert() *models.Alert {
 	for k, v := range rule.Alert.Config.StaticLabels {
 		aggLabels[k] = v
 	}
-	for k, v := range ag.grouper.AggLabels(ag.groupedAlerts) {
-		aggLabels[k] = v
-	}
 	sev := rule.Alert.Config.Severity
 	if sev == "" {
 		sev = "INFO"

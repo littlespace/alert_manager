@@ -57,16 +57,6 @@ func (g dcCktGrouper) AggDesc(alerts []*models.Alert) string {
 	return msg
 }
 
-func (g dcCktGrouper) AggLabels(alerts []*models.Alert) models.Labels {
-	l := make(models.Labels)
-	var entities []string
-	for _, a := range alerts {
-		entities = append(entities, fmt.Sprintf("%s:%s", a.Device.String, a.Entity))
-	}
-	l["entities"] = entities
-	return l
-}
-
 func (g dcCktGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	allBgp := true

@@ -31,14 +31,6 @@ func (g *LabelGrouper) SetGroupby(groupBy []string) {
 	g.Groupby = append(g.Groupby, groupBy...)
 }
 
-func (g LabelGrouper) AggDesc(alerts []*models.Alert) string {
-	msg := ""
-	for _, a := range alerts {
-		msg += fmt.Sprintf("Alert %d: %s", a.Id, a.Description) + "\n"
-	}
-	return msg
-}
-
 func (g LabelGrouper) AggLabels(alerts []*models.Alert) models.Labels {
 	l := make(models.Labels)
 	var entities []string
