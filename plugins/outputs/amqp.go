@@ -20,12 +20,13 @@ const (
 )
 
 type Incident struct {
-	Name      string
-	Type      string
-	Id        int64
-	StartTime time.Time `json:"start_time"`
-	Data      map[string]interface{}
-	AddedAt   time.Time `json:"added_at"`
+	Name        string
+	Type        string
+	Id          int64
+	StartTime   time.Time `json:"start_time"`
+	Data        map[string]interface{}
+	AddedAt     time.Time `json:"added_at"`
+	IsAggregate bool      `json:"is_aggregate"`
 }
 
 type Publisher struct {
@@ -42,7 +43,7 @@ type Publisher struct {
 }
 
 func (p *Publisher) Name() string {
-	return "rabbitmq"
+	return "amqp"
 }
 
 func (p *Publisher) Publish(incident *Incident) error {
@@ -118,16 +119,15 @@ func (p *Publisher) Setup() error {
 func (p *Publisher) toIncident(event *models.AlertEvent) *Incident {
 	alert := event.Alert
 	incident := &Incident{
-		Name:      alert.Name,
-		Type:      event.Type.String(),
-		Id:        alert.Id,
-		StartTime: alert.StartTime.Time,
-		AddedAt:   time.Now(),
-		Data:      make(map[string]interface{}),
+		Name:        alert.Name,
+		Type:        event.Type.String(),
+		Id:          alert.Id,
+		StartTime:   alert.StartTime.Time,
+		AddedAt:     time.Now(),
+		IsAggregate: alert.IsAggregate,
 	}
-	for k, v := range alert.Labels {
-		incident.Data[k] = v
-	}
+	data, _ := json.Marshal(alert)
+	json.Unmarshal(data, &incident.Data)
 	return incident
 }
 

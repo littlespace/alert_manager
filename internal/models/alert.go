@@ -121,21 +121,29 @@ type Alert struct {
 // custom Marshaler interface for Alert
 func (a Alert) MarshalJSON() ([]byte, error) {
 	tmp := struct {
-		Id                                       int64
-		ExternalId                               string `json:"external_id"`
-		Name, Description, Entity, Source, Scope string
-		Device, Site, Owner, Team                string
-		Tags                                     pq.StringArray
-		StartTime                                int64 `json:"start_time"`
-		LastActive                               int64 `json:"last_active"`
-		AggregatorId                             int64 `json:"agg_id"`
-		IsAggregate                              bool  `json:"is_aggregate"`
-		Severity                                 string
-		Status                                   string
-		History                                  []struct {
-			Timestamp int64
-			Event     string
-		}
+		Id           int64                  `json:"id"`
+		ExternalId   string                 `json:"external_id"`
+		Name         string                 `json:"name"`
+		Description  string                 `json:"description"`
+		Entity       string                 `json:"entity"`
+		Source       string                 `json:"source"`
+		Scope        string                 `json:"scope"`
+		Device       string                 `json:"device"`
+		Site         string                 `json:"site"`
+		Owner        string                 `json:"owner"`
+		Team         string                 `json:"team"`
+		Tags         pq.StringArray         `json:"tags"`
+		StartTime    int64                  `json:"start_time"`
+		LastActive   int64                  `json:"last_active"`
+		AggregatorId int64                  `json:"agg_id"`
+		IsAggregate  bool                   `json:"is_aggregate"`
+		Severity     string                 `json:"severity"`
+		Status       string                 `json:"status"`
+		Labels       map[string]interface{} `json:"labels"`
+		History      []struct {
+			Timestamp int64  `json:"timestamp"`
+			Event     string `json:"event"`
+		} `json:"history"`
 	}{
 		Id:           a.Id,
 		ExternalId:   a.ExternalId,
@@ -155,11 +163,12 @@ func (a Alert) MarshalJSON() ([]byte, error) {
 		IsAggregate:  a.IsAggregate,
 		Severity:     a.Severity.String(),
 		Status:       a.Status.String(),
+		Labels:       a.Labels,
 	}
 	for _, h := range a.History {
 		tmp.History = append(tmp.History, struct {
-			Timestamp int64
-			Event     string
+			Timestamp int64  `json:"timestamp"`
+			Event     string `json:"event"`
 		}{h.Timestamp.Unix(), h.Event},
 		)
 	}
