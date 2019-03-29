@@ -36,7 +36,6 @@ class SigninView extends React.Component {
         <div >
 
             <div className={this.classes.root}>
-                <Menu />
                 <SignIn />
                 
             </div>

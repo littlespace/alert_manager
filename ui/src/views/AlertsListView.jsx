@@ -33,7 +33,6 @@ class AlertsListView extends React.Component {
         return (
             <div>
                 <div className={this.classes.root}>
-                    <Menu />
                     <AlertsTable className={this.classes.content}/>
                 </div>
             </div>

@@ -34,7 +34,6 @@ class AlertView extends React.Component {
         return (
         <div >
             <div className={this.classes.root}>
-                <Menu />
                 <Alert id={this.props.match.params.id} className={this.classes.content}/>
             </div>
         </div>

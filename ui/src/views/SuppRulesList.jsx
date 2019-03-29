@@ -81,7 +81,6 @@ class SuppressionRulesListView extends React.Component {
         return (
             <div>
                 <div className={this.classes.root}>
-                    <Menu />
                     <Grid 
                         className={this.classes.gridroot} 
                         container

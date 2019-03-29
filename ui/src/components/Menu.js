@@ -76,33 +76,20 @@ class Menu extends React.Component {
     render() {
         return (
         <div>
-            <Drawer
-                    variant="permanent"
-                    classes={{
-                    paper: this.classes.drawerPaper,
-                    }}
-                >
-                <MenuList>
-                    {/* <MenuItemLink className={this.classes.menuItem} to="/" >
-                        <ListItemIcon className={this.classes.icon}>
-                            <DashboardIcon />
-                        </ListItemIcon>
-                        <ListItemText classes={{ primary: this.classes.primary }} inset primary="Dashboard" />
-                    </MenuItemLink> */}
-                    <MenuItemLink className={this.classes.menuItem} to="/alerts">
-                        <ListItemIcon className={this.classes.icon}>
-                            <ViewListIcon />
-                        </ListItemIcon>
-                        <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts" />
-                    </MenuItemLink>
-                    <MenuItemLink className={this.classes.menuItem} to="/suppression-rules">
-                        <ListItemIcon className={this.classes.icon}>
-                            <CodeIcon />
-                        </ListItemIcon>
-                        <ListItemText classes={{ primary:this.classes.primary }} inset primary="Suppression Rules" />
-                    </MenuItemLink>
-                </MenuList>
-            </Drawer>
+          <MenuList>
+              <MenuItemLink className={this.classes.menuItem} to="/alerts">
+                  <ListItemIcon className={this.classes.icon}>
+                      <ViewListIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts" />
+              </MenuItemLink>
+              <MenuItemLink className={this.classes.menuItem} to="/suppression-rules">
+                  <ListItemIcon className={this.classes.icon}>
+                      <CodeIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Suppression Rules" />
+              </MenuItemLink>
+          </MenuList>
         </div>
         )};
 }
