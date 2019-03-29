@@ -2,7 +2,8 @@
 
 
 const url_alerts = 'api/alerts';
-const url_supprules = 'api/suppression_rules'
+const url_supprules = 'api/suppression_rules';
+const url_supprules_persistent = 'api/suppression_rules/persistent';
 const url_auth = 'api/auth';
 
 function handleErrors(response) {
@@ -21,7 +22,10 @@ export class AlertManagerApi {
         this.login = this.login.bind(this)
         this.getProfile = this.getProfile.bind(this)
 
-        this.checkToken()
+        if (this.checkToken() == false) {
+            console.log("Token is not valid, login out")
+            this.logout()
+        }
     }
 
     /// -------------------------------------------------------------------
@@ -247,9 +251,15 @@ export class AlertManagerApi {
     /// -------------------------------------------------------------------
     /// Suppression Rules
     /// -------------------------------------------------------------------
-    getSuppressionRuleList() {
+    getSuppressionRuleDynamicList() {
         
         return fetch(`${this.url}${url_supprules}`)
+          .then(response => response.json());
+    }
+
+    getSuppressionRulePersistentList() {
+
+        return fetch(`${this.url}${url_supprules_persistent}`)
           .then(response => response.json());
     }
 
@@ -325,14 +335,28 @@ export class AlertManagerApi {
 
         this.setUsername(username)
         
-        return this.fetch(`${this.url}api/auth`, {
-        method: 'POST',
-        body: JSON.stringify({ 
-            username: username, 
-            password: password })
-        }).then(res => {
-            this.setToken(res.token)
-            console.log(`Saved token ${res.token}`)
+        return fetch(`${this.url}api/auth`, {
+            method: 'POST',
+            body: JSON.stringify({ 
+                username: username, 
+                password: password })
+        }).then(response => {
+            
+            if (response.status == 200) {
+                return response.json()
+            } if (response.status == 401) {
+                console.log("Auth is NOT valid")
+                return false
+            } else {
+                var error = new Error(response.statusText)
+                error.response = response
+                throw error
+            }
+
+        }).then(data => {
+            console.log(`Auth is valid, Saved token ${data.token}`)
+            this.setToken(data.token)
+            return true
         })
 
         //   return this.fetch(`${this.domain}/user`, {
@@ -347,7 +371,7 @@ export class AlertManagerApi {
     loggedIn(){
         // Checks if there is a saved token and it's still valid
         const token = this.getToken()
-        return !!token // && !isTokenExpired(token) // handwaiving here
+        return !!token
     }
 
     setProfile(profile){
@@ -393,19 +417,22 @@ export class AlertManagerApi {
             return false
         }
 
-        const headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + this.getToken()
+        const obj = {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + this.getToken()
+            }
         }
 
-        return fetch(`${this.url}api/auth/refresh `, headers)
+        return fetch(`${this.url}api/auth/refresh `, obj)
             .then(response => {
-                if (response.status >= 400) {
+                if (response.status == 400) {
                     console.log("Token is valid")
                     return true
-                } else if (response.status >= 401) {
+                } else if (response.status == 401) {
                     console.log("Token is NOT valid")
+                    this.logout()
                     return false
                 } else {
                     var error = new Error(response.statusText)
@@ -414,24 +441,23 @@ export class AlertManagerApi {
                 }
             })
 
-
     }
     /// -------------------------------------------------------------------
     /// Base request management
     /// -------------------------------------------------------------------
 
-    _checkStatus(response) {
-        // raises an error in case response status is not a success
-        if (response.status >= 200 && response.status < 300) {
-            return response
-        } else if (response.status == 401) {
-            return false
-        } else {
-            var error = new Error(response.statusText)
-            error.response = response
-            throw error
-        }
-    }
+    // _checkStatus(response) {
+    //     // raises an error in case response status is not a success
+    //     if (response.status >= 200 && response.status < 300) {
+    //         return response
+    //     } else if (response.status == 401) {
+    //         return false
+    //     } else {
+    //         var error = new Error(response.statusText)
+    //         error.response = response
+    //         throw error
+    //     }
+    // }
 
     fetch(url, options){
         // performs api calls sending the required authentication headers
@@ -448,8 +474,8 @@ export class AlertManagerApi {
         headers,
         ...options
         })
-        .then(this._checkStatus)
-        .then(response => response.json())
+        // .then(this._checkStatus)
+        // .then(response => response.json())
     }
 }
 

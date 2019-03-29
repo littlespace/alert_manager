@@ -17,8 +17,7 @@ class SessionProvider extends React.Component {
 
     login() {
         // setting timeout to mimic an async login
-        setTimeout(() => this.setState({ isAuth: true }), 1000)
-        
+        setTimeout(() => this.setState({ isAuth: true }), 1000)   
     }
 
     logout() {

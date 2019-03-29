@@ -12,8 +12,16 @@ import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
 import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
 import withStyles from '@material-ui/core/styles/withStyles';
-
+import Snackbar from '@material-ui/core/Snackbar';
+import SnackbarContent from '@material-ui/core/SnackbarContent';
 import { Redirect } from 'react-router-dom';
+
+/// -------------------------------------
+/// Icons 
+/// -------------------------------------
+import InfoIcon from '@material-ui/icons/Info';
+import CloseIcon from '@material-ui/icons/Close';
+import IconButton from '@material-ui/core/IconButton';
 
 import { AlertManagerApi } from '../../library/AlertManagerApi';
 
@@ -69,25 +77,44 @@ class SignIn extends React.Component {
 
   login = () => {
     
-    Auth.login(
+    let success = Auth.login(
         this.state.username, 
         this.state.password
     )
 
-    this.setState({
-      redirect: true
-    })
+    console.log("Login returned " + success) 
+
+    if (success) {
+      this.setState({
+        redirect: true
+      })
+    } else{
+      this.showSuccessMessage()
+    }
   }
+
+  handleMessageClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    this.setState({ snackbarUpdateMessage: false });
+  };
+
+  showSuccessMessage() {
+      this.setState({ snackbarUpdateMessage: true });
+  };
 
   renderRedirect = () => {
     if (this.state.redirect) {
       return <Redirect to='/alerts' />
+    } else {
+
     }
   }
 
   render() {
     return (
-      <main className={this.classes.main}>
+        <main className={this.classes.main}>
           <Paper className={this.classes.paper}>
             <Avatar className={this.classes.avatar}>
               <LockOutlinedIcon />
@@ -115,10 +142,6 @@ class SignIn extends React.Component {
                   autoComplete="current-password"
                   onChange={this.handleChange('password')} />
               </FormControl>
-              {/* <FormControlLabel
-                control={<Checkbox value="remember" color="primary" />}
-                label="Remember me"
-              /> */}
               <Button
                 type="submit"
                 fullWidth
@@ -131,13 +154,41 @@ class SignIn extends React.Component {
               </Button>
             </div>
           </Paper>
+          <Snackbar
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'left',
+                }}
+                open={this.state.snackbarUpdateMessage}
+                autoHideDuration={6000}
+                onClose={this.handleMessageClose}
+                >
+                <SnackbarContent
+                    className={this.classes.info}
+                    aria-describedby="client-snackbar"
+                    message={
+                        <span id="client-snackbar" className={this.classes.message}>
+                        <InfoIcon />
+                        {'Alert Succefully updated'}
+                        </span>
+                    }
+                    action={[
+                        <IconButton
+                            key="close"
+                            aria-label="Close"
+                            color="inherit"
+                            className={this.classes.close}
+                            onClick={this.handleMessageClose}
+                        >
+                        <CloseIcon className={this.classes.icon} />
+                        </IconButton>,
+                    ]}
+                    />
+            </Snackbar>
       </main>
     );
   }
 }
 
-// SignIn.propTypes = {
-//   classes: PropTypes.object.isRequired,
-// };
 
 export default withStyles(styles)(SignIn);

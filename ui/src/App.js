@@ -18,6 +18,7 @@ import theme from './theme';
 import AlertsListView from './views/AlertsListView';
 import AlertView from './views/AlertView';
 import SuppressionRulesListView from './views/SuppRulesList';
+import SigninView from './views/SigninView';
 
 /// ------------------------------------------------------
 /// Menu & Login page
@@ -46,10 +47,10 @@ export default class App extends Component {
                 <Header />
                 <Switch>
                   <Route exact path="/login" component={SignIn} />
-                  <PrivateRoute exact authed={Auth.loggedIn()} path="/" component={AlertsListView} />
-                  <PrivateRoute exact authed={Auth.loggedIn()} path="/alerts" component={AlertsListView} />
-                  <PrivateRoute exact authed={Auth.loggedIn()} path="/alert/:id/" component={AlertView} />
-                  <PrivateRoute exact authed={Auth.loggedIn()} path="/suppression-rules" component={SuppressionRulesListView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/" component={AlertsListView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/alerts" component={AlertsListView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/alert/:id/" component={AlertView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/suppression-rules" component={SuppressionRulesListView} />
                   <Route render={this._redirectToHome} />
                 </Switch>
             </div>

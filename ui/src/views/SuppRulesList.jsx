@@ -40,7 +40,9 @@ class SuppressionRulesListView extends React.Component {
         super(props);
         this.classes = this.props.classes;
         this.state = {
-            rules: []
+            rules: [],
+            rules_dynamic: [],
+            rules_persistent: []
         }
     };
 
@@ -49,8 +51,29 @@ class SuppressionRulesListView extends React.Component {
     }
 
     updateSuppRulesList = () => {
-        AM.getSuppressionRuleList()
-          .then(data => this.setState({ rules: data }));
+        AM.getSuppressionRulePersistentList()
+          .then(data => this.updateSuppRulesPersistentList(data));
+
+        AM.getSuppressionRuleDynamicList()
+          .then(data => this.updateSuppRulesDynamicList(data));
+    }
+
+    updateSuppRulesPersistentList(rules) {
+
+        let global_rules = rules.concat(this.state.rules_dynamic)
+
+        this.setState({ rules_persistent: rules })
+        this.setState({ rules: global_rules })
+
+    }
+
+    updateSuppRulesDynamicList(rules) {
+
+        let global_rules = rules.concat(this.state.rules_persistent)
+
+        this.setState({ rules_dynamic: rules })
+        this.setState({ rules: global_rules })
+
     }
 
     render() {
