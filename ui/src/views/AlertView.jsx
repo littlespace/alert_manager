@@ -32,6 +32,8 @@ import FormControl from '@material-ui/core/FormControl';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import InputLabel from '@material-ui/core/InputLabel';
 
+import Grid from '@material-ui/core/Grid';
+
 /// -------------------------------------
 /// Icons 
 /// -------------------------------------
@@ -43,10 +45,10 @@ import LinkIcon from "@material-ui/icons/Link";
 import DescriptionIcon from '@material-ui/icons/Description';
 import StorageIcon from '@material-ui/icons/Storage';
 import BusinessIcon from '@material-ui/icons/Business';
-import AlbumIcon from '@material-ui/icons/Album';
 import IconButton from '@material-ui/core/IconButton';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import GroupIcon from '@material-ui/icons/Group';
+import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
 
 import green from '@material-ui/core/colors/green';
 import amber from '@material-ui/core/colors/amber';
@@ -91,6 +93,7 @@ const styles = theme => ({
     },
     card: {
         margin: '10px',
+        display: "flex"
     },
     bar: {
         margin: '10px',
@@ -144,7 +147,30 @@ const styles = theme => ({
     alertItemContent: {
         // width: 200,
         flex: "initial"
+    },
+    alertElement: {
+      height: "45px",
+      lineHeight: "45px",
+      display: "flex"
+    },
+    alertCardAvatar: {
+      height: "35px",
+      width: "35px",
+      marginTop: "5px",
+      marginRight: "10px",
+      marginLeft: "5px"
+    },
+    alertCardIcon: {
+
+    },
+    alertDescription: {
+      lineHeight: "20px",
+      height: "auto",
+    },
+    alertDescriptionText: {
+      marginTop: "5px"
     }
+
 });
 
 const Auth = new AlertManagerApi()
@@ -235,7 +261,11 @@ const Auth = new AlertManagerApi()
       )
   };
 
-
+const Text =  ({content}) => {
+    return (
+       <p dangerouslySetInnerHTML={{__html: content}}></p>
+    );
+};
 
 function convertAlertsToTable(data) {
 
@@ -378,8 +408,11 @@ class AlertView extends React.Component {
     }
 
     render() {
-        const { data } = this.state;
+        const data = this.state.data;
+        const description = ("Description" in this.state.data) ? this.state.data.Description.replace(/\n/g, "<br/>") : "";
         const { related_alerts } = this.state;
+
+
         return (
             <div> 
             <Snackbar
@@ -414,8 +447,6 @@ class AlertView extends React.Component {
                     />
             </Snackbar>
             <Dialog
-                // fullWidth={this.state.fullWidth}
-                // maxWidth={this.state.maxWidth}
                 open={this.state.suppress_time_dialog_open}
                 // onClose={this.handleClose}
                 aria-labelledby="alert-suppress-time-select"
@@ -466,6 +497,9 @@ class AlertView extends React.Component {
                     </Button>
                 </DialogActions>
             </Dialog>
+{/* ---------------------------------------------------------
+                         Start of Page 
+--------------------------------------------------------- */}
             <AppBar className={this.classes.bar} position="static" color='default'>
                 <Toolbar>
                     <Tooltip title="Status">
@@ -527,32 +561,74 @@ class AlertView extends React.Component {
                     </Tooltip>
                 </Toolbar>
             </AppBar>
-
-            <Card xs="6" className={this.classes.card}>
-                <CardContent>
-                    <List>
-                        <ListItem className={this.classes.alertItem}>
-                            <Avatar>
-                                <GroupIcon />
-                            </Avatar>
-                            <ListItemText primary="Team:" className={this.classes.alertItemTitle}/>
-                            <ListItemText primary={data.Team} className={this.classes.alertItemContent}/>
-                        </ListItem>
-                        <ListItem className={this.classes.alertItem}>
+            
+            <Card xs="12" className={this.classes.card}>
+              <CardContent>
+                <Grid container item xs={12} >
+                  <Grid item xs={6} className={this.classes.alertElement}>
+                    <Avatar className={this.classes.alertCardAvatar}>
+                        <AssignmentTurnedInIcon className={this.classes.alertCardIcon}/>
+                    </Avatar>
+                    <div>Owner: {data.Owner}</div>
+                  </Grid>
+                  <Grid item xs={6} className={this.classes.alertElement}>
+                    <Avatar className={this.classes.alertCardAvatar}>
+                        <GroupIcon className={this.classes.alertCardIcon}/>
+                    </Avatar>
+                    Team: {data.Team}
+                  </Grid>
+                  <Grid item xs={6} className={this.classes.alertElement}>
+                    <Avatar className={this.classes.alertCardAvatar}>
+                        <BusinessIcon className={this.classes.alertCardIcon}/>
+                    </Avatar>
+                    Site: {data.Site}
+                  </Grid>
+                  <Grid item xs={6} className={this.classes.alertElement}>
+                    <Avatar className={this.classes.alertCardAvatar}>
+                        <StorageIcon className={this.classes.alertCardIcon}/>
+                    </Avatar>
+                    Device: {data.Device}
+                  </Grid>
+                  <Grid item xs={6} className={this.classes.alertElement}>
+                    <Avatar className={this.classes.alertCardAvatar}>
+                        <DescriptionIcon className={this.classes.alertCardIcon}/>
+                    </Avatar>
+                    Source: {data.Source}
+                  </Grid>
+                  <Grid item xs={6} className={this.classes.alertElement}>
+                    <Avatar className={this.classes.alertCardAvatar}>
+                        <StorageIcon className={this.classes.alertCardIcon}/>
+                    </Avatar>
+                    Entity: {data.Entity}
+                  </Grid>
+                  <Grid item xs={9} className={[this.classes.alertDescription,this.classes.alertElement]}>
+                    <Avatar className={this.classes.alertCardAvatar}>
+                        <DescriptionIcon className={this.classes.alertCardIcon}/>
+                    </Avatar>
+                    <Text 
+                      className={this.classes.alertDescriptionText} 
+                      content={description}
+                    ></Text>
+                  </Grid>
+                </Grid>
+                
+                    {/* <List> */}
+  
+                        {/* <ListItem className={this.classes.alertItem}>
                             <Avatar>
                                 <DescriptionIcon />
                             </Avatar>
                             <ListItemText primary="Source:" className={this.classes.alertItemTitle}/>
                             <ListItemText primary={data.Source} className={this.classes.alertItemContent}/>
-                        </ListItem>
-                        <ListItem className={this.classes.alertItem}>
+                        </ListItem> */}
+                        {/* <ListItem className={this.classes.alertItem}>
                             <Avatar>
                                 <DescriptionIcon />
                             </Avatar>
                             <ListItemText primary="Description:" className={this.classes.alertItemTitle}/>
                             <ListItemText primary={data.Description} className={this.classes.alertItemContent}/>
-                        </ListItem>
-                        <ListItem  className={this.classes.alertItem}>
+                        </ListItem> */}
+                        {/* <ListItem  className={this.classes.alertItem}>
                             <Avatar>
                                 <BusinessIcon />
                             </Avatar>
@@ -565,15 +641,15 @@ class AlertView extends React.Component {
                             </Avatar>
                             <ListItemText primary="Device:" className={this.classes.alertItemTitle}/>
                             <ListItemText primary={data.Device} className={this.classes.alertItemContent}/>
-                        </ListItem>
-                        <ListItem  className={this.classes.alertItem}>
+                        </ListItem> */}
+                        {/* <ListItem  className={this.classes.alertItem}>
                             <Avatar>
                                 <AlbumIcon />
                             </Avatar>
                             <ListItemText primary="Entity:" className={this.classes.alertItemTitle}/>
                             <ListItemText primary={data.Entity} className={this.classes.alertItemContent}/>
-                        </ListItem>
-                    </List>
+                        </ListItem> */}
+                    {/* </List> */}
                 </CardContent>
             </Card>
             <Typography className={this.classes.title} variant="headline">Contributing Alerts</Typography>

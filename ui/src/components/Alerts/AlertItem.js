@@ -35,20 +35,20 @@ const styles = theme => ({
     //     marginLeft: 'auto',
     //     margin: theme.spacing.unit,
     //   },
-    entityItem: {
-        marginLeft: 0,
-        padding: 0,
-        paddingTop: 0,
-        paddingBottom: 0,
-    },
-    entityItemTitle: {
-        minWidth: 150,
-        maxWidth: 150,
-    },
-    entityItemContent: {
-        // width: 200,
-        flex: "initial"
-    },
+    // entityItem: {
+    //     marginLeft: 0,
+    //     padding: 0,
+    //     paddingTop: 0,
+    //     paddingBottom: 0,
+    // },
+    // entityItemTitle: {
+    //     minWidth: 150,
+    //     maxWidth: 150,
+    // },
+    // entityItemContent: {
+    //     // width: 200,
+    //     flex: "initial"
+    // },
     alertItem: {
         fontSize: "0.75rem",
         letterSpacing: "0.01071em",
