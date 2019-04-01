@@ -3,34 +3,17 @@ import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import PropTypes, { number } from 'prop-types';
 
-// import AlertsTable from "./components/Alerts/AlertsTable";
-// import Menu from "../components/Menu"
-
-import { Link } from 'react-router-dom'
-
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
-import Button from '@material-ui/core/Button';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Grid from '@material-ui/core/Grid';
-import SearchIcon from '@material-ui/icons/Search';
-import InputBase from '@material-ui/core/InputBase';
+
 import { fade } from '@material-ui/core/styles/colorManipulator';
 
 import { AlertManagerApi } from '../library/AlertManagerApi';
-import { Typography, Chip } from '@material-ui/core';
 
-import Radio from '@material-ui/core/Radio';
-import RadioGroup from '@material-ui/core/RadioGroup';
-import FormHelperText from '@material-ui/core/FormHelperText';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormControl from '@material-ui/core/FormControl';
-import FormLabel from '@material-ui/core/FormLabel';
 import InputLabel from '@material-ui/core/InputLabel';
 import MenuItem from '@material-ui/core/MenuItem';
 import Select from '@material-ui/core/Select';
@@ -41,10 +24,6 @@ import Badge from '@material-ui/core/Badge';
 
 import AlertItem from '../components/Alerts/AlertItem';
 
-import { 
-    timeConverter, 
-    secondsToHms 
-} from '../library/utils';
 
 const Auth = new AlertManagerApi()
 
@@ -77,20 +56,6 @@ const styles = theme => ({
       },
     select: {
         padding: "5px",
-    },
-    // button: {
-    //     padding: '4px 8px',
-    //     minHeight: '10px',
-    //     marginRight: '15px',
-    //     marginLeft: '15px',
-    // },
-    searchButton: {
-        width: '40px',
-        height: '40px',
-    },
-    searchBar: {
-        margin: theme.spacing.unit,
-        minWidth: 120,
     },
     table: {
         minWidth: 700,
@@ -208,7 +173,6 @@ class AlertsListViewGrid extends React.Component {
     }
 
     updateAlertsList = () => {
-        // this.api.getAlertsList({status: this.state.filter_status })
         this.api.getAlertsList()
             .then(data => this.processAlertsList(data));
        
@@ -309,7 +273,6 @@ class AlertsListViewGrid extends React.Component {
         } 
     }
 
-
     render() {
         let username = Auth.getUsername()
 
@@ -399,17 +362,6 @@ class AlertsListViewGrid extends React.Component {
                             </Select>
                             </FormControl>
                         </div>
-                        {/* <div className={this.classes.search}>
-                            {/* <div className={this.classes.searchIcon}>
-                                <SearchIcon />
-                            </div> */}
-                            {/* <InputBase
-                                placeholder="Search…"
-                                classNames={{
-                                    root: this.classes.inputRoot,
-                                    input: this.classes.inputInput,
-                                }} */}
-                            {/* </div> */}
                     </Toolbar>
                 </AppBar>
                 <Grid container className={this.classes.AlertsListGrid}>
