@@ -13,5 +13,11 @@ export default createMuiTheme({
     },
     typography: {
       useNextVariants: true,
+    },
+    pageTitle:{
+      height: "30px",
+      lineHeight: "30px",
+      paddingLeft: "15px",
+      paddingTop: "10px"
     }
   });

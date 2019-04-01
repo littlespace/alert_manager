@@ -15,10 +15,10 @@ import theme from './theme';
 /// ------------------------------------------------------
 /// Views
 /// ------------------------------------------------------
-import AlertsListView from './views/AlertsListView';
+import OngoingAlertsView from './views/OngoingAlertsView';
+import AlertsExplorerView from'./views/AlertsExplorerView';
 import AlertView from './views/AlertView';
 import SuppressionRulesListView from './views/SuppRulesList';
-import AlertsListViewGrid from './views/AlertsListViewGrid'
 import SigninView from './views/SigninView';
 
 /// ------------------------------------------------------
@@ -48,8 +48,9 @@ export default class App extends Component {
                 <Header/>
                 <Switch>
                   <Route exact path="/login" component={SignIn} />
-                  <PrivateRoute exact authed={Auth.checkToken()} path="/" component={AlertsListViewGrid} />
-                  <PrivateRoute exact authed={Auth.checkToken()} path="/alerts" component={AlertsListViewGrid} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/" component={OngoingAlertsView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/ongoing-alerts" component={OngoingAlertsView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/alerts-explorer" component={AlertsExplorerView} />
                   <PrivateRoute exact authed={Auth.checkToken()} path="/alert/:id/" component={AlertView} />
                   <PrivateRoute exact authed={Auth.checkToken()} path="/suppression-rules" component={SuppressionRulesListView} />
                   <Route render={this._redirectToHome} />

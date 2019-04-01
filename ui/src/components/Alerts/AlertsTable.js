@@ -167,8 +167,8 @@ class AlertsTable extends React.Component {
       };
 
     updateUrl = () => {
-        var url_alone = '/alerts'
-        var url_params = '/alerts?'
+        var url_alone = '/ongoing-alerts'
+        var url_params = '/ongoing-alerts?'
         var first = true
 
         // if (this.state.filter_status.length > 0) {

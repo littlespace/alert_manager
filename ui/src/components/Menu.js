@@ -79,11 +79,17 @@ class Menu extends React.Component {
         return (
         <div>
           <MenuList>
-              <MenuItemLink className={this.classes.menuItem} to="/alerts">
+              <MenuItemLink className={this.classes.menuItem} to="/ongoing-alerts">
                   <ListItemIcon className={this.classes.icon}>
                       <ViewListIcon />
                   </ListItemIcon>
-                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts" />
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Ongoing Alerts" />
+              </MenuItemLink>
+              <MenuItemLink className={this.classes.menuItem} to="/alerts-explorer">
+                  <ListItemIcon className={this.classes.icon}>
+                      <ViewListIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts Explorer" />
               </MenuItemLink>
               <MenuItemLink className={this.classes.menuItem} to="/suppression-rules">
                   <ListItemIcon className={this.classes.icon}>
@@ -91,12 +97,6 @@ class Menu extends React.Component {
                   </ListItemIcon>
                   <ListItemText classes={{ primary:this.classes.primary }} inset primary="Suppression Rules" />
               </MenuItemLink>
-              {/* <MenuItemLink className={this.classes.menuItem} to="/alertgrid">
-                  <ListItemIcon className={this.classes.icon}>
-                      <ViewListIcon />
-                  </ListItemIcon>
-                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts Grid" />
-              </MenuItemLink> */}
           </MenuList>
         </div>
         )};

@@ -2,7 +2,8 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 
-import Menu from "../components/Menu"
+
+import Typography from '@material-ui/core/Typography';
 
 import SuppressionRuleItem from '../components/SuppressionRule/SuppressionRuleItem'
 
@@ -32,6 +33,12 @@ const styles = theme => ({
       padding: theme.spacing.unit * 3,
       minWidth: 0, // So the Typography noWrap works
     },
+    pageTitle:{
+        height: "30px",
+        lineHeight: "30px",
+        paddingLeft: "15px",
+        paddingTop: "10px"
+      }
 });
 
 class SuppressionRulesListView extends React.Component {
@@ -80,6 +87,7 @@ class SuppressionRulesListView extends React.Component {
         let rules = this.state.rules
         return (
             <div>
+                <Typography className={this.classes.pageTitle} variant="headline">Suppression Rules</Typography>   
                 <div className={this.classes.root}>
                     <Grid 
                         className={this.classes.gridroot} 

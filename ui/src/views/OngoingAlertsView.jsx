@@ -7,6 +7,7 @@ import Paper from '@material-ui/core/Paper';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Grid from '@material-ui/core/Grid';
+import Typography from '@material-ui/core/Typography';
 
 import { fade } from '@material-ui/core/styles/colorManipulator';
 
@@ -122,6 +123,12 @@ const styles = theme => ({
       grow: {
         flexGrow: 1,
       },
+      pageTitle:{
+        height: "30px",
+        lineHeight: "30px",
+        paddingLeft: "15px",
+        paddingTop: "10px"
+      }
 });
 
 const alert_mapping = {
@@ -143,7 +150,7 @@ function dynamicSort(property) {
 }
 
 
-class AlertsListViewGrid extends React.Component {
+class OngoingAlertsView extends React.Component {
 
     static contextTypes = {
         router: PropTypes.object
@@ -228,8 +235,8 @@ class AlertsListViewGrid extends React.Component {
     };
     
     updateUrl = () => {
-        var url_alone = '/alerts'
-        var url_params = '/alerts?'
+        var url_alone = '/ongoing-alerts'
+        var url_params = '/ongoing-alerts?'
         var first = true
 
         if (this.state.ShowActive === false) {
@@ -299,6 +306,8 @@ class AlertsListViewGrid extends React.Component {
         let NbrSuppressed = this.state.NbrSuppressed;
         
         return (
+        <div>
+            <Typography className={this.classes.pageTitle} variant="headline">Ongoing Alerts</Typography>   
             <Paper className={this.classes.paper}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
@@ -382,14 +391,15 @@ class AlertsListViewGrid extends React.Component {
                     })}
                 </Grid>
             </Paper>
+            </div>
         )          
 
     }
 }
 
 
-AlertsListViewGrid.propTypes = {
+OngoingAlertsView.propTypes = {
     classes: PropTypes.object.isRequired,
   };
 
-export default withStyles(styles)(AlertsListViewGrid);
+export default withStyles(styles)(OngoingAlertsView);

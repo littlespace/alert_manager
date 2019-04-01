@@ -122,14 +122,6 @@ class Header extends React.Component {
                         <Typography variant="title" color="inherit" className={this.classes.grow} >
                             Roblox | Alert Manager
                         </Typography>
-                        {/* <Button 
-                            color="inherit" 
-                            className={classes.button } 
-                            component={Link}
-                            to="/alerts">
-                            Alerts
-                        </Button> */}
-
                         
                         {Auth.loggedIn() === true ?
                             <div>

@@ -101,7 +101,7 @@ class SignIn extends React.Component {
 
   renderRedirect = () => {
     if (this.state.redirect) {
-      return <Redirect to='/alerts' />
+      return <Redirect to='/' />
     } else {
 
     }
