@@ -166,11 +166,11 @@ class OngoingAlertsView extends React.Component {
         this.state = {
             ShowActive: ('active' in url_params_parsed && url_params_parsed.active == 0) ? false : true,
             ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed == 1) ? true : false,
-            ShowExpired: ('expired' in url_params_parsed && url_params_parsed.expired == 1) ? true : false,
+            // ShowExpired: ('expired' in url_params_parsed && url_params_parsed.expired == 1) ? true : false,
             ShowAssigned: ('assigned' in url_params_parsed ) ? url_params_parsed.assigned : "all",
             NbrActive: 0,
             NbrSuppressed: 0,
-            NbrExpired: 0,
+            // NbrExpired: 0,
             alerts: [],
         };
     };
@@ -180,7 +180,7 @@ class OngoingAlertsView extends React.Component {
     }
 
     updateAlertsList = () => {
-        this.api.getAlertsList()
+        this.api.getAlertsList({status: [1,2]})
             .then(data => this.processAlertsList(data));
        
         this.updateUrl();
@@ -188,9 +188,7 @@ class OngoingAlertsView extends React.Component {
 
     processAlertsList(data) {
 
-        // let alerts = []
         let NbrActive = 0
-        let NbrExpired = 0
         let NbrSuppressed = 0
         let NbrCleared = 0
 
@@ -201,15 +199,13 @@ class OngoingAlertsView extends React.Component {
                 NbrActive++;
             } else if (data[i].Status == "SUPPRESSED") {
                 NbrSuppressed++;
-            } else if (data[i].Status == "EXPIRED") {
-                NbrExpired++;
-            }
+            } 
         }
 
         this.setState({ 
             alerts: data.sort(dynamicSort('-last_active')),
             NbrActive: NbrActive,
-            NbrExpired: NbrExpired,
+            // NbrExpired: NbrExpired,
             NbrSuppressed: NbrSuppressed
          })
 
@@ -247,14 +243,14 @@ class OngoingAlertsView extends React.Component {
             }
             url_params = url_params + 'active=0' 
         }
-        if (this.state.ShowExpired === true) {
-            if (first === true) {
-                first = false
-            } else {
-                url_params = url_params + '&'
-            }
-            url_params = url_params + 'expired=1' 
-        }
+        // if (this.state.ShowExpired === true) {
+        //     if (first === true) {
+        //         first = false
+        //     } else {
+        //         url_params = url_params + '&'
+        //     }
+        //     url_params = url_params + 'expired=1' 
+        // }
         if (this.state.ShowSuppressed === true) {
             if (first === true) {
                 first = false
@@ -293,8 +289,8 @@ class OngoingAlertsView extends React.Component {
                     return true
                 } else if  (alert.Status == "SUPPRESSED" && this.state.ShowSuppressed) {
                     return true
-                } else if  (alert.Status == "EXPIRED" && this.state.ShowExpired) {
-                    return true
+                // } else if  (alert.Status == "EXPIRED" && this.state.ShowExpired) {
+                //     return true
                 } else {
                     return false
                 } 
@@ -302,7 +298,7 @@ class OngoingAlertsView extends React.Component {
             }
         )
         let NbrActive = this.state.NbrActive;
-        let NbrExpired = this.state.NbrExpired;
+        // let NbrExpired = this.state.NbrExpired;
         let NbrSuppressed = this.state.NbrSuppressed;
         
         return (
@@ -339,7 +335,7 @@ class OngoingAlertsView extends React.Component {
                                 label="Suppressed"
                                 />
                         </Badge>
-                        <Badge showZero className={this.classes.badge} badgeContent={NbrExpired} color="primary">
+                        {/* <Badge showZero className={this.classes.badge} badgeContent={NbrExpired} color="primary">
                             <FormControlLabel
                                 control={
                                     <Checkbox
@@ -351,7 +347,7 @@ class OngoingAlertsView extends React.Component {
                                 }
                                 label="Expired"
                                 />
-                        </Badge>
+                        </Badge> */}
                         </div>
                         <div className={this.classes.grow} />
                         <div className={this.classes.leftAlign}>

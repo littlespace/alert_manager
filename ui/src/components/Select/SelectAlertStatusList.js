@@ -25,7 +25,7 @@ const SelectAlertStatusList = ({
             value={value}
             onChange={onChange}
             input={<Input id="select-multiple" />}
-            className={classe}
+            // className={classe}
           >
             {/* <MenuItem
                 key="all"

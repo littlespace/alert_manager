@@ -8,26 +8,52 @@ import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
+import Button from '@material-ui/core/Button';
 
 import { fade } from '@material-ui/core/styles/colorManipulator';
 
 import { AlertManagerApi } from '../library/AlertManagerApi';
+import SelectAlertStatusList from '../components/Select/SelectAlertStatusList'
 
-import FormControlLabel from '@material-ui/core/FormControlLabel';
 import FormControl from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
 import MenuItem from '@material-ui/core/MenuItem';
 import Select from '@material-ui/core/Select';
 
-import Checkbox from '@material-ui/core/Checkbox';
-
-import Badge from '@material-ui/core/Badge';
+import TextField from '@material-ui/core/TextField';
 
 import AlertItem from '../components/Alerts/AlertItem';
 
-const Auth = new AlertManagerApi()
+import SearchIcon from '@material-ui/icons/Search';
 
+
+const Auth = new AlertManagerApi()
+let username = Auth.getUsername()
 const queryString = require('query-string');
+
+let alertStatuses = [
+    { label: "ACTIVE", id: 1 },
+    { label: "SUPPRESSED", id: 2 },
+    { label: "EXPIRED", id: 3 },
+    { label: "CLEARED", id: 4 },
+]
+
+let alertSeverities = [
+    { label: "Info", value: "INFO", id: 1 },
+    { label: "Warn", value: "WARN", id: 2 },
+    { label: "Critical", value: "CRITICAL", id: 3 },
+]
+
+let timeSelect = [
+    { label: "12h", value: "12h", id: 1 },
+    { label: "24d", value: "24h", id: 2 },
+    { label: "5d", value: "120h", id: 3 },
+    { label: "1week", value: "168h", id: 4 },
+    { label: "2week", value: "336h", id: 5 },
+    { label: "1month", value: "744h", id: 6 },
+]
+
+
 
 const styles = theme => ({
     root: {
@@ -77,35 +103,23 @@ const styles = theme => ({
         border: 1,
     },
     // Search 
-    search: {
-        position: 'relative',
-        borderRadius: theme.shape.borderRadius,
-        backgroundColor: fade(theme.palette.common.white, 0.15),
-        '&:hover': {
-          backgroundColor: fade(theme.palette.common.white, 0.25),
-        },
-        marginRight: theme.spacing.unit * 2,
-        marginLeft: 0,
-        width: '100%',
-        [theme.breakpoints.up('sm')]: {
-          marginLeft: theme.spacing.unit * 3,
-          width: 'auto',
-        },
-      },
-      searchIcon: {
-        width: theme.spacing.unit * 9,
-        height: '100%',
-        position: 'absolute',
-        pointerEvents: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
-      inputRoot: {
+    button: {
+        padding: '4px 8px',
+        minHeight: '10px',
+        marginRight: '15px',
+        marginLeft: '15px',
+    },
+    searchButton: {
+        width: '40px',
+        height: '40px',
+        marginTop: '10px',
+        marginLeft: '10px'
+    },
+    inputRoot: {
         color: 'inherit',
         width: '100%',
       },
-      inputInput: {
+    inputInput: {
         paddingTop: theme.spacing.unit,
         paddingRight: theme.spacing.unit,
         paddingBottom: theme.spacing.unit,
@@ -115,19 +129,19 @@ const styles = theme => ({
         [theme.breakpoints.up('md')]: {
           width: 200,
         },
-      },
-      leftAlign: {
+    },
+    leftAlign: {
         position: 'relative'
-      },
-      grow: {
+    },
+    grow: {
         flexGrow: 1,
-      },
-      pageTitle:{
+    },
+    pageTitle:{
         height: "30px",
         lineHeight: "30px",
         paddingLeft: "15px",
         paddingTop: "10px"
-      }
+    }
 });
 
 const alert_mapping = {
@@ -163,14 +177,17 @@ class AlertsExplorerView extends React.Component {
         var url_params_parsed = queryString.parse(this.context.router.history.location.search);
         
         this.state = {
-            ShowActive: ('active' in url_params_parsed && url_params_parsed.active == 0) ? false : true,
-            ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed == 1) ? true : false,
-            ShowExpired: ('expired' in url_params_parsed && url_params_parsed.expired == 1) ? true : false,
-            ShowAssigned: ('assigned' in url_params_parsed ) ? url_params_parsed.assigned : "all",
             NbrActive: 0,
+            NbrCleared: 0,
             NbrSuppressed: 0,
             NbrExpired: 0,
             alerts: [],
+            FilterAssigned: ('assigned' in url_params_parsed && url_params_parsed.assigned != '') ? url_params_parsed.assigned : "all",
+            FilterStatus: ('status' in url_params_parsed && url_params_parsed.status != '') ? url_params_parsed.status.split(',') : [],
+            FilterSite: ('site' in url_params_parsed && url_params_parsed.site != '') ? url_params_parsed.site : null,
+            FilterDevice: ('device' in url_params_parsed && url_params_parsed.device != '') ? url_params_parsed.device : null,
+            FilterSeverity: ('severity' in url_params_parsed && url_params_parsed.severity != '') ? url_params_parsed.severity.split(',') : [],
+            FilterTime: ('time' in url_params_parsed && url_params_parsed.time != '') ? url_params_parsed.time : '24h',
         };
     };
 
@@ -179,7 +196,25 @@ class AlertsExplorerView extends React.Component {
     }
 
     updateAlertsList = () => {
-        this.api.getAlertsList()
+
+        let query_params = {}
+
+        if (this.state.FilterStatus.lenght != 0) {
+            query_params["status"] = this.state.FilterStatus
+        }
+        if (this.state.FilterSite != null  && this.state.FilterSite != '' ) {
+            query_params["sites"] = [this.state.FilterSite]
+        }
+        if (this.state.FilterDevice != null && this.state.FilterDevice != '' ) {
+            query_params["devices"] = [this.state.FilterDevice]
+        }
+        if (this.state.FilterSeverity.lenght != 0) {
+            query_params["severity"] = this.state.FilterSeverity
+        }
+
+        query_params["timerange_h"] = this.state.FilterTime
+        
+        this.api.getAlertsList(query_params)
             .then(data => this.processAlertsList(data));
        
         this.updateUrl();
@@ -202,14 +237,21 @@ class AlertsExplorerView extends React.Component {
                 NbrSuppressed++;
             } else if (data[i].Status == "EXPIRED") {
                 NbrExpired++;
-            }
+            } else if (data[i].Status == "CLEARED") {
+                NbrCleared++;
+            } 
+        }
+
+        if (!Array.isArray(data)) {
+            data = []
         }
 
         this.setState({ 
-            alerts: data.sort(dynamicSort('-last_active')),
+            alerts: data, //.sort(dynamicSort('-last_active')),
             NbrActive: NbrActive,
             NbrExpired: NbrExpired,
-            NbrSuppressed: NbrSuppressed
+            NbrSuppressed: NbrSuppressed,
+            NbrCleared: NbrCleared
          })
 
     }
@@ -217,19 +259,12 @@ class AlertsExplorerView extends React.Component {
     handleChange = name => event => {
         this.setState(
             { [name]: event.target.checked }, 
-            function() {
-                this.updateUrl()
-            }
         )
-        
     };
 
     handleChangeSelect = name => event => {
         this.setState(
             { [name]: event.target.value }, 
-            function() {
-                this.updateUrl()
-            }
         )
     };
     
@@ -238,37 +273,45 @@ class AlertsExplorerView extends React.Component {
         var url_params = '/alerts-explorer?'
         var first = true
 
-        if (this.state.ShowActive === false) {
+        if (this.state.FilterDevice != null && this.state.FilterDevice != '' ) {
             if (first === true) {
                 first = false
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'active=0' 
+            url_params = url_params + 'device=' + this.state.FilterDevice 
         }
-        if (this.state.ShowExpired === true) {
+        if (this.state.FilterTime != "24h" ) {
             if (first === true) {
                 first = false
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'expired=1' 
+            url_params = url_params + 'time=' + this.state.FilterTime 
         }
-        if (this.state.ShowSuppressed === true) {
+        if (this.state.FilterSite != null && this.state.FilterSite != '') {
             if (first === true) {
                 first = false
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'suppressed=1' 
+            url_params = url_params + 'site=' + this.state.FilterSite 
         }
-        if (this.state.ShowAssigned != "all") {
+        if (this.state.FilterAssigned != "all") {
             if (first === true) {
                 first = false
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'assigned=' + this.state.ShowAssigned 
+            url_params = url_params + 'assigned=' + this.state.FilterAssigned 
+        }
+        if (this.state.FilterStatus.length != 0) {
+            if (first === true) {
+                first = false
+            } else {
+                url_params = url_params + '&'
+            }
+            url_params = url_params + 'status=' + this.state.FilterStatus.join(',')
         }
 
         // Update url in browser
@@ -280,30 +323,20 @@ class AlertsExplorerView extends React.Component {
     }
 
     render() {
-        let username = Auth.getUsername()
-
+        
+        let NbrAlerts = 0
         let filteredAlerts = this.state.alerts.filter(
             (alert) => {
-                if (this.state.ShowAssigned == "mine" && alert.Owner !=  username ) {
+                if (this.state.FilterAssigned == "mine" && alert.Owner != username ) {
                     return false
-                } else if (this.state.ShowAssigned == "not-assigned" && alert.Owner != "" ) {
+                } else if (this.state.FilterAssigned == "not-assigned" && alert.Owner != "" ) {
                     return false
-                } else if (alert.Status == "ACTIVE" && this.state.ShowActive) {
-                    return true
-                } else if  (alert.Status == "SUPPRESSED" && this.state.ShowSuppressed) {
-                    return true
-                } else if  (alert.Status == "EXPIRED" && this.state.ShowExpired) {
-                    return true
                 } else {
-                    return false
-                } 
-                    
+                    NbrAlerts++
+                    return true
+                }
             }
         )
-        let NbrActive = this.state.NbrActive;
-        let NbrExpired = this.state.NbrExpired;
-        let NbrSuppressed = this.state.NbrSuppressed;
-        
         return (
         <div>
             <Typography className={this.classes.pageTitle} variant="headline">Alerts Explorer</Typography>   
@@ -311,67 +344,114 @@ class AlertsExplorerView extends React.Component {
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
                         <div className={this.classes.rightAlign}>
-                        <Badge showZero className={this.classes.badge} badgeContent={NbrActive} color="primary">
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                    checked={this.state.ShowActive}
-                                    onChange={this.handleChange('ShowActive')}
-                                    value="Active"
-                                    className={this.classes.select}
-                                    />
-                                }
-                                
-                                label="Active"
-                            />
-                        </Badge>
-                        <Badge showZero className={this.classes.badge} badgeContent={NbrSuppressed} color="primary">
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                    checked={this.state.ShowSuppressed}
-                                    onChange={this.handleChange('ShowSuppressed')}
-                                    value="Suppressed"
-                                    className={this.classes.select}
-                                    />
-                                }
-                                label="Suppressed"
-                                />
-                        </Badge>
-                        <Badge showZero className={this.classes.badge} badgeContent={NbrExpired} color="primary">
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                    checked={this.state.ShowExpired}
-                                    onChange={this.handleChange('ShowExpired')}
-                                    value="Expired"
-                                    className={this.classes.select}
-                                    />
-                                }
-                                label="Expired"
-                                />
-                        </Badge>
-                        </div>
-                        <div className={this.classes.grow} />
-                        <div className={this.classes.leftAlign}>
+                        <TextField
+                            id="search-site"
+                            label="Site"
+                            style={{ margin: 8, width: 50 }}
+                            placeholder="All"
+                            margin="normal"
+                            value={this.state.FilterSite}
+                            onChange={this.handleChangeSelect('FilterSite')}
+                           
+                        />
+                        <TextField
+                            id="search-device"
+                            label="Device"
+                            style={{ margin: 8 }}
+                            placeholder="All"
+                            margin="normal"
+                            value={this.state.FilterDevice}
+                            onChange={this.handleChangeSelect('FilterDevice')}
+                           
+                        />
                         <FormControl variant="outlined" className={this.classes.formControl}>
-                            <InputLabel htmlFor="assigned">Display Assigned?</InputLabel>
+                            <InputLabel htmlFor="assigned">Assigned</InputLabel>
                             <Select
-                                value={this.state.ShowAssigned}
-                                onChange={this.handleChangeSelect('ShowAssigned')}
-                                // inputProps={{
-                                // name: 'age',
-                                // id: 'age-simple',
-                                // }}
+                                value={this.state.FilterAssigned}
+                                onChange={this.handleChangeSelect('FilterAssigned')}
                             >
                                 <MenuItem value="all">All</MenuItem>
                                 <MenuItem value="not-assigned">Not Assigned</MenuItem>
                                 <MenuItem value="mine">Only Mine</MenuItem>
                             </Select>
-                            </FormControl>
+                        </FormControl>
+                        <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="status">Status</InputLabel>
+                            <Select
+                                multiple
+                                value={this.state.FilterStatus}
+                                onChange={this.handleChangeSelect('FilterStatus')}
+                            >
+                                {/* <MenuItem value="all">All</MenuItem> */}
+                                {alertStatuses.map(status => (
+                                    <MenuItem
+                                        key={status.id}
+                                        value={status.id}
+                                    >
+                                        {status.label}
+                                    </MenuItem>))}
+                            </Select>
+                        </FormControl>
+                        <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="severity">Severity</InputLabel>
+                            <Select
+                                multiple
+                                value={this.state.FilterSeverity}
+                                onChange={this.handleChangeSelect('FilterSeverity')}
+                            >
+                                {alertSeverities.map(sev => (
+                                    <MenuItem
+                                        key={sev.id}
+                                        value={sev.value}
+                                    >
+                                        {sev.label}
+                                    </MenuItem>))}
+                            </Select>
+                        </FormControl>
+                        <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="time">Time</InputLabel>
+                            <Select
+                                value={this.state.FilterTime}
+                                onChange={this.handleChangeSelect('FilterTime')}
+                            >
+                                {timeSelect.map(opt => (
+                                    <MenuItem
+                                        key={opt.id}
+                                        value={opt.value}
+                                    >
+                                        {opt.label}
+                                    </MenuItem>))}
+                            </Select>
+                        </FormControl>
+                        {/* <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="status">status</InputLabel>
+                            <SelectAlertStatusList 
+                                // classe={this.classes.button}
+                                value={this.state.FilterStatus} 
+                                onChange={event => {
+                                        this.setState({
+                                            FilterStatus: event.target.value,
+                                        })
+                                    }} />
+                        </FormControl> */}
+                        <Button 
+                            className={this.classes.searchButton}
+                            variant="fab" 
+                            color="secondary" 
+                            aria-label="Search" 
+                            onClick={this.updateAlertsList}
+                            >
+                            <SearchIcon />
+                        </Button>
+
+                        </div>
+                        <div className={this.classes.grow} />
+                        <div className={this.classes.leftAlign}>
+                        
                         </div>
                     </Toolbar>
                 </AppBar>
+                <Typography className={this.classes.pageTitle}>Found {NbrAlerts} Alerts</Typography>   
                 <Grid container className={this.classes.AlertsListGrid}>
                     <Grid container item 
                         xs={12}

@@ -34,9 +34,10 @@ export class AlertManagerApi {
     getAlertsList({
         limit=500, 
         aggregate=true, 
-        timerange_h=96, 
+        timerange_h=null, 
         sites=[], 
         devices=[],
+        severity=[],
         status=[1,2,3]}={}) {
 
         var params = `?limit=${limit}`
@@ -45,9 +46,9 @@ export class AlertManagerApi {
             params = params + `&agg_id=0`
         }
 
-        // if (timerange_h) {
-        //     params = params + `&timerange=72h`
-        // }
+        if (timerange_h) {
+            params = params + `&timerange=${timerange_h}`
+        }
 
         if (sites.length !== 0) {
             params = params + `&site__in=${sites.join(',')}`
@@ -59,6 +60,10 @@ export class AlertManagerApi {
 
         if (status.length !== 0) {
             params = params + `&status__in=${status.join(',')}`
+        }
+
+        if (severity.length !== 0) {
+            params = params + `&severity__in=${severity.join(',')}`
         }
 
         console.log("fetching > " + this.url + url_alerts + params)
@@ -441,7 +446,6 @@ export class AlertManagerApi {
                     throw error
                 }
             })
-
     }
     /// -------------------------------------------------------------------
     /// Base request management
