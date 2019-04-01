@@ -329,7 +329,7 @@ export class AlertManagerApi {
     /// -------------------------------------------------------------------
     /// Authentication and Session Management
     /// -------------------------------------------------------------------
-    login(username, password) {
+    login(username, password, callback_success) {
 
         console.log(`Will try to authenticate to ${this.url}api/auth`)
 
@@ -356,6 +356,7 @@ export class AlertManagerApi {
         }).then(data => {
             console.log(`Auth is valid, Saved token ${data.token}`)
             this.setToken(data.token)
+            callback_success()
             return true
         })
 
