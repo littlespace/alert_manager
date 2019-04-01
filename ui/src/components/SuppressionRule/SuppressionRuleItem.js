@@ -80,7 +80,7 @@ class SuppressionRuleItem extends React.Component {
 
       return (
 
-            <Grid item xs="5">
+            <Grid item xs={12} sm={6}>
                 <Card>
                     <CardHeader
                         avatar={isPermanent ? (

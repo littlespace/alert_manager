@@ -18,6 +18,7 @@ import theme from './theme';
 import AlertsListView from './views/AlertsListView';
 import AlertView from './views/AlertView';
 import SuppressionRulesListView from './views/SuppRulesList';
+import AlertsListViewGrid from './views/AlertsListViewGrid'
 import SigninView from './views/SigninView';
 
 /// ------------------------------------------------------
@@ -44,11 +45,11 @@ export default class App extends Component {
     return (
           <MuiThemeProvider theme={theme}>
             <div>
-                <Header />
+                <Header/>
                 <Switch>
                   <Route exact path="/login" component={SignIn} />
-                  <PrivateRoute exact authed={Auth.checkToken()} path="/" component={AlertsListView} />
-                  <PrivateRoute exact authed={Auth.checkToken()} path="/alerts" component={AlertsListView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/" component={AlertsListViewGrid} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path="/alerts" component={AlertsListViewGrid} />
                   <PrivateRoute exact authed={Auth.checkToken()} path="/alert/:id/" component={AlertView} />
                   <PrivateRoute exact authed={Auth.checkToken()} path="/suppression-rules" component={SuppressionRulesListView} />
                   <Route render={this._redirectToHome} />

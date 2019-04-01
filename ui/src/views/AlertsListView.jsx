@@ -40,10 +40,4 @@ class AlertsListView extends React.Component {
     }
 }
 
-
-// function AlertsListView(props) {
-//     const { classes } = props;
-
-// }
-
 export default withStyles(styles)(AlertsListView);

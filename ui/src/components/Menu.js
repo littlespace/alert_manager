@@ -6,15 +6,17 @@ import PropTypes from 'prop-types';
 import { withStyles } from '@material-ui/core/styles';
 import MenuList from '@material-ui/core/MenuList';
 import MenuItem from '@material-ui/core/MenuItem';
-import Divider from  '@material-ui/core/Divider'
 import ListItemText from '@material-ui/core/ListItemText'
-import Drawer from '@material-ui/core/Drawer';
-import ListItemIcon from '@material-ui/core/ListItemIcon';
-import DashboardIcon from '@material-ui/icons/Dashboard';
-import ViewListIcon from '@material-ui/icons/ViewList';
-import CodeIcon from '@material-ui/icons/Code';
+
 import { Link } from 'react-router-dom'
 import MenuItemLink from './MenuItemLink';
+
+// -------------------------------------------------------
+// Icons
+// -------------------------------------------------------
+import ListItemIcon from '@material-ui/core/ListItemIcon';
+import ViewListIcon from '@material-ui/icons/ViewList';
+import CodeIcon from '@material-ui/icons/Code';
 
 // const styles = {
 //     root: {
@@ -89,6 +91,12 @@ class Menu extends React.Component {
                   </ListItemIcon>
                   <ListItemText classes={{ primary:this.classes.primary }} inset primary="Suppression Rules" />
               </MenuItemLink>
+              {/* <MenuItemLink className={this.classes.menuItem} to="/alertgrid">
+                  <ListItemIcon className={this.classes.icon}>
+                      <ViewListIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts Grid" />
+              </MenuItemLink> */}
           </MenuList>
         </div>
         )};
