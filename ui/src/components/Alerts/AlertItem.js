@@ -31,24 +31,6 @@ const styles = theme => ({
     root: {
         flexGrow: 1,
       },
-    // chip: {
-    //     marginLeft: 'auto',
-    //     margin: theme.spacing.unit,
-    //   },
-    // entityItem: {
-    //     marginLeft: 0,
-    //     padding: 0,
-    //     paddingTop: 0,
-    //     paddingBottom: 0,
-    // },
-    // entityItemTitle: {
-    //     minWidth: 150,
-    //     maxWidth: 150,
-    // },
-    // entityItemContent: {
-    //     // width: 200,
-    //     flex: "initial"
-    // },
     alertItem: {
         fontSize: "0.75rem",
         letterSpacing: "0.01071em",
@@ -134,7 +116,7 @@ class AlertItem extends React.Component {
                 xs={12}
                 onClick={this.redirectToAlert}
                 className={[this.classes.alertItem,this.classes[alert_mapping[this.props.data.Severity]]]}>
-                <Grid container item xs={12} sm={1} md={1} className={this.classes.alertCell}>
+                <Grid container item xs={4} sm={1} md={1} className={this.classes.alertCell}>
                     <Grid item xs={9} sm={8}>
                         <Button variant="contained" color="primary" className={this.classes.button}>
                             {(this.props.data.Status == 'SUPPRESSED') ? "SUPPR" : this.props.data.Status}
@@ -149,16 +131,16 @@ class AlertItem extends React.Component {
                         </Tooltip> : "" }
                     </Grid>
                 </Grid>
-                <Grid item xs={12} sm={4} md={5} className={[this.classes.alertCell,this.classes.alertItemName]}>{this.props.data.Name}</Grid>
-                <Grid container item xs={12} sm={1} className={[this.classes.alertCell,this.classes.alertItemTimes]}>
-                    <Grid item xs={6} sm={12}>Site: {(this.props.data.Site != "") ? this.props.data.Site : "undefined" }</Grid>
-                    <Grid item xs={6} sm={12}>Device: {(this.props.data.Device!= "") ? this.props.data.Device : "undefined"}</Grid>
+                <Grid item xs={8} sm={3} md={4} className={[this.classes.alertCell,this.classes.alertItemName]}>{this.props.data.Name}</Grid>
+                <Grid container item xs={6} sm={2} md={2} className={[this.classes.alertCell,this.classes.alertItemTimes]}>
+                    <Grid item xs={12}>Site: {(this.props.data.Site != "") ? this.props.data.Site : "undefined" }</Grid>
+                    <Grid item xs={12}>Device: {(this.props.data.Device!= "") ? this.props.data.Device : "undefined"}</Grid>
                 </Grid>
-                <Grid item xs={12} sm={1} className={this.classes.alertCell}>{this.props.data.Scope}</Grid>
-                <Grid item xs={12} sm={3} md={2} className={this.classes.alertCell}>{this.props.data.Source}</Grid>
-                <Grid container item xs={12} sm={2}  className={[this.classes.alertCell,this.classes.alertItemTimes]}>
-                    <Grid item xs={6} sm={12} className={this.classes.alertItemTimeItem}>Start: {timeConverter(this.props.data.start_time)}</Grid>
-                    <Grid item xs={6} sm={12} className={this.classes.alertItemTimeItem}>Last Active: {secondsToHms(this.props.data.last_active)}</Grid>
+                <Grid item xs={6} sm={1} className={this.classes.alertCell}>{this.props.data.Scope}</Grid>
+                <Grid item xs={6} sm={3} md={2} className={this.classes.alertCell}>{this.props.data.Source}</Grid>
+                <Grid container item xs={6} sm={2} className={[this.classes.alertCell,this.classes.alertItemTimes]}>
+                    <Grid item xs={12} className={this.classes.alertItemTimeItem}>Start: {timeConverter(this.props.data.start_time)}</Grid>
+                    <Grid item xs={12} className={this.classes.alertItemTimeItem}>Last Active: {secondsToHms(this.props.data.last_active)}</Grid>
                 </Grid>
                 
             </Grid>

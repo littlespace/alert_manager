@@ -25,10 +25,16 @@ import { fade } from '@material-ui/core/styles/colorManipulator';
 import { AlertManagerApi } from '../library/AlertManagerApi';
 import { Typography, Chip } from '@material-ui/core';
 
-// import SelectAlertStatusList from '../components/Select/SelectAlertStatusList'
-// import SelectDevicesList from '../Select/SelectDevicesList'
-
+import Radio from '@material-ui/core/Radio';
+import RadioGroup from '@material-ui/core/RadioGroup';
+import FormHelperText from '@material-ui/core/FormHelperText';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
+import FormControl from '@material-ui/core/FormControl';
+import FormLabel from '@material-ui/core/FormLabel';
+import InputLabel from '@material-ui/core/InputLabel';
+import MenuItem from '@material-ui/core/MenuItem';
+import Select from '@material-ui/core/Select';
+
 import Checkbox from '@material-ui/core/Checkbox';
 
 import Badge from '@material-ui/core/Badge';
@@ -40,8 +46,9 @@ import {
     secondsToHms 
 } from '../library/utils';
 
-const queryString = require('query-string');
+const Auth = new AlertManagerApi()
 
+const queryString = require('query-string');
 
 const styles = theme => ({
     root: {
@@ -88,7 +95,10 @@ const styles = theme => ({
     table: {
         minWidth: 700,
     },
-
+    formControl: {
+        margin: theme.spacing.unit,
+        minWidth: 140,
+    },
     AlertsListGrid: {
         paddingTop: 15
     },
@@ -141,6 +151,12 @@ const styles = theme => ({
           width: 200,
         },
       },
+      leftAlign: {
+        position: 'relative'
+      },
+      grow: {
+        flexGrow: 1,
+      },
 });
 
 const alert_mapping = {
@@ -179,11 +195,11 @@ class AlertsListViewGrid extends React.Component {
             ShowActive: ('active' in url_params_parsed && url_params_parsed.active == 0) ? false : true,
             ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed == 1) ? true : false,
             ShowExpired: ('expired' in url_params_parsed && url_params_parsed.expired == 1) ? true : false,
+            ShowAssigned: ('assigned' in url_params_parsed ) ? url_params_parsed.assigned : "all",
             NbrActive: 0,
             NbrSuppressed: 0,
             NbrExpired: 0,
             alerts: [],
-            // filter_status: (url_params_parsed.status instanceof Array) ? url_params_parsed.status.split(',') : [1],
         };
     };
 
@@ -238,6 +254,15 @@ class AlertsListViewGrid extends React.Component {
         
     };
 
+    handleChangeSelect = name => event => {
+        this.setState(
+            { [name]: event.target.value }, 
+            function() {
+                this.updateUrl()
+            }
+        )
+    };
+    
     updateUrl = () => {
         var url_alone = '/alerts'
         var url_params = '/alerts?'
@@ -267,6 +292,14 @@ class AlertsListViewGrid extends React.Component {
             }
             url_params = url_params + 'suppressed=1' 
         }
+        if (this.state.ShowAssigned != "all") {
+            if (first === true) {
+                first = false
+            } else {
+                url_params = url_params + '&'
+            }
+            url_params = url_params + 'assigned=' + this.state.ShowAssigned 
+        }
 
         // Update url in browser
         if (first === true) {
@@ -278,10 +311,15 @@ class AlertsListViewGrid extends React.Component {
 
 
     render() {
+        let username = Auth.getUsername()
+
         let filteredAlerts = this.state.alerts.filter(
             (alert) => {
-
-                if (alert.Status == "ACTIVE" && this.state.ShowActive) {
+                if (this.state.ShowAssigned == "mine" && alert.Owner !=  username ) {
+                    return false
+                } else if (this.state.ShowAssigned == "not-assigned" && alert.Owner != "" ) {
+                    return false
+                } else if (alert.Status == "ACTIVE" && this.state.ShowActive) {
                     return true
                 } else if  (alert.Status == "SUPPRESSED" && this.state.ShowSuppressed) {
                     return true
@@ -301,21 +339,19 @@ class AlertsListViewGrid extends React.Component {
             <Paper className={this.classes.paper}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
-                        {/* <Typography>
-                            Filters:
-                        </Typography> */}
+                        <div className={this.classes.rightAlign}>
                         <Badge showZero className={this.classes.badge} badgeContent={NbrActive} color="primary">
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                checked={this.state.ShowActive}
-                                onChange={this.handleChange('ShowActive')}
-                                value="Active"
-                                className={this.classes.select}
-                                />
-                            }
-                            
-                            label="Active"
+                            <FormControlLabel
+                                control={
+                                    <Checkbox
+                                    checked={this.state.ShowActive}
+                                    onChange={this.handleChange('ShowActive')}
+                                    value="Active"
+                                    className={this.classes.select}
+                                    />
+                                }
+                                
+                                label="Active"
                             />
                         </Badge>
                         <Badge showZero className={this.classes.badge} badgeContent={NbrSuppressed} color="primary">
@@ -344,49 +380,47 @@ class AlertsListViewGrid extends React.Component {
                                 label="Expired"
                                 />
                         </Badge>
-                        <div className={this.classes.search}>
+                        </div>
+                        <div className={this.classes.grow} />
+                        <div className={this.classes.leftAlign}>
+                        <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="assigned">Display Assigned?</InputLabel>
+                            <Select
+                                value={this.state.ShowAssigned}
+                                onChange={this.handleChangeSelect('ShowAssigned')}
+                                // inputProps={{
+                                // name: 'age',
+                                // id: 'age-simple',
+                                // }}
+                            >
+                                <MenuItem value="all">All</MenuItem>
+                                <MenuItem value="not-assigned">Not Assigned</MenuItem>
+                                <MenuItem value="mine">Only Mine</MenuItem>
+                            </Select>
+                            </FormControl>
+                        </div>
+                        {/* <div className={this.classes.search}>
                             {/* <div className={this.classes.searchIcon}>
                                 <SearchIcon />
                             </div> */}
-                            <InputBase
+                            {/* <InputBase
                                 placeholder="Search…"
                                 classNames={{
                                     root: this.classes.inputRoot,
                                     input: this.classes.inputInput,
-                                }}
-                            />
-                            </div>
-                        {/* <SelectAlertStatusList 
-                            classe={this.classes.button}
-                            value={this.state.filter_status} 
-                            onChange={event => {
-                                    this.setState({
-                                        filter_status: event.target.value,
-                                    })
-                                }} /> */}
-                      
-    
-                        {/* <Button 
-                            className={this.classes.searchButton}
-                            variant="fab" 
-                            color="secondary" 
-                            aria-label="Search" 
-                            onClick={this.updateAlertsList}
-                            >
-                            <SearchIcon />
-                        </Button> */}
+                                }} */}
+                            {/* </div> */}
                     </Toolbar>
                 </AppBar>
                 <Grid container className={this.classes.AlertsListGrid}>
                     <Grid container item 
                         xs={12}
                         className={this.classes.alertItemTitle}>
-                        <Grid item xs={6} sm={1}>Site</Grid>
-                        <Grid item xs={6} sm={1}>Device</Grid>
-                        <Grid item xs={12} sm={2}>Source</Grid>
-                        <Grid item xs={12} sm={1}>Scope</Grid>
                         <Grid item xs={12} sm={1}>Status</Grid>
-                        <Grid item xs={12} sm={4} className={this.classes.alertItemName}>Name</Grid>
+                        <Grid item xs={12} sm={3} md={4}>Name</Grid>
+                        <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
+                        <Grid item xs={12} sm={1}>Scope</Grid>
+                        <Grid item xs={12} sm={3} md={2}>Source</Grid>
                         <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
                     </Grid>
                     { filteredAlerts.map(n => {
