@@ -8,7 +8,7 @@ import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
-import Button from '@material-ui/core/Button';
+import Fab from '@material-ui/core/Fab';
 
 import { AlertManagerApi } from '../library/AlertManagerApi';
 
@@ -24,8 +24,8 @@ import AlertItem from '../components/Alerts/AlertItem';
 import SearchIcon from '@material-ui/icons/Search';
 
 
-const Auth = new AlertManagerApi()
-let username = Auth.getUsername()
+const api = new AlertManagerApi()
+let username = api.getUsername()
 const queryString = require('query-string');
 
 let alertStatuses = [
@@ -115,7 +115,7 @@ const styles = theme => ({
     inputRoot: {
         color: 'inherit',
         width: '100%',
-      },
+    },
     inputInput: {
         paddingTop: theme.spacing.unit,
         paddingRight: theme.spacing.unit,
@@ -150,7 +150,6 @@ class AlertsExplorerView extends React.Component {
     constructor(props, context) {
         super(props, context);
         this.classes = this.props.classes;
-        this.api = new AlertManagerApi();
         
         var url_params_parsed = queryString.parse(this.context.router.history.location.search);
         
@@ -192,7 +191,7 @@ class AlertsExplorerView extends React.Component {
 
         query_params["timerange_h"] = this.state.FilterTime
         
-        this.api.getAlertsList(query_params)
+        api.getAlertsList(query_params)
             .then(data => this.processAlertsList(data));
        
         this.updateUrl();
@@ -317,7 +316,7 @@ class AlertsExplorerView extends React.Component {
         )
         return (
         <div>
-            <Typography className={this.classes.pageTitle} variant="headline">Alerts Explorer</Typography>   
+            <Typography className={this.classes.pageTitle} variant="h5">Alerts Explorer</Typography>   
             <Paper className={this.classes.paper}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
@@ -412,15 +411,14 @@ class AlertsExplorerView extends React.Component {
                                         })
                                     }} />
                         </FormControl> */}
-                        <Button 
+                        <Fab 
                             className={this.classes.searchButton}
-                            variant="fab" 
                             color="secondary" 
                             aria-label="Search" 
                             onClick={this.updateAlertsList}
                             >
                             <SearchIcon />
-                        </Button>
+                        </Fab>
 
                         </div>
                         <div className={this.classes.grow} />
@@ -443,7 +441,7 @@ class AlertsExplorerView extends React.Component {
                     </Grid>
                     { filteredAlerts.map(n => {
                         return (
-                            <AlertItem key={n.Id} data={n} {...this.props}/>
+                            <AlertItem key={n.Id} data={n} />
                         );
                     })}
                 </Grid>
@@ -453,7 +451,6 @@ class AlertsExplorerView extends React.Component {
 
     }
 }
-
 
 AlertsExplorerView.propTypes = {
     classes: PropTypes.object.isRequired,

@@ -106,7 +106,7 @@ class Header extends React.Component {
                     >
                     <MenuIcon />
                     </IconButton>
-                        <Typography variant="title" color="inherit" className={this.classes.grow} >
+                        <Typography variant="h6" color="inherit" className={this.classes.grow} >
                             Roblox | Alert Manager
                         </Typography>
                         

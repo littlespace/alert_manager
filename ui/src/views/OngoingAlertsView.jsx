@@ -282,7 +282,7 @@ class OngoingAlertsView extends React.Component {
         
         return (
         <div>
-            <Typography className={this.classes.pageTitle} variant="headline">Ongoing Alerts</Typography>   
+            <Typography className={this.classes.pageTitle} variant="h5">Ongoing Alerts</Typography>   
             <Paper className={this.classes.paper}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
@@ -348,7 +348,7 @@ class OngoingAlertsView extends React.Component {
                     </Grid>
                     { filteredAlerts.map(n => {
                         return (
-                            <AlertItem key={n.Id} data={n} {...this.props}/>
+                            <AlertItem key={n.Id} data={n} />
                         );
                     })}
                 </Grid>

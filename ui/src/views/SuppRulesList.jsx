@@ -87,7 +87,7 @@ class SuppressionRulesListView extends React.Component {
         let rules = this.state.rules
         return (
             <div>
-                <Typography className={this.classes.pageTitle} variant="headline">Suppression Rules</Typography>   
+                <Typography className={this.classes.pageTitle} variant="h5">Suppression Rules</Typography>   
                 <div className={this.classes.root}>
                     <Grid 
                         className={this.classes.gridroot} 
@@ -103,7 +103,7 @@ class SuppressionRulesListView extends React.Component {
                             key={r.Id}
                             data={r}
                         >
-                        </SuppressionRuleItem>
+                        </SuppressionRuleItem >
                         );
                     })}
                     </Grid>

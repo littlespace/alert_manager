@@ -557,7 +557,7 @@ class Alert extends React.Component {
                     </List>
                 </CardContent>
             </Card>
-            <Typography className={this.classes.title} variant="headline">Contributing Alerts</Typography>
+            <Typography className={this.classes.title} variant="h5">Contributing Alerts</Typography>
             <Paper className={this.classes.paper} >
                 <MUIDataTable
                         data={convertAlertsToTable(related_alerts)}
@@ -566,7 +566,7 @@ class Alert extends React.Component {
                     />
             </Paper>
             <br/>
-            <Typography className={this.classes.title} variant="headline">Change History</Typography>
+            <Typography className={this.classes.title} variant="h5">Change History</Typography>
             <Paper className={this.classes.paper} >
                 <MUIDataTable
 

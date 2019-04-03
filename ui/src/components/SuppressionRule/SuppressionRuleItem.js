@@ -108,10 +108,7 @@ class SuppressionRuleItem extends React.Component {
                         })}
                         </List>
                     </CardContent>
-                    {/* <CardActions> */}
-                        {/* <Button size="small" color="primary">
-                            Delete
-                        </Button> */}
+
 
                     {/* </CardActions> */}
                     {/* {isPermanent ? (
