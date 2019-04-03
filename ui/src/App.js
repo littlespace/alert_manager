@@ -9,7 +9,7 @@ import PrivateRoute from './components/PrivateRoute/PrivateRoute'
 /// ------------------------------------------------------
 /// Theme
 /// ------------------------------------------------------
-import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
+import { MuiThemeProvider } from '@material-ui/core/styles';
 import theme from './theme';
 
 /// ------------------------------------------------------
@@ -19,7 +19,6 @@ import OngoingAlertsView from './views/OngoingAlertsView';
 import AlertsExplorerView from'./views/AlertsExplorerView';
 import AlertView from './views/AlertView';
 import SuppressionRulesListView from './views/SuppRulesList';
-import SigninView from './views/SigninView';
 
 /// ------------------------------------------------------
 /// Menu & Login page
@@ -35,10 +34,6 @@ export default class App extends Component {
   
   _redirectToHome() {
     return <Redirect to="/" />;
-  }
-
-  constructor(props, context) {
-    super(props, context);
   }
 
   render() {

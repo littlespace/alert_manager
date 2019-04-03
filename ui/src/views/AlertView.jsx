@@ -257,10 +257,10 @@ const Text =  ({content}) => {
 
 function convertAlertsToTable(data) {
 
-     let alerts = []
+    let alerts = []
 
-     for( let i in data ) {
-        alert = []
+    for( let i in data ) {
+        let alert = []
         for( let y in alertsColumns ) {
             alert.push(data[i][alertsColumns[y].label])   
         }

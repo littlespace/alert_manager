@@ -5,10 +5,8 @@ import PropTypes from 'prop-types';
 
 import { withStyles } from '@material-ui/core/styles';
 import MenuList from '@material-ui/core/MenuList';
-import MenuItem from '@material-ui/core/MenuItem';
 import ListItemText from '@material-ui/core/ListItemText'
 
-import { Link } from 'react-router-dom'
 import MenuItemLink from './MenuItemLink';
 
 // -------------------------------------------------------

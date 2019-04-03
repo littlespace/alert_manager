@@ -1,8 +1,6 @@
 
 
 import {
-    createMuiTheme,
-    MuiThemeProvider,
     withStyles
   } from "@material-ui/core/styles";
 
@@ -15,9 +13,6 @@ import Button from '@material-ui/core/Button';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import AccountCircle from '@material-ui/icons/AccountCircle';
-import MenuItem from '@material-ui/core/MenuItem';
-// import Menu from '@material-ui/core/Menu';
-import Drawer from '@material-ui/core/Drawer';
 
 import { AlertManagerApi } from '../../library/AlertManagerApi';
 
@@ -28,19 +23,12 @@ import Menu from '../Menu';
 // ------------------------------------------------------------
 // Icons
 // ------------------------------------------------------------
-import ViewListIcon from '@material-ui/icons/ViewList';
 import IconButton from '@material-ui/core/IconButton';
 import MenuIcon from '@material-ui/icons/Menu';
-import List from '@material-ui/core/List';
+import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 
 import Divider from '@material-ui/core/Divider';
-import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
-import ChevronRightIcon from '@material-ui/icons/ChevronRight';
-import ListItem from '@material-ui/core/ListItem';
-import ListItemIcon from '@material-ui/core/ListItemIcon';
-import ListItemText from '@material-ui/core/ListItemText';
-import InboxIcon from '@material-ui/icons/MoveToInbox';
-import MailIcon from '@material-ui/icons/Mail';
+
 import { SwipeableDrawer } from "@material-ui/core";
 
 
@@ -105,7 +93,6 @@ class Header extends React.Component {
 
     render() {
         const open = this.state.drawer_open;
-        const { theme } = this.props;
 
         return (
             <div  className={this.classes.root}> 

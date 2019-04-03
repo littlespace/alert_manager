@@ -1,11 +1,11 @@
 import React from 'react';
-import PropTypes from 'prop-types';
+
 import Avatar from '@material-ui/core/Avatar';
 import Button from '@material-ui/core/Button';
 import FormControl from '@material-ui/core/FormControl';
 import Input from '@material-ui/core/Input';
 import InputLabel from '@material-ui/core/InputLabel';
-import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
+
 import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
 import withStyles from '@material-ui/core/styles/withStyles';
@@ -19,6 +19,7 @@ import { Redirect } from 'react-router-dom';
 import InfoIcon from '@material-ui/icons/Info';
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
+import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
 
 import { AlertManagerApi } from '../../library/AlertManagerApi';
 
@@ -75,7 +76,7 @@ class SignIn extends React.Component {
 
   login = () => {
     
-    let success = Auth.login(
+    Auth.login(
         this.state.username, 
         this.state.password,
         this.authSuccessfull

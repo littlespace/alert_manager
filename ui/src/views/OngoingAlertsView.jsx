@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import PropTypes, { number } from 'prop-types';
+import PropTypes from 'prop-types';
 
 import Paper from '@material-ui/core/Paper';
 import AppBar from '@material-ui/core/AppBar';
@@ -131,12 +131,6 @@ const styles = theme => ({
       }
 });
 
-const alert_mapping = {
-    CRITICAL: 'alertCritical',
-    WARN: 'alertWarn',
-    INFO: 'alertInfo'
-}
-
 function dynamicSort(property) {
     var sortOrder = 1;
     if(property[0] === "-") {
@@ -164,13 +158,11 @@ class OngoingAlertsView extends React.Component {
         var url_params_parsed = queryString.parse(this.context.router.history.location.search);
         
         this.state = {
-            ShowActive: ('active' in url_params_parsed && url_params_parsed.active == 0) ? false : true,
-            ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed == 1) ? true : false,
-            // ShowExpired: ('expired' in url_params_parsed && url_params_parsed.expired == 1) ? true : false,
+            ShowActive: ('active' in url_params_parsed && url_params_parsed.active === 0) ? false : true,
+            ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed === 1) ? true : false,
             ShowAssigned: ('assigned' in url_params_parsed ) ? url_params_parsed.assigned : "all",
             NbrActive: 0,
             NbrSuppressed: 0,
-            // NbrExpired: 0,
             alerts: [],
         };
     };
@@ -190,14 +182,13 @@ class OngoingAlertsView extends React.Component {
 
         let NbrActive = 0
         let NbrSuppressed = 0
-        let NbrCleared = 0
 
         for(var i in data) {
 
             // Ignore all sites that are not listed in sites_location
-            if (data[i].Status == "ACTIVE") {
+            if (data[i].Status === "ACTIVE") {
                 NbrActive++;
-            } else if (data[i].Status == "SUPPRESSED") {
+            } else if (data[i].Status === "SUPPRESSED") {
                 NbrSuppressed++;
             } 
         }
@@ -205,7 +196,6 @@ class OngoingAlertsView extends React.Component {
         this.setState({ 
             alerts: data.sort(dynamicSort('-last_active')),
             NbrActive: NbrActive,
-            // NbrExpired: NbrExpired,
             NbrSuppressed: NbrSuppressed
          })
 
@@ -243,14 +233,6 @@ class OngoingAlertsView extends React.Component {
             }
             url_params = url_params + 'active=0' 
         }
-        // if (this.state.ShowExpired === true) {
-        //     if (first === true) {
-        //         first = false
-        //     } else {
-        //         url_params = url_params + '&'
-        //     }
-        //     url_params = url_params + 'expired=1' 
-        // }
         if (this.state.ShowSuppressed === true) {
             if (first === true) {
                 first = false
@@ -259,7 +241,7 @@ class OngoingAlertsView extends React.Component {
             }
             url_params = url_params + 'suppressed=1' 
         }
-        if (this.state.ShowAssigned != "all") {
+        if (this.state.ShowAssigned !== "all") {
             if (first === true) {
                 first = false
             } else {
@@ -281,16 +263,14 @@ class OngoingAlertsView extends React.Component {
 
         let filteredAlerts = this.state.alerts.filter(
             (alert) => {
-                if (this.state.ShowAssigned == "mine" && alert.Owner !=  username ) {
+                if (this.state.ShowAssigned === "mine" && alert.Owner !==  username ) {
                     return false
-                } else if (this.state.ShowAssigned == "not-assigned" && alert.Owner != "" ) {
+                } else if (this.state.ShowAssigned === "not-assigned" && alert.Owner !== "" ) {
                     return false
-                } else if (alert.Status == "ACTIVE" && this.state.ShowActive) {
+                } else if (alert.Status === "ACTIVE" && this.state.ShowActive) {
                     return true
-                } else if  (alert.Status == "SUPPRESSED" && this.state.ShowSuppressed) {
+                } else if  (alert.Status === "SUPPRESSED" && this.state.ShowSuppressed) {
                     return true
-                // } else if  (alert.Status == "EXPIRED" && this.state.ShowExpired) {
-                //     return true
                 } else {
                     return false
                 } 
@@ -298,7 +278,6 @@ class OngoingAlertsView extends React.Component {
             }
         )
         let NbrActive = this.state.NbrActive;
-        // let NbrExpired = this.state.NbrExpired;
         let NbrSuppressed = this.state.NbrSuppressed;
         
         return (
@@ -335,19 +314,6 @@ class OngoingAlertsView extends React.Component {
                                 label="Suppressed"
                                 />
                         </Badge>
-                        {/* <Badge showZero className={this.classes.badge} badgeContent={NbrExpired} color="primary">
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                    checked={this.state.ShowExpired}
-                                    onChange={this.handleChange('ShowExpired')}
-                                    value="Expired"
-                                    className={this.classes.select}
-                                    />
-                                }
-                                label="Expired"
-                                />
-                        </Badge> */}
                         </div>
                         <div className={this.classes.grow} />
                         <div className={this.classes.leftAlign}>

@@ -1,17 +1,8 @@
 import React from 'react';
 import { withStyles } from "@material-ui/core/styles";
 
-import { Link } from 'react-router-dom'
-
-import Card from '@material-ui/core/Card';
-import CardContent from '@material-ui/core/CardContent';
-import CardHeader from '@material-ui/core/CardHeader';
-import CardMedia from '@material-ui/core/CardMedia';
-import CardActions from '@material-ui/core/CardActions';
 import Button from '@material-ui/core/Button';
-import Paper from '@material-ui/core/Paper';
 import Grid from '@material-ui/core/Grid';
-import Chip from '@material-ui/core/Chip';
 import Avatar from '@material-ui/core/Avatar';
 import Tooltip from '@material-ui/core/Tooltip';
 
@@ -119,11 +110,11 @@ class AlertItem extends React.Component {
                 <Grid container item xs={4} sm={1} md={1} className={this.classes.alertCell}>
                     <Grid item xs={9} sm={8}>
                         <Button variant="contained" color="primary" className={this.classes.button}>
-                            {(this.props.data.Status == 'SUPPRESSED') ? "SUPPR" : this.props.data.Status}
+                            {(this.props.data.Status === 'SUPPRESSED') ? "SUPPR" : this.props.data.Status}
                         </Button>
                     </Grid>
                     <Grid item xs={3} sm={4} >
-                        { (this.props.data.Owner != "") ? 
+                        { (this.props.data.Owner !== "") ? 
                         <Tooltip title={this.props.data.Owner} placement="bottom">
                             <Avatar className={this.classes.ownerBadge}>
                                 <AssignmentTurnedInIcon className={this.classes.ownerBadgeIcon}/>
@@ -133,8 +124,8 @@ class AlertItem extends React.Component {
                 </Grid>
                 <Grid item xs={8} sm={3} md={4} className={[this.classes.alertCell,this.classes.alertItemName]}>{this.props.data.Name}</Grid>
                 <Grid container item xs={6} sm={2} md={2} className={[this.classes.alertCell,this.classes.alertItemTimes]}>
-                    <Grid item xs={12}>Site: {(this.props.data.Site != "") ? this.props.data.Site : "undefined" }</Grid>
-                    <Grid item xs={12}>Device: {(this.props.data.Device!= "") ? this.props.data.Device : "undefined"}</Grid>
+                    <Grid item xs={12}>Site: {(this.props.data.Site !== "") ? this.props.data.Site : "undefined" }</Grid>
+                    <Grid item xs={12}>Device: {(this.props.data.Device!== "") ? this.props.data.Device : "undefined"}</Grid>
                 </Grid>
                 <Grid item xs={6} sm={1} className={this.classes.alertCell}>{this.props.data.Scope}</Grid>
                 <Grid item xs={6} sm={3} md={2} className={this.classes.alertCell}>{this.props.data.Source}</Grid>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
-import PropTypes, { number } from 'prop-types';
+import PropTypes from 'prop-types';
 
 import Paper from '@material-ui/core/Paper';
 import AppBar from '@material-ui/core/AppBar';
@@ -10,10 +10,7 @@ import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import Button from '@material-ui/core/Button';
 
-import { fade } from '@material-ui/core/styles/colorManipulator';
-
 import { AlertManagerApi } from '../library/AlertManagerApi';
-import SelectAlertStatusList from '../components/Select/SelectAlertStatusList'
 
 import FormControl from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
@@ -144,25 +141,6 @@ const styles = theme => ({
     }
 });
 
-const alert_mapping = {
-    CRITICAL: 'alertCritical',
-    WARN: 'alertWarn',
-    INFO: 'alertInfo'
-}
-
-function dynamicSort(property) {
-    var sortOrder = 1;
-    if(property[0] === "-") {
-        sortOrder = -1;
-        property = property.substr(1);
-    }
-    return function (a,b) {
-        var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
-        return result * sortOrder;
-    }
-}
-
-
 class AlertsExplorerView extends React.Component {
 
     static contextTypes = {
@@ -182,12 +160,12 @@ class AlertsExplorerView extends React.Component {
             NbrSuppressed: 0,
             NbrExpired: 0,
             alerts: [],
-            FilterAssigned: ('assigned' in url_params_parsed && url_params_parsed.assigned != '') ? url_params_parsed.assigned : "all",
-            FilterStatus: ('status' in url_params_parsed && url_params_parsed.status != '') ? url_params_parsed.status.split(',') : [],
-            FilterSite: ('site' in url_params_parsed && url_params_parsed.site != '') ? url_params_parsed.site : null,
-            FilterDevice: ('device' in url_params_parsed && url_params_parsed.device != '') ? url_params_parsed.device : null,
-            FilterSeverity: ('severity' in url_params_parsed && url_params_parsed.severity != '') ? url_params_parsed.severity.split(',') : [],
-            FilterTime: ('time' in url_params_parsed && url_params_parsed.time != '') ? url_params_parsed.time : '24h',
+            FilterAssigned: ('assigned' in url_params_parsed && url_params_parsed.assigned !== '') ? url_params_parsed.assigned : "all",
+            FilterStatus: ('status' in url_params_parsed && url_params_parsed.status !== '') ? url_params_parsed.status.split(',') : [],
+            FilterSite: ('site' in url_params_parsed && url_params_parsed.site !== '') ? url_params_parsed.site : null,
+            FilterDevice: ('device' in url_params_parsed && url_params_parsed.device !== '') ? url_params_parsed.device : null,
+            FilterSeverity: ('severity' in url_params_parsed && url_params_parsed.severity !== '') ? url_params_parsed.severity.split(',') : [],
+            FilterTime: ('time' in url_params_parsed && url_params_parsed.time !== '') ? url_params_parsed.time : '24h',
         };
     };
 
@@ -199,16 +177,16 @@ class AlertsExplorerView extends React.Component {
 
         let query_params = {}
 
-        if (this.state.FilterStatus.lenght != 0) {
+        if (this.state.FilterStatus.lenght !== 0) {
             query_params["status"] = this.state.FilterStatus
         }
-        if (this.state.FilterSite != null  && this.state.FilterSite != '' ) {
+        if (this.state.FilterSite !== null  && this.state.FilterSite !== '' ) {
             query_params["sites"] = [this.state.FilterSite]
         }
-        if (this.state.FilterDevice != null && this.state.FilterDevice != '' ) {
+        if (this.state.FilterDevice !== null && this.state.FilterDevice !== '' ) {
             query_params["devices"] = [this.state.FilterDevice]
         }
-        if (this.state.FilterSeverity.lenght != 0) {
+        if (this.state.FilterSeverity.lenght !== 0) {
             query_params["severity"] = this.state.FilterSeverity
         }
 
@@ -231,13 +209,13 @@ class AlertsExplorerView extends React.Component {
         for(var i in data) {
 
             // Ignore all sites that are not listed in sites_location
-            if (data[i].Status == "ACTIVE") {
+            if (data[i].Status === "ACTIVE") {
                 NbrActive++;
-            } else if (data[i].Status == "SUPPRESSED") {
+            } else if (data[i].Status === "SUPPRESSED") {
                 NbrSuppressed++;
-            } else if (data[i].Status == "EXPIRED") {
+            } else if (data[i].Status === "EXPIRED") {
                 NbrExpired++;
-            } else if (data[i].Status == "CLEARED") {
+            } else if (data[i].Status === "CLEARED") {
                 NbrCleared++;
             } 
         }
@@ -247,7 +225,7 @@ class AlertsExplorerView extends React.Component {
         }
 
         this.setState({ 
-            alerts: data, //.sort(dynamicSort('-last_active')),
+            alerts: data,
             NbrActive: NbrActive,
             NbrExpired: NbrExpired,
             NbrSuppressed: NbrSuppressed,
@@ -273,7 +251,7 @@ class AlertsExplorerView extends React.Component {
         var url_params = '/alerts-explorer?'
         var first = true
 
-        if (this.state.FilterDevice != null && this.state.FilterDevice != '' ) {
+        if (this.state.FilterDevice !== null && this.state.FilterDevice !== '' ) {
             if (first === true) {
                 first = false
             } else {
@@ -281,7 +259,7 @@ class AlertsExplorerView extends React.Component {
             }
             url_params = url_params + 'device=' + this.state.FilterDevice 
         }
-        if (this.state.FilterTime != "24h" ) {
+        if (this.state.FilterTime !== "24h" ) {
             if (first === true) {
                 first = false
             } else {
@@ -289,7 +267,7 @@ class AlertsExplorerView extends React.Component {
             }
             url_params = url_params + 'time=' + this.state.FilterTime 
         }
-        if (this.state.FilterSite != null && this.state.FilterSite != '') {
+        if (this.state.FilterSite !== null && this.state.FilterSite !== '') {
             if (first === true) {
                 first = false
             } else {
@@ -297,7 +275,7 @@ class AlertsExplorerView extends React.Component {
             }
             url_params = url_params + 'site=' + this.state.FilterSite 
         }
-        if (this.state.FilterAssigned != "all") {
+        if (this.state.FilterAssigned !== "all") {
             if (first === true) {
                 first = false
             } else {
@@ -305,7 +283,7 @@ class AlertsExplorerView extends React.Component {
             }
             url_params = url_params + 'assigned=' + this.state.FilterAssigned 
         }
-        if (this.state.FilterStatus.length != 0) {
+        if (this.state.FilterStatus.length !== 0) {
             if (first === true) {
                 first = false
             } else {
@@ -327,9 +305,9 @@ class AlertsExplorerView extends React.Component {
         let NbrAlerts = 0
         let filteredAlerts = this.state.alerts.filter(
             (alert) => {
-                if (this.state.FilterAssigned == "mine" && alert.Owner != username ) {
+                if (this.state.FilterAssigned === "mine" && alert.Owner !== username ) {
                     return false
-                } else if (this.state.FilterAssigned == "not-assigned" && alert.Owner != "" ) {
+                } else if (this.state.FilterAssigned === "not-assigned" && alert.Owner !== "" ) {
                     return false
                 } else {
                     NbrAlerts++

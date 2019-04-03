@@ -22,7 +22,7 @@ export class AlertManagerApi {
         this.login = this.login.bind(this)
         this.getProfile = this.getProfile.bind(this)
 
-        if (this.checkToken() == false) {
+        if (this.checkToken() === false) {
             console.log("Token is not valid, login out")
             this.logout()
         }
@@ -347,9 +347,9 @@ export class AlertManagerApi {
                 password: password })
         }).then(response => {
             
-            if (response.status == 200) {
+            if (response.status === 200) {
                 return response.json()
-            } if (response.status == 401) {
+            } if (response.status === 401) {
                 console.log("Auth is NOT valid")
                 return false
             } else {
@@ -433,10 +433,10 @@ export class AlertManagerApi {
 
         return fetch(`${this.url}api/auth/refresh `, obj)
             .then(response => {
-                if (response.status == 400) {
+                if (response.status === 400) {
                     console.log("Token is valid")
                     return true
-                } else if (response.status == 401) {
+                } else if (response.status === 401) {
                     console.log("Token is NOT valid")
                     this.logout()
                     return false
