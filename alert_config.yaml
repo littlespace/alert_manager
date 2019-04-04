@@ -1,12 +1,20 @@
-# general config defines general parameters that apply to all alerts
-general_config:
-  default_outputs:
+# output config defines default output channels
+output_config:
+  defaults:
+    - severity: INFO
+      send_to: [ slack ]
     - severity: WARN
       send_to: [ slack ]
     - severity: CRITICAL
-      send_to: [ victorops ]
-  # how long to wait before clearing an alert after a clear notification comes in.
-  clear_holddown_interval: 1m
+      send_to: [ slack ]
+
+# static map of users to teams. Required for enabling team-view support
+team_config:
+  users:
+    - name: user1
+      team: neteng
+    - name: user2
+      team: team2
 
 # alert_config defines non default config for expected alerts coming in. An alert
 # does not need to be defined here for it to be accepted by alert manager. Such an

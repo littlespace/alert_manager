@@ -160,18 +160,6 @@ func TestAlertGrouping(t *testing.T) {
 	assert.Equal(t, event.Alert.Status.String(), "ACTIVE")
 	assert.Equal(t, int64(event.Alert.Id), mockAlerts["agg_bgp_12"].Id)
 
-	// test existing active agg
-	new := tu.MockAlert(1, "Neteng BGP Down", "Alert1", "d1", "e1", "src1", "scp1", "t1", "1", "INFO", []string{"a", "b"}, nil)
-	mockAlerts["bgp_1"].Status = models.Status_CLEARED
-	assert.Equal(t, a.checkExisting(new), true)
-	assert.Equal(t, new.Status, models.Status_SUPPRESSED)
-	assert.Equal(t, new.AggregatorId, mockAlerts["agg_bgp_12"].Id)
-	assert.Equal(t, mockAlerts["bgp_1"].Status, models.Status_ACTIVE)
-	// test existing inactive agg
-	mockAlerts["bgp_1"].Status = models.Status_CLEARED
-	mockAlerts["agg_bgp_12"].Status = models.Status_CLEARED
-	assert.Equal(t, a.checkExisting(new), false)
-
 	// test suppressed
 	r := models.NewSuppRule(
 		models.Labels{"alert_name": "Neteng_Aggregated BGP Down", "entity": "Various"},

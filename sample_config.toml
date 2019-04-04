@@ -1,7 +1,7 @@
 [agent]
   stats_export_interval = "120s"
-  # Team name is required to enable teamview support.
-  team_name = "myTeam"
+  # holddown interval for marking alerts as clear
+  clear_holddown_interval = "5m"
 
 [api]
   # api listen addr

@@ -65,7 +65,20 @@ type AlertHandler struct {
 
 // NewHandler returns a new alert handler which uses the supplied db
 func NewHandler(db models.Dbase, clearHolddown time.Duration) *AlertHandler {
-	tx := db.NewTx()
+	h := &AlertHandler{
+		Db:                 db,
+		Suppressor:         GetSuppressor(db),
+		procChan:           make(chan *models.AlertEvent),
+		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
+		clearHolddown:      clearHolddown,
+		statTransformError: stats.NewCounter("handler.transform_errors"),
+		statDbError:        stats.NewCounter("handler.db_errors"),
+	}
+	return h
+}
+
+func (h *AlertHandler) loadTeams() error {
+	tx := h.Db.NewTx()
 	ctx := context.Background()
 	var teams models.Teams
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
@@ -74,23 +87,22 @@ func NewHandler(db models.Dbase, clearHolddown time.Duration) *AlertHandler {
 		return er
 	})
 	if err != nil {
-		glog.Errorf("Failed to fetch teams from db: %v", err)
+		return fmt.Errorf("Failed to fetch teams from db: %v", err)
 	}
-	h := &AlertHandler{
-		Db:                 db,
-		Suppressor:         GetSuppressor(db),
-		procChan:           make(chan *models.AlertEvent),
-		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
-		clearHolddown:      clearHolddown,
-		teams:              teams,
-		statTransformError: stats.NewCounter("handler.transform_errors"),
-		statDbError:        stats.NewCounter("handler.db_errors"),
-	}
-	return h
+	h.teams = teams
+	return nil
+}
+
+func (h *AlertHandler) GetUsersFromConfig() map[string]string {
+	return Config.GetTeamConfig().Users
 }
 
 // Start needs to be called in a go-routine
 func (h *AlertHandler) Start(ctx context.Context) {
+	// load teams
+	if err := h.loadTeams(); err != nil {
+		glog.Exitf("Fatal err: Failed to load teams: %v", err)
+	}
 	// start the processor pipeline
 	procPipeline := plugins.NewProcessorPipeline()
 	procPipeline.Run(ctx, h.Db, h.procChan)
@@ -143,7 +155,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 }
 
 func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
-	if h.checkExisting(tx, alert) {
+	if h.checkExisting(tx, alert) || h.checkAggregated(tx, alert) {
 		return nil
 	}
 	// add transforms
@@ -257,6 +269,36 @@ func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
 	return err == nil
 }
 
+func (h *AlertHandler) checkAggregated(tx models.Txn, alert *models.Alert) bool {
+	var dev string
+	if alert.Device.Valid {
+		dev = alert.Device.String
+	}
+	existing, err := tx.GetAlert(models.QuerySelectExistingAgg, alert.Name, alert.Entity, dev)
+	if err != nil {
+		glog.V(4).Infof("No existing alert found")
+		return false
+	}
+	existingAgg, err := tx.GetAlert(models.QuerySelectById, existing.AggregatorId)
+	if err != nil {
+		glog.V(4).Infof("No existing aggregate alert found")
+		return false
+	}
+	if existingAgg.Status != models.Status_ACTIVE {
+		return false
+	}
+	// ignore the new alert since it was previously aggregated and the agg is still active
+	alert.Status = models.Status_SUPPRESSED
+	existing.Status = models.Status_ACTIVE
+	existing.LastActive = models.MyTime{time.Now()}
+	if err = tx.UpdateAlert(existing); err != nil {
+		glog.Errorf("Unable to update alert: %v", err)
+		return false
+	}
+	glog.Infof("Found existing aggregated alert for %s: %d", existing.Name, existing.Id)
+	return true
+}
+
 func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	// apply transforms in order of priority. Lower == first
 	var toApply []Transform
@@ -271,6 +313,12 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	sort.Slice(toApply, func(i, j int) bool {
 		return toApply[i].GetPriority() < toApply[j].GetPriority()
 	})
+	defer func() {
+		if r := recover(); r != nil {
+			glog.Errorf("PANIC while applying transform: %v", r)
+			h.statTransformError.Add(1)
+		}
+	}()
 	for _, xform := range toApply {
 		glog.V(2).Infof("Applying Transform: %s to alert %s", xform.Name(), alert.Name)
 		if err := xform.Apply(alert); err != nil {

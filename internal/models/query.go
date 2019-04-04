@@ -56,12 +56,12 @@ type Query struct {
 }
 
 func NewQuery(table string) Query {
-	return Query{Table: table, TimeRange: "72h"}
+	return Query{Table: table}
 }
 
 func (q Query) toSQL() string {
 	baseQ := fmt.Sprintf("SELECT * FROM %s", q.Table)
-	start := "start_time"
+	start := "last_active"
 	if q.Table == "suppression_rules" {
 		start = "created_at"
 	}

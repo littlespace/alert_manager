@@ -190,47 +190,6 @@ func (a *Aggregator) checkExpired(ctx context.Context, out chan *models.AlertEve
 	})
 }
 
-func (a *Aggregator) checkExisting(alert *models.Alert) bool {
-	tx := a.db.NewTx()
-	ctx := context.Background()
-	var suppress bool
-	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		var dev string
-		if alert.Device.Valid {
-			dev = alert.Device.String
-		}
-		existing, err := tx.GetAlert(models.QuerySelectExistingAgg, alert.Name, alert.Entity, dev)
-		if err != nil {
-			glog.V(4).Infof("No existing alert found")
-			return nil
-		}
-		existingAgg, err := tx.GetAlert(models.QuerySelectById, existing.AggregatorId)
-		if err != nil {
-			glog.V(4).Infof("No existing aggregate alert found")
-			return nil
-		}
-		if existingAgg.Status != models.Status_ACTIVE {
-			return nil
-		}
-		// collapse the alert into the existing agg since its still active
-		alert.AggregatorId = existingAgg.Id
-		alert.Status = models.Status_SUPPRESSED
-		if err = tx.UpdateAlert(alert); err != nil {
-			return fmt.Errorf("Unable to update alert: %v", err)
-		}
-		existing.Status = models.Status_ACTIVE
-		if err = tx.Exec(models.QueryUpdateStatus, models.Status_ACTIVE, existing.Id); err != nil {
-			return fmt.Errorf("Unable to update alert: %v", err)
-		}
-		suppress = true
-		return nil
-	})
-	if err != nil {
-		glog.Error(err)
-	}
-	return suppress
-}
-
 func (a *Aggregator) grouperForAlert(alert *models.Alert, ruleName string) groupers.Grouper {
 	var grouper groupers.Grouper
 	rule, ok := ah.Config.GetAggregationRuleConfig(ruleName)
@@ -272,10 +231,6 @@ func (a *Aggregator) startProcess(in, out chan *models.AlertEvent) {
 	glog.Info("Starting processor - Aggregator")
 	for event := range in {
 		if event.Alert.AggregatorId != 0 {
-			out <- event
-			continue
-		}
-		if a.checkExisting(event.Alert) {
 			out <- event
 			continue
 		}

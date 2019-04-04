@@ -6,11 +6,19 @@ import (
 )
 
 var (
-	QueryInsertTeam         = "INSERT INTO teams (name, organization) VALUES (:name, :organization) RETURNING id"
-	QueryDeleteTeam         = "DELETE FROM teams WHERE id=$1"
-	QueryInsertUser         = "INSERT INTO users (name, team_id) VALUES (:name, :team_id) RETURNING id"
-	QueryDeleteUser         = "DELETE FROM users WHERE id=$1"
-	QueryDeleteUsersForTeam = "DELETE FROM USERS WHERE team_id=$1"
+	QueryInsertTeam = `
+	INSERT INTO teams (name, organization) VALUES (:name, :organization)
+	  ON CONFLICT (name) DO UPDATE SET organization=EXCLUDED.organization
+	  RETURNING id
+	`
+	QueryDeleteTeam = "DELETE FROM teams WHERE id=$1"
+	QueryInsertUser = `
+	INSERT INTO users (name, team_id) VALUES (:name, :team_id)
+	  ON CONFLICT (name) DO UPDATE SET name=EXCLUDED.name
+	  RETURNING id
+	`
+	QueryDeleteUserByName   = "DELETE FROM users WHERE name=$1"
+	QueryDeleteUsersForTeam = "DELETE FROM users WHERE team_id=$1"
 
 	QuerySelectTeams = "SELECT * FROM teams"
 	QuerySelectUsers = `
@@ -35,11 +43,28 @@ func (t *Team) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&tm)
 }
 
+func (t *Team) UnmarshalJSON(data []byte) error {
+	tm := struct {
+		Id           int64
+		Name         string
+		Organization string
+	}{}
+	if err := json.Unmarshal(data, &tm); err != nil {
+		return err
+	}
+	t.Id = tm.Id
+	t.Name = tm.Name
+	if tm.Organization != "" {
+		t.Organization = sql.NullString{tm.Organization, true}
+	}
+	return nil
+}
+
 type User struct {
 	Id     int64
 	Name   string
-	TeamId int64 `db:"team_id"`
-	Team   `db:"team"`
+	TeamId int64 `db:"team_id" json:"team_id"`
+	Team   *Team `db:"team" json:"team"`
 }
 
 func NewUser(name string, teamId int64) *User {

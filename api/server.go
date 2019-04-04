@@ -124,6 +124,8 @@ func (s *Server) Start(ctx context.Context) {
 	router.HandleFunc("/api/suppression_rules/persistent", s.GetPersistentRules).Methods("GET")
 	router.HandleFunc("/api/suppression_rules", s.Validate(s.CreateSuppRule)).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/suppression_rules/{id}/clear", s.Validate(s.ClearSuppRule)).Methods("DELETE", "OPTIONS")
+	router.HandleFunc("/api/users", s.Validate(s.CreateUser)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/users/{name}/delete", s.Validate(s.DeleteUser)).Methods("DELETE", "OPTIONS")
 
 	// CORS specific headers
 	allowedHeaders := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"})
@@ -266,6 +268,13 @@ func (s *Server) fetchResults(q models.Querier) ([]interface{}, error) {
 }
 
 func (s *Server) GetItems(w http.ResponseWriter, req *http.Request) {
+	// hack for users until user mgmt is implemented
+	vars := mux.Vars(req)
+	if vars["category"] == "users" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(s.handler.GetUsersFromConfig())
+		return
+	}
 	q, err := buildSelectQuery(req)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Unable to fetch items: %s", err.Error()), http.StatusBadRequest)
@@ -387,7 +396,7 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) CreateSuppRule(w http.ResponseWriter, req *http.Request) {
 	rule := &models.SuppressionRule{}
-	if err := json.NewDecoder(req.Body).Decode(&rule); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(rule); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid parameters for query: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -436,4 +445,52 @@ func (s *Server) GetPluginsList(w http.ResponseWriter, req *http.Request) {
 func (s *Server) GetPersistentRules(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s.handler.Suppressor.GetPersistentRules())
+}
+
+func (s *Server) CreateUser(w http.ResponseWriter, req *http.Request) {
+	u := &models.User{}
+	if err := json.NewDecoder(req.Body).Decode(u); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid parameters for query: %v", err), http.StatusBadRequest)
+		return
+	}
+	if u.Team == nil {
+		http.Error(w, fmt.Sprintf("Failed to add user: Team is required"), http.StatusBadRequest)
+		return
+	}
+	tx := s.handler.Db.NewTx()
+	ctx := req.Context()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		id, err := tx.NewInsert(models.QueryInsertTeam, u.Team)
+		if err != nil {
+			return fmt.Errorf("Failed to create new team: %v", err)
+		}
+		u.TeamId = id
+		u.Team.Id = id
+		id, err = tx.NewInsert(models.QueryInsertUser, u)
+		if err != nil {
+			return fmt.Errorf("Failed to create new user: %v", err)
+		}
+		u.Id = id
+		return nil
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to create user: %v", err), http.StatusInternalServerError)
+		return
+	}
+	s.statPosts.Add(1)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(u)
+}
+
+func (s *Server) DeleteUser(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	tx := s.handler.Db.NewTx()
+	ctx := req.Context()
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		return tx.Exec(models.QueryDeleteUserByName, vars["name"])
+	})
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unable to delete user: %v", err), http.StatusBadRequest)
+		return
+	}
 }

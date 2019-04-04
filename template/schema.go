@@ -44,15 +44,15 @@ CREATE TABLE IF NOT EXISTS alert_history (
 
 CREATE TABLE IF NOT EXISTS teams (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(64) NOT NULL,
+  name VARCHAR(64) NOT NULL UNIQUE,
   organization VARCHAR(64));
 
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL,
-  name VARCHAR(64) NOT NULL,
+  name VARCHAR(64) NOT NULL UNIQUE,
   team_id INT REFERENCES teams(id),
   PRIMARY KEY (id, team_id));
 
-CREATE INDEX ON alerts (id);
-CREATE INDEX ON alert_history (alert_id);
+CREATE INDEX IF NOT EXISTS alerts_id_idx ON alerts (id);
+CREATE INDEX IF NOT EXISTS alert_history_alert_id_idx ON alert_history (alert_id);
 `
