@@ -35,11 +35,11 @@ func TestOutputSlack(t *testing.T) {
 		Alert: tu.MockAlert(0, "Neteng BGP Down", "This alert has fired", "dev1", "PeerX", "src", "scp", "t1", "1", "WARN", []string{}, nil),
 	}
 
-	data, err := s.formatBody(event)
+	data, err := s.formatBody(event, "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.post(data)
+	s.post(data, 2*time.Second)
 	res := make(map[string]interface{})
 	err = json.Unmarshal(body, &res)
 	if err != nil {
@@ -116,7 +116,7 @@ func TestOutputEmail(t *testing.T) {
 			StartTime:   models.MyTime{time.Unix(1136239445, 0)},
 		},
 	}
-	n.start(event)
+	n.start(event, "htt://localhost")
 	assert.Equal(t, emailer.subject, "Alert Manager: [ACTIVE] Test Alert: [testent]")
 	assert.Equal(t, emailer.body, renderedTpl)
 	assert.Equal(t, emailer.from, "a@foo.com")

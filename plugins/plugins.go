@@ -2,9 +2,9 @@ package plugins
 
 import (
 	"context"
-
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
+	"time"
 )
 
 // Listener is any agent that listens to alerts. Alerts are sent down a channel that
@@ -37,7 +37,7 @@ func GetProcessor(name string) Processor {
 
 type Output interface {
 	Name() string
-	Start(ctx context.Context)
+	Start(ctx context.Context, opts *Options)
 }
 
 type ApiPlugins struct {
@@ -65,8 +65,15 @@ func AddOutput(o Output) {
 	Outputs[o.Name()] = o
 }
 
-func Init(ctx context.Context, db models.Dbase) error {
+func Init(ctx context.Context, db models.Dbase, options ...PluginOption) error {
 
+	opts := &Options{
+		WebUrl:        "http://localhost",
+		ClientTimeout: 5 * time.Second,
+	}
+	for _, opt := range options {
+		opt(opts)
+	}
 	// start all the listeners
 	for name, listener := range Listeners {
 		glog.Infof("Starting Listener: %s on %s", name, listener.Uri())
@@ -76,7 +83,7 @@ func Init(ctx context.Context, db models.Dbase) error {
 	// start all the outputs
 	for name, output := range Outputs {
 		glog.Infof("Starting output: %s", name)
-		go output.Start(ctx)
+		go output.Start(ctx, opts)
 	}
 
 	return nil
@@ -107,4 +114,23 @@ func GetApiPluginsList() ApiPlugins {
 	}
 
 	return choices
+}
+
+type Options struct {
+	WebUrl        string
+	ClientTimeout time.Duration
+}
+
+type PluginOption func(*Options)
+
+func WebUrl(url string) PluginOption {
+	return func(o *Options) {
+		o.WebUrl = url
+	}
+}
+
+func ClientTimeout(to time.Duration) PluginOption {
+	return func(o *Options) {
+		o.ClientTimeout = to
+	}
 }

@@ -73,6 +73,50 @@ var testDatas = map[string]struct {
 			Source:  "ns1",
 		},
 	},
+	"prom": {
+		raw: `{
+			"status": "firing",
+			"alerts": [
+			  {
+				"status": "firing",
+				"labels": {
+				  "alertname": "Device down",
+				  "description": "Device foo is down",
+				  "device": "foo",
+				  "entity": "foo",
+				  "role": "rack-switch",
+				  "severity": "warning",
+				  "site": "ord1",
+				  "source": "prometheus"
+				},
+				"annotations": {},
+				"startsAt": "2019-04-02T22:28:12.208437528Z",
+				"endsAt": "0001-01-01T00:00:00Z"
+			  }
+			],
+			"commonLabels": {
+				"alertname": "Device down",
+				"description": "Device foo is down",
+				"device": "foo",
+				"entity": "foo",
+				"role": "rack-switch",
+				"severity": "warning",
+				"site": "ord1",
+				"source": "prometheus"
+			},
+			"externalURL": "http://8fd5083ae377:9093",
+			"version": "4"
+		  }`,
+		parsed: &listener.WebHookAlertData{
+			Id:      "None",
+			Name:    "Device down",
+			Details: "Device foo is down",
+			Device:  "foo",
+			Entity:  "foo",
+			Status:  listener.Status_ALERTING,
+			Source:  "prometheus",
+		},
+	},
 }
 
 func TestParsing(t *testing.T) {
@@ -88,6 +132,8 @@ func TestParsing(t *testing.T) {
 			parser = &KapacitorParser{name: "kapacitor"}
 		case "ns1":
 			parser = &Ns1Parser{name: "ns1"}
+		case "prom":
+			parser = &PromParser{name: "prom"}
 		}
 		result, err := parser.Parse([]byte(data.raw))
 		if err != nil {

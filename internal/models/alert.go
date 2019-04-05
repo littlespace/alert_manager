@@ -320,6 +320,9 @@ func (tx *Tx) SelectAlertsWithHistory(query string, args ...interface{}) (Alerts
 	if err != nil {
 		return Alerts{}, err
 	}
+	if len(alerts) == 0 {
+		return alerts, nil
+	}
 	if err := tx.AddAlertHistory(alerts); err != nil {
 		return alerts, err
 	}

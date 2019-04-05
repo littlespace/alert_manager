@@ -27,6 +27,10 @@ type OutputConfig struct {
 	Defaults Outs
 }
 
+type TeamConfig struct {
+	Users map[string]string
+}
+
 type AlertConfig struct {
 	Name   string
 	Config struct {
@@ -83,6 +87,7 @@ type InhibitRuleConfig struct {
 
 type configs struct {
 	OutputConfig           OutputConfig            `yaml:"output_config"`
+	TeamConfig             TeamConfig              `yaml:"team_config"`
 	AlertConfig            []AlertConfig           `yaml:"alert_config"`
 	AggregationRuleConfigs []AggregationRuleConfig `yaml:"aggregation_rules"`
 	SuppressionRuleConfigs []SuppressionRuleConfig `yaml:"suppression_rules"`
@@ -108,6 +113,7 @@ func readConfig(file string) (configs, error) {
 type ConfigHandler struct {
 	file         string
 	outputConfig OutputConfig
+	teamConfig   TeamConfig
 	alertConfigs map[string]AlertConfig
 	aggRules     map[string]AggregationRuleConfig
 	suppRules    map[string]SuppressionRuleConfig
@@ -141,6 +147,7 @@ func (c *ConfigHandler) LoadConfig() {
 		glog.Fatalf("Unable to load config file : %v", err)
 	}
 	c.outputConfig = configs.OutputConfig
+	c.teamConfig = configs.TeamConfig
 	for _, config := range configs.AlertConfig {
 		c.alertConfigs[config.Name] = config
 	}
@@ -160,6 +167,12 @@ func (c *ConfigHandler) GetOutputConfig() OutputConfig {
 	c.Lock()
 	defer c.Unlock()
 	return c.outputConfig
+}
+
+func (c *ConfigHandler) GetTeamConfig() TeamConfig {
+	c.Lock()
+	defer c.Unlock()
+	return c.teamConfig
 }
 
 func (c *ConfigHandler) GetConfiguredAlerts() []AlertConfig {

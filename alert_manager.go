@@ -46,7 +46,7 @@ func Run(config *Config) {
 
 	//Initialize all the plugins
 	// Listener, transforms
-	plugins.Init(ctx, db)
+	plugins.Init(ctx, db, plugins.WebUrl(config.Agent.WebUrl))
 
 	// start the API server
 	glog.Infof("Starting API server on %s", config.Api.ApiAddr)

@@ -80,7 +80,7 @@ func (n *InfluxNotifier) Type() string {
 	return "output"
 }
 
-func (n *InfluxNotifier) Start(ctx context.Context) {
+func (n *InfluxNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
 		case event := <-n.Notif:

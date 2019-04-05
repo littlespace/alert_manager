@@ -14,10 +14,12 @@ import (
 )
 
 var mockAlerts = map[string]*models.Alert{
-	"existing_a1": tu.MockAlert(100, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil),
-	"existing_a2": tu.MockAlert(200, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil),
-	"existing_a3": tu.MockAlert(300, "Test Alert 3", "", "d3", "e3", "src3", "scp3", "t1", "3", "WARN", []string{"e", "f"}, nil),
-	"existing_a4": tu.MockAlert(400, "Test Alert 4", "", "d4", "e4", "src4", "scp4", "t1", "4", "INFO", []string{"e", "f"}, nil),
+	"existing_a1":     tu.MockAlert(100, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil),
+	"existing_a2":     tu.MockAlert(200, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil),
+	"existing_a3":     tu.MockAlert(300, "Test Alert 3", "", "d3", "e3", "src3", "scp3", "t1", "3", "WARN", []string{"e", "f"}, nil),
+	"existing_a4":     tu.MockAlert(400, "Test Alert 4", "", "d4", "e4", "src4", "scp4", "t1", "4", "INFO", []string{"e", "f"}, nil),
+	"existing_a5":     tu.MockAlert(500, "Test Alert 5", "", "d5", "e5", "src5", "scp5", "t1", "5", "WARN", []string{"g", "h"}, nil),
+	"existing_a6_agg": tu.MockAlert(600, "Test Alert 6", "", "d6", "e6", "src6", "scp6", "t1", "6", "WARN", []string{"g", "h"}, nil),
 }
 
 var nowTime = models.MyTime{time.Now()}
@@ -40,10 +42,12 @@ func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
 	switch item.(type) {
 	case *models.Alert:
 		alert := item.(*models.Alert)
-		if alert.Name == "Test Alert 1" {
-			return 100, nil
+		for _, a := range mockAlerts {
+			if a.Name == alert.Name && a.AggregatorId == 0 {
+				return a.Id, nil
+			}
 		}
-		return 200, nil
+		return 999, nil
 	case *models.Team:
 		return 1, nil
 	}
@@ -63,11 +67,26 @@ func (t *MockTx) Commit() error {
 }
 
 func (t *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, error) {
-	if args[0].(string) == "Test Alert 1" {
-		return mockAlerts["existing_a1"], nil
-	} else {
-		return nil, fmt.Errorf("No alert found")
+	switch args[0].(type) {
+	case string:
+		for _, a := range mockAlerts {
+			if args[0].(string) == a.Name {
+				if query == models.QuerySelectByDevice && a.Status == models.Status_ACTIVE {
+					return a, nil
+				}
+				if query == models.QuerySelectExistingAgg {
+					return a, nil
+				}
+			}
+		}
+	case int64:
+		for _, a := range mockAlerts {
+			if args[0].(int64) == a.Id && query == models.QuerySelectById {
+				return a, nil
+			}
+		}
 	}
+	return nil, fmt.Errorf("No alert found")
 }
 
 func (t *MockTx) InQuery(query string, args ...interface{}) error {
@@ -79,7 +98,9 @@ func (t *MockTx) InQuery(query string, args ...interface{}) error {
 	case 200:
 		alert = mockAlerts["existing_a2"]
 	}
-	alert.LastActive = nowTime
+	if alert != nil {
+		alert.LastActive = nowTime
+	}
 	return nil
 }
 
@@ -157,19 +178,19 @@ func TestHandlerAlertActive(t *testing.T) {
 	ctx := context.Background()
 
 	// test new active alert
-	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
-	h.handleActive(ctx, tx, a2)
-	assert.Equal(t, int(a2.Id), 200)
+	new := tu.MockAlert(0, "New Alert 1", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
+	h.handleActive(ctx, tx, new)
+	assert.Equal(t, int(new.Id), 999)
 	assert.Equal(t, h.teams[0].Name, "t1")
 	assert.Equal(t, h.teams[0].Id, int64(1))
-	l := models.Labels{"suppress": "me", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "alert_name": "Test Alert 2"}
-	assert.Equal(t, a2.Labels, l)
+	l := models.Labels{"suppress": "me", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "alert_name": "New Alert 1"}
+	assert.Equal(t, new.Labels, l)
 	event := <-h.procChan
 	assert.Equal(t, event.Type, models.EventType_ACTIVE)
-	assert.Equal(t, int(event.Alert.Id), 200)
+	assert.Equal(t, int(event.Alert.Id), 999)
 
 	// test new team
-	a3 := tu.MockAlert(0, "Test Alert 6", "", "d6", "e6", "src6", "scp6", "t2", "2", "WARN", []string{"c", "d"}, nil)
+	a3 := tu.MockAlert(0, "New Alert 6", "", "d6", "e6", "src6", "scp6", "t2", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a3)
 	assert.Equal(t, h.teams.Contains("t2"), true)
 
@@ -182,9 +203,26 @@ func TestHandlerAlertActive(t *testing.T) {
 	// test new active alert - suppressed
 	rule := models.NewSuppRule(models.Labels{"device": "d2"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
 	h.Suppressor.SaveRule(ctx, tx, rule)
-	a2 = tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
+	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	a2.ExtendLabels()
 	assert.NotNil(t, h.Suppressor.Match(a2.Labels))
+
+	// test existing active agg
+	new = tu.MockAlert(0, "Test Alert 5", "", "d5", "e5", "src5", "scp5", "t1", "5", "WARN", []string{"g", "h"}, nil)
+	mockAlerts["existing_a5"].Status = models.Status_CLEARED
+	mockAlerts["existing_a5"].AggregatorId = 600
+	h.handleActive(ctx, tx, new)
+	assert.Equal(t, new.Status, models.Status_SUPPRESSED)
+	assert.Equal(t, mockAlerts["existing_a5"].Status, models.Status_ACTIVE)
+	// test existing inactive agg
+	new.Status = models.Status_ACTIVE
+	mockAlerts["existing_a5"].Status = models.Status_CLEARED
+	mockAlerts["existing_a6_agg"].Status = models.Status_CLEARED
+	h.handleActive(ctx, tx, new)
+	assert.Equal(t, int(new.Id), 999)
+	event = <-h.procChan
+	assert.Equal(t, event.Type, models.EventType_ACTIVE)
+	assert.Equal(t, int(event.Alert.Id), 999)
 }
 
 func TestHandlerAlertClear(t *testing.T) {
@@ -278,7 +316,7 @@ func TestHandlerAlertSuppress(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	AddTransform(&mockTransform{name: "mock", priority: 100, register: "Test Alert 2"})
+	AddTransform(&mockTransform{name: "mock", priority: 100, register: "New*"})
 	plugins.AddProcessor(&mockProcessor{})
 	flag.Parse()
 	Config = NewConfigHandler("../testutil/testdata/test_config.yaml")

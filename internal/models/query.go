@@ -8,24 +8,56 @@ import (
 	"time"
 )
 
-const labelQueryTpl = `{{$key := .Field}}{{$length := len .Values }}({{$key}} IN (
+const queryTpl = `
+{{- $paramLen := len .Params }}
+{{- .BaseQ}} WHERE {{ if .TimeRange}}(cast(extract(epoch from now()) as integer) - {{.TimeRange.TrStart}}) < {{.TimeRange.Seconds}}
+{{- if gt $paramLen 0}} AND {{ end }}
+{{- end }}
+{{- range $index, $param := .Params }}
+{{- $f := .Field}}
+{{- if eq $f "tags"}}
+{{- range $i, $e := .Values }}
+{{- if $i }} AND {{ end }}'{{$e}}' = ANY({{$f}}){{- end }}
+{{- else if or (eq $f "device") (eq $f "site") (eq $f "entity") }}
+{{- $key := .Field}}{{$length := len .Values }}({{$key}} IN (
 {{- range $i, $e := .Values }}
 {{- if $i }},{{- end }}'{{.}}'
 {{- end }})
-{{- range .Values }} OR (labels::jsonb)->'{{$key}}' ? '{{.}}'{{- end }})`
-
-const sqlTpl = `{{.Field}} IN (
+{{- range .Values }} OR (labels::jsonb)->'{{$key}}' ? '{{.}}'{{- end }})
+{{- else }}
+{{- .Field }} IN (
 {{- range $i, $e := .Values }}
 {{- if $i }},{{- end }}'{{.}}'
-{{- end }})`
+{{- end }})
+{{- end}}
+{{- if ne ($index) (decr $paramLen) }} AND {{ end }}
+{{- end}}`
 
-const tagTpl = `{{$f := .Field}}
+const updateTpl = `
+{{- $setLen := len .Set }}{{$whereLen := len .Where }}
+{{- .BaseQ}} SET {{ range $index, $set := .Set }}{{.Name}}='{{.Value}}'
+{{- if ne ($index) (decr $setLen)}}, {{ end }}
+{{- end }} WHERE {{ range $index, $param := .Where }}
+{{- $f := .Field}}
+{{- if eq $f "tags"}}
 {{- range $i, $e := .Values }}
-{{- if $i }} AND {{ end }}'{{$e}}' = ANY({{$f}})
-{{- end }}`
+{{- if $i }} AND {{ end }}'{{$e}}' = ANY({{$f}}){{- end }}
+{{- else }}
+{{- .Field }} IN (
+{{- range $i, $e := .Values }}
+{{- if $i }},{{- end }}'{{.}}'
+{{- end }})
+{{- end}}
+{{- if ne ($index) (decr $whereLen) }} AND {{ end }}
+{{- end}}`
 
-func executeQueryTpl(raw string, data Param) (string, error) {
-	tpl, err := template.New("sql").Parse(raw)
+func executeQueryTpl(raw string, data map[string]interface{}) (string, error) {
+	funcMap := template.FuncMap{
+		"decr": func(i int) int {
+			return i - 1
+		},
+	}
+	tpl, err := template.New("sql").Funcs(funcMap).Parse(raw)
 	if err != nil {
 		return "", err
 	}
@@ -43,7 +75,7 @@ type Param struct {
 
 type Querier interface {
 	Run(tx Txn) ([]interface{}, error)
-	toSQL() string
+	toSQL() (string, error)
 }
 
 type Query struct {
@@ -56,68 +88,55 @@ type Query struct {
 }
 
 func NewQuery(table string) Query {
-	return Query{Table: table, TimeRange: "72h"}
+	return Query{Table: table}
 }
 
-func (q Query) toSQL() string {
-	baseQ := fmt.Sprintf("SELECT * FROM %s", q.Table)
-	start := "start_time"
+func (q Query) toSQL() (string, error) {
+	start := "last_active"
 	if q.Table == "suppression_rules" {
 		start = "created_at"
 	}
+	var timeRange interface{}
 	tr, err := time.ParseDuration(q.TimeRange)
 	if err == nil && tr > 0 && q.Table != "teams" && q.Table != "users" {
-		baseQ += fmt.Sprintf(" WHERE (cast(extract(epoch from now()) as integer) - %s) < %d", start, int64(tr.Seconds()))
+		timeRange = struct {
+			TrStart string
+			Seconds int64
+		}{TrStart: start, Seconds: int64(tr.Seconds())}
 	}
-	if len(q.Params) == 0 {
-		return baseQ
-	}
-	query := baseQ + " AND "
-	for i, p := range q.Params {
-		p = sanitizeParam(p)
-		if p.Field == "tags" {
-			if quer, err := executeQueryTpl(tagTpl, p); err == nil {
-				query += quer
-			}
-			if i != len(q.Params)-1 {
-				query = query + " AND "
-			}
-			continue
-		}
-		if p.Field == "device" || p.Field == "entity" || p.Field == "site" {
-			if quer, err := executeQueryTpl(labelQueryTpl, p); err == nil {
-				query += quer
-				if i != len(q.Params)-1 {
-					query = query + " AND "
-				}
-				continue
-			}
-		}
+	var sanitizedParams []Param
+	for _, p := range q.Params {
 		if p.Field == "id" && q.Table == "alerts" {
 			p.Field = "alerts.id"
 		}
-		if quer, err := executeQueryTpl(sqlTpl, p); err == nil {
-			query += quer
-		}
-		if i != len(q.Params)-1 {
-			query = query + " AND "
-		}
+		sanitizedParams = append(sanitizedParams, sanitizeParam(p))
 	}
-	return query
+	data := map[string]interface{}{
+		"BaseQ":     fmt.Sprintf("SELECT * FROM %s", q.Table),
+		"TimeRange": timeRange,
+		"Params":    sanitizedParams,
+	}
+	sql, err := executeQueryTpl(queryTpl, data)
+	if err != nil {
+		return "", fmt.Errorf("Failed to execute query template: %v", err)
+	}
+	return sql, nil
 }
 
 func (q Query) Run(tx Txn) ([]interface{}, error) {
 	var items []interface{}
-	sql := q.toSQL()
+	sql, err := q.toSQL()
+	if err != nil {
+		return items, err
+	}
 	sql += fmt.Sprintf(" ORDER BY %s.id", q.Table)
 	if q.Limit == 0 {
-		q.Limit = 25
+		q.Limit = 50
 	}
 	sql += fmt.Sprintf(" LIMIT %d", q.Limit)
 	if q.Offset > 0 {
 		sql += fmt.Sprintf(" OFFSET %d", q.Offset)
 	}
-	var err error
 	switch q.Table {
 	case "alerts":
 		var alerts Alerts
@@ -168,47 +187,34 @@ func NewUpdateQuery(table string) UpdateQuery {
 	return UpdateQuery{Table: table}
 }
 
-func (u UpdateQuery) toSQL() string {
+func (u UpdateQuery) toSQL() (string, error) {
 	baseQuery := queryUpdateAlerts
 	if u.Table == "suppression_rules" {
 		baseQuery = queryUpdateRules
 	}
-	query := " SET "
-	for i, f := range u.Set {
-		query += fmt.Sprintf("%s='%s'", f.Name, f.Value)
-		if i != len(u.Set)-1 {
-			query = query + ", "
-		}
+	var sanitizedParams []Param
+	for _, p := range u.Where {
+		sanitizedParams = append(sanitizedParams, sanitizeParam(p))
 	}
-	if len(u.Where) == 0 {
-		return baseQuery + query
+	data := map[string]interface{}{
+		"BaseQ": baseQuery,
+		"Set":   u.Set,
+		"Where": sanitizedParams,
 	}
-	query += " WHERE "
-	for i, p := range u.Where {
-		p = sanitizeParam(p)
-		if p.Field == "tags" {
-			if quer, err := executeQueryTpl(tagTpl, p); err == nil {
-				query += quer
-			}
-			if i != len(u.Where)-1 {
-				query = query + " AND "
-			}
-			continue
-		}
-		if quer, err := executeQueryTpl(sqlTpl, p); err == nil {
-			query += quer
-		}
-		if i != len(u.Where)-1 {
-			query = query + " AND "
-		}
+	sql, err := executeQueryTpl(updateTpl, data)
+	if err != nil {
+		return "", err
 	}
-	return baseQuery + query
+	return sql, nil
 }
 
 func (u UpdateQuery) Run(tx Txn) ([]interface{}, error) {
 	var items []interface{} // dummy so that Run can conform to Querier interface
-	sql := u.toSQL()
-	err := tx.Exec(sql)
+	sql, err := u.toSQL()
+	if err != nil {
+		return items, err
+	}
+	err = tx.Exec(sql)
 	if err != nil {
 		return items, err
 	}

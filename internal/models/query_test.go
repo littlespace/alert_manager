@@ -35,7 +35,7 @@ func (tx *MockTx) SelectAlerts(query string, args ...interface{}) (Alerts, error
 	if strings.Contains(query, "OFFSET") {
 		return alerts[5:], nil
 	}
-	if strings.Contains(query, "LIMIT") && !strings.Contains(query, "25") {
+	if strings.Contains(query, "LIMIT") && !strings.Contains(query, "50") {
 		return alerts[:5], nil
 	}
 	return alerts, nil
@@ -49,7 +49,7 @@ func (tx *MockTx) SelectAlertsWithHistory(query string, args ...interface{}) (Al
 	return alerts, nil
 }
 
-const baseQ = "SELECT * FROM alerts WHERE (cast(extract(epoch from now()) as integer) - start_time) < 5"
+const baseQ = "SELECT * FROM alerts WHERE (cast(extract(epoch from now()) as integer) - last_active) < 5"
 
 var testDatas = map[string]Querier{
 	baseQ + " AND alerts.id IN ('1') AND name IN ('foo')": Query{
@@ -140,7 +140,9 @@ var testDatas = map[string]Querier{
 
 func TestQuerySQL(t *testing.T) {
 	for sql, q := range testDatas {
-		assert.Equal(t, sql, q.toSQL())
+		renderedSql, err := q.toSQL()
+		assert.Nil(t, err)
+		assert.Equal(t, sql, renderedSql)
 	}
 }
 
@@ -153,7 +155,9 @@ func TestSelectQueryRun(t *testing.T) {
 			Param{Field: "name", Values: []string{"foo"}},
 		},
 	}
-	assert.Equal(t, q.toSQL(), baseQ+" AND alerts.id IN ('1') AND name IN ('foo')")
+	sql, err := q.toSQL()
+	assert.Nil(t, err)
+	assert.Equal(t, sql, baseQ+" AND alerts.id IN ('1') AND name IN ('foo')")
 	tx := &MockTx{}
 	items, err := q.Run(tx)
 	if err != nil {

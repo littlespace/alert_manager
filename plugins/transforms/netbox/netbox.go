@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
@@ -26,7 +27,6 @@ type Netbox struct {
 	Priority    int
 	Register    string
 	client      Clienter
-	err         error // stores any error encountered while applying the transform
 }
 
 func (n *Netbox) Name() string {
@@ -78,13 +78,7 @@ func (n *Netbox) query(query string) ([]byte, error) {
 	return body, err
 }
 
-func (n *Netbox) apply(alert *models.Alert) {
-
-	defer func() {
-		if r := recover(); r != nil {
-			n.err = fmt.Errorf("PANIC while applying netbox transform: %v", r)
-		}
-	}()
+func (n *Netbox) Apply(alert *models.Alert) error {
 	var l models.Labels
 	scope := alert.Scope
 	if scope == "" {
@@ -92,40 +86,37 @@ func (n *Netbox) apply(alert *models.Alert) {
 			scope = scp.(string)
 		}
 	}
+	var err error
 	switch scope {
 	case "device":
-		l, n.err = DeviceLabels(n, alert)
+		l, err = DeviceLabels(n, alert)
 	case "phy_interface", "agg_interface":
-		l, n.err = InterfaceLabels(n, alert)
+		l, err = InterfaceLabels(n, alert)
 	case "link":
-		l, n.err = CircuitLabels(n, alert)
+		l, err = CircuitLabels(n, alert)
 	case "bgp_peer":
-		l, n.err = BgpLabels(n, alert)
+		l, err = BgpLabels(n, alert)
 	case "dns_monitor":
 		if val, ok := alert.Labels["VipIp"]; ok {
-			deviceName, err := IptoDevice(n, val.(string))
-			if err == nil {
+			deviceName, er := IptoDevice(n, val.(string))
+			if er == nil {
 				alert.AddDevice(deviceName)
 			}
 		}
-		l, n.err = DeviceLabels(n, alert)
+		l, err = DeviceLabels(n, alert)
 
 	default:
-		n.err = fmt.Errorf("Scope %s is not defined in netbox", alert.Scope)
+		glog.V(2).Infof("Not applying transform: Scope %s is not defined in netbox", alert.Scope)
+		return nil
+
 	}
-	if n.err != nil {
-		return
+	if err != nil {
+		return err
 	}
 	for k, v := range l {
 		alert.Labels[k] = v
 	}
-}
-
-func (n *Netbox) Apply(alert *models.Alert) error {
-	n.apply(alert)
-	lastErr := n.err
-	n.err = nil
-	return lastErr
+	return nil
 }
 
 func init() {
