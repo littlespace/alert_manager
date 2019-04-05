@@ -111,11 +111,11 @@ func (e *EmailNotifier) subject(event *models.AlertEvent) string {
 	return subject
 }
 
-func (e *EmailNotifier) start(event *models.AlertEvent) {
+func (e *EmailNotifier) start(event *models.AlertEvent, weburl string) {
 	startTime := event.Alert.StartTime.UTC().Format("Mon Jan 2 15:04:05 MST 2006")
 	data := &TplData{
 		Subject:       e.subject(event),
-		AlertMgrURL:   "http://TODO",
+		AlertMgrURL:   weburl + fmt.Sprintf("/%d", event.Alert.Id),
 		SentAt:        time.Now().Format("Mon Jan 2 15:04:05 MST 2006"),
 		EventType:     event.Type.String(),
 		AlertSeverity: event.Alert.Severity.String(),
@@ -152,11 +152,11 @@ func (e *EmailNotifier) start(event *models.AlertEvent) {
 	}
 }
 
-func (e *EmailNotifier) Start(ctx context.Context) {
+func (e *EmailNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
 		case event := <-e.Notif:
-			e.start(event)
+			e.start(event, opts.WebUrl)
 		case <-ctx.Done():
 			return
 		}

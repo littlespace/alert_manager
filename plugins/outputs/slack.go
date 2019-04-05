@@ -48,7 +48,7 @@ func (n *SlackNotifier) getRecipient(team string) *SlackRecipient {
 	return nil
 }
 
-func (n *SlackNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
+func (n *SlackNotifier) formatBody(event *models.AlertEvent, weburl string) ([]byte, error) {
 	recipient := n.getRecipient(event.Alert.Team)
 	if recipient == nil {
 		return []byte{}, fmt.Errorf("Failed to get recipient for team %s", event.Alert.Team)
@@ -78,12 +78,12 @@ func (n *SlackNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
 	body := map[string]interface{}{
 		"attachments": []map[string]interface{}{
 			{
-				"title": title,
-				// "title_link": http://alert_manager/alert?id=xxx
-				"text":   message,
-				"fields": fields,
-				"footer": fmt.Sprintf("%s via Alert Manager", event.Alert.Source),
-				"ts":     event.Alert.LastActive.Unix(),
+				"title":      title,
+				"title_link": weburl + fmt.Sprintf("/%d", event.Alert.Id),
+				"text":       message,
+				"fields":     fields,
+				"footer":     fmt.Sprintf("%s via Alert Manager", event.Alert.Source),
+				"ts":         event.Alert.LastActive.Unix(),
 			},
 		},
 		"parse": "full", // to linkify urls, users and channels in alert message.
@@ -97,9 +97,9 @@ func (n *SlackNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
 	return json.Marshal(&body)
 }
 
-func (n *SlackNotifier) post(data []byte) {
+func (n *SlackNotifier) post(data []byte, timeout time.Duration) {
 	c := &http.Client{
-		Timeout: 2 * time.Second,
+		Timeout: timeout,
 	}
 	resp, err := c.Post(n.Url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
@@ -118,19 +118,19 @@ func (n *SlackNotifier) post(data []byte) {
 	//n.statPostsSent.Add(1)
 }
 
-func (n *SlackNotifier) Start(ctx context.Context) {
+func (n *SlackNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
 		case event := <-n.Notif:
 			if event.Type == models.EventType_ACKD {
 				break
 			}
-			body, err := n.formatBody(event)
+			body, err := n.formatBody(event, opts.WebUrl)
 			if err != nil {
 				glog.Errorf("Output: Slack: Cant get json body for alert %s: %v", event.Alert.Name, err)
 				break
 			}
-			n.post(body)
+			n.post(body, opts.ClientTimeout)
 		case <-ctx.Done():
 			return
 		}

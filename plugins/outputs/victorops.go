@@ -48,7 +48,7 @@ func (n *VictorOpsNotifier) getRecipient(team string) *VoRecipient {
 	return nil
 }
 
-func (n *VictorOpsNotifier) formatBody(event *models.AlertEvent) ([]byte, error) {
+func (n *VictorOpsNotifier) formatBody(event *models.AlertEvent, weburl string) ([]byte, error) {
 	m := &victorOpsMsg{}
 	switch event.Type {
 	case models.EventType_ACTIVE, models.EventType_ESCALATED:
@@ -63,18 +63,19 @@ func (n *VictorOpsNotifier) formatBody(event *models.AlertEvent) ([]byte, error)
 	if event.Alert.Device.Valid {
 		device = event.Alert.Device.String
 	}
+	stateMsg := fmt.Sprintf("AM Url: %s/%d", weburl, event.Alert.Id) + "\n" + event.Alert.Description
 	m.EntityID = fmt.Sprintf("%s:%s:%s", event.Alert.Name, device, event.Alert.Entity)
 	m.EntityDisplayName = fmt.Sprintf("[%s][%s] %s , Device: %s, Entity: %s",
 		event.Alert.Severity.String(), event.Alert.Status.String(), event.Alert.Name, device, event.Alert.Entity)
-	m.StateMessage = event.Alert.Description
+	m.StateMessage = stateMsg
 	m.StartTime = event.Alert.StartTime.String()
 
 	return json.Marshal(m)
 }
 
-func (n *VictorOpsNotifier) post(data []byte, url string) {
+func (n *VictorOpsNotifier) post(data []byte, url string, timeout time.Duration) {
 	c := &http.Client{
-		Timeout: 2 * time.Second,
+		Timeout: timeout,
 	}
 	resp, err := c.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
@@ -90,7 +91,7 @@ func (n *VictorOpsNotifier) post(data []byte, url string) {
 	}
 }
 
-func (n *VictorOpsNotifier) Start(ctx context.Context) {
+func (n *VictorOpsNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
 		case event := <-n.Notif:
@@ -105,12 +106,12 @@ func (n *VictorOpsNotifier) Start(ctx context.Context) {
 			if event.Type == models.EventType_ACKD && !recp.SendAck {
 				break
 			}
-			body, err := n.formatBody(event)
+			body, err := n.formatBody(event, opts.WebUrl)
 			if err != nil {
 				glog.Errorf("Output: Victorops: Cant get json body for alert: %v", err)
 				break
 			}
-			n.post(body, recp.Url)
+			n.post(body, recp.Url, opts.ClientTimeout)
 		case <-ctx.Done():
 			return
 		}
