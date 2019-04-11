@@ -1,4 +1,5 @@
 import React from 'react';
+import { withRouter } from 'react-router-dom'
 import { withStyles } from "@material-ui/core/styles";
 import classNames from 'classnames';
 
@@ -88,8 +89,8 @@ const alert_mapping = {
 
 class AlertItem extends React.Component {
 
-    constructor(props){
-      super(props);
+    constructor(props, context){
+      super(props, context);
       this.classes = this.props.classes;
       this.state = {}
     }
@@ -139,4 +140,4 @@ class AlertItem extends React.Component {
     }
   }
   
-  export default withStyles(styles)(AlertItem);
+export default withRouter(withStyles(styles)(AlertItem))
