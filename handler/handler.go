@@ -54,10 +54,10 @@ type AlertHandler struct {
 	// db handler
 	Db            models.Dbase
 	Suppressor    *suppressor
+	Teams         models.Teams
 	procChan      chan *models.AlertEvent
 	clearer       *ClearHandler
 	clearHolddown time.Duration
-	teams         models.Teams
 
 	statTransformError stats.Stat
 	statDbError        stats.Stat
@@ -89,7 +89,7 @@ func (h *AlertHandler) loadTeams() error {
 	if err != nil {
 		return fmt.Errorf("Failed to fetch teams from db: %v", err)
 	}
-	h.teams = teams
+	h.Teams = teams
 	return nil
 }
 
@@ -168,7 +168,7 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		return nil
 	}
 	// new alert
-	if !h.teams.Contains(alert.Team) {
+	if !h.Teams.Contains(alert.Team) {
 		// create new team
 		if err := tx.Exec(models.NewPartition(alert.Team)); err != nil {
 			glog.Errorf("Failed to create new team partition: %v", err)
@@ -179,7 +179,7 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 			glog.Errorf("Failed to create new team: %v", err)
 		}
 		team.Id = id
-		h.teams = append(h.teams, team)
+		h.Teams = append(h.Teams, team)
 	}
 	newId, err := tx.NewInsert(models.QueryInsertAlert, alert)
 	if err != nil {
@@ -482,6 +482,9 @@ func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.A
 
 // SetOwner sets the owner when an alert is acknowledged
 func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *models.Alert, name, teamName string) error {
+	if teamName != "" && !h.Teams.Contains(teamName) {
+		return fmt.Errorf("Team %s does not exist", teamName)
+	}
 	alert.SetOwner(name, teamName)
 	if err := tx.UpdateAlert(alert); err != nil {
 		h.statDbError.Add(1)

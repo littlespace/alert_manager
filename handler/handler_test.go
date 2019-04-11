@@ -181,8 +181,8 @@ func TestHandlerAlertActive(t *testing.T) {
 	new := tu.MockAlert(0, "New Alert 1", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, new)
 	assert.Equal(t, int(new.Id), 999)
-	assert.Equal(t, h.teams[0].Name, "t1")
-	assert.Equal(t, h.teams[0].Id, int64(1))
+	assert.Equal(t, h.Teams[0].Name, "t1")
+	assert.Equal(t, h.Teams[0].Id, int64(1))
 	l := models.Labels{"suppress": "me", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "alert_name": "New Alert 1"}
 	assert.Equal(t, new.Labels, l)
 	event := <-h.procChan
@@ -192,7 +192,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	// test new team
 	a3 := tu.MockAlert(0, "New Alert 6", "", "d6", "e6", "src6", "scp6", "t2", "2", "WARN", []string{"c", "d"}, nil)
 	h.handleActive(ctx, tx, a3)
-	assert.Equal(t, h.teams.Contains("t2"), true)
+	assert.Equal(t, h.Teams.Contains("t2"), true)
 
 	// test existing active alert
 	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)

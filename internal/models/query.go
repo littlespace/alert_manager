@@ -92,6 +92,7 @@ func NewQuery(table string) Query {
 }
 
 func (q Query) toSQL() (string, error) {
+	baseQ := fmt.Sprintf("SELECT * FROM %s", q.Table)
 	start := "last_active"
 	if q.Table == "suppression_rules" {
 		start = "created_at"
@@ -104,6 +105,9 @@ func (q Query) toSQL() (string, error) {
 			Seconds int64
 		}{TrStart: start, Seconds: int64(tr.Seconds())}
 	}
+	if len(q.Params) == 0 && (err != nil || tr == 0) {
+		return baseQ, nil
+	}
 	var sanitizedParams []Param
 	for _, p := range q.Params {
 		if p.Field == "id" && q.Table == "alerts" {
@@ -112,7 +116,7 @@ func (q Query) toSQL() (string, error) {
 		sanitizedParams = append(sanitizedParams, sanitizeParam(p))
 	}
 	data := map[string]interface{}{
-		"BaseQ":     fmt.Sprintf("SELECT * FROM %s", q.Table),
+		"BaseQ":     baseQ,
 		"TimeRange": timeRange,
 		"Params":    sanitizedParams,
 	}

@@ -235,7 +235,9 @@ func (a *Alert) Unsuppress() {
 func (a *Alert) SetOwner(name, team string) {
 	glog.V(2).Infof("Setting alert %d owner to %s:%s", a.Id, name, team)
 	a.Owner = sql.NullString{name, true}
-	a.Team = team
+	if team != "" {
+		a.Team = team
+	}
 }
 
 func (a *Alert) SetSeverity(sev AlertSeverity) {
