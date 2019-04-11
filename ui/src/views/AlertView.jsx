@@ -1,7 +1,9 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom'
-import { withStyles } from '@material-ui/core/styles';
+import { withRouter } from 'react-router-dom'
+import { withStyles } from "@material-ui/core/styles";
+
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
@@ -25,6 +27,8 @@ import FormControl from '@material-ui/core/FormControl';
 
 import Grid from '@material-ui/core/Grid';
 
+import AlertItem from '../components/Alerts/AlertItem';
+
 /// -------------------------------------
 /// Icons 
 /// -------------------------------------
@@ -32,7 +36,6 @@ import AlarmOffIcon from '@material-ui/icons/AlarmOff';
 import HourglassFullIcon from '@material-ui/icons/HourglassFull';
 import InfoIcon from '@material-ui/icons/Info';
 import CloseIcon from '@material-ui/icons/Close';
-import LinkIcon from "@material-ui/icons/Link";
 import DescriptionIcon from '@material-ui/icons/Description';
 import StorageIcon from '@material-ui/icons/Storage';
 import BusinessIcon from '@material-ui/icons/Business';
@@ -44,15 +47,9 @@ import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
 import green from '@material-ui/core/colors/green';
 import amber from '@material-ui/core/colors/amber';
 
-import MUIDataTable from "mui-datatables";
-import CustomToolbarSelect from "../components/CustomToolbarSelect";
-
 import Avatar from '@material-ui/core/Avatar';
 
-import { 
-    timeConverter, 
-    secondsToHms 
-} from '../library/utils';
+import HistoryItem from '../components/Alerts/HistoryItem';
 
 
 const styles = theme => ({
@@ -130,12 +127,12 @@ const styles = theme => ({
     alertItemTitle: {
         minWidth: 150,
         maxWidth: 150,
-
      },
     alertItemContent: {
         // width: 200,
         flex: "initial"
     },
+    
     alertElement: {
       height: "45px",
       lineHeight: "45px",
@@ -157,97 +154,32 @@ const styles = theme => ({
     },
     alertDescriptionText: {
       marginTop: "5px"
-    }
-
+    },
+    alertItemTitle: {
+        fontSize: "1rem",
+        lineHeight: 2,
+        letterSpacing: "0.01071em",
+        textAlign: "center",
+        verticalAlign: "middle",
+        top: "50%",
+        border: 1,
+    },
+    AlertsListGrid: {
+        paddingTop: 15
+    },
+    historyItemTitle: {
+        fontSize: "1rem",
+        lineHeight: 2,
+        paddingLeft: 10,
+        letterSpacing: "0.01071em",
+        textAlign: "left",
+        verticalAlign: "middle",
+        top: "50%",
+        border: 1,
+    },
 });
 
 const Auth = new AlertManagerApi()
-
- const alertsColumns = [
-    { name: "Id",           label: "Id",         options: { display: false } },
-    { name: "Severity",     label: "Severity",   options: { 
-        filter: true, 
-        sort: true, 
-        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
-                                                                        disableRipple 
-                                                                        size="small" 
-                                                                        variant="contained">
-                                                                        {value}
-                                                                    </Button> }} },
-    { name: "Status",       label: "Status",     options: { 
-        filter: true, 
-        sort: true,
-        customBodyRender: (value, tableMeta, updateValue) => { return <Button 
-                                                                        disableRipple 
-                                                                        size="small" 
-                                                                        variant="contained">
-                                                                        {value}
-                                                                    </Button> }} },
-    { name: "Site",         label: "Site",       options: { filter: true, sort: true } },
-    { name: "Device",       label: "Device",     options: { filter: true, sort: true } },
-    { name: "Entity",       label: "Entity",     options: { filter: true, sort: true } },
-
-     { name: "Name",         label: "Name",       options: { filter: true, sort: false } },
-    { name: "Source",       label: "Source",     options: { filter: true, sort: false } },
-    // { name: "Scope",        label: "Scope",      options: { filter: true, sort: false } },
-    { name: "Start Time",   label: "start_time", options: { 
-                                filter: false, 
-                                sort: true,
-                                customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
-    // { name: "Last Update",  label: "last_active", options: {
-    //                             filter: false, 
-    //                             sort: true,
-    //                             customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} },
-    { name: "Link",         label: "Id",      options: { 
-                                filter: true, 
-                                sort: false,
-                                customBodyRender: (value, tableMeta, updateValue) => { return <Link to={`/alert/${value}`}>
-                                                                                            <IconButton>
-                                                                                                <LinkIcon />
-                                                                                            </IconButton>
-                                                                                             </Link> }} },
-];
-
- const alertsOptions = {
-    filter: true,
-    selectableRows: false,
-    viewColumns: false,
-    filterType: "dropdown",
-    responsive: "stacked",
-    rowsPerPage: 50,
-    print: false,
-    download: false,
-    customToolbarSelect: selectedRows => (
-        <CustomToolbarSelect selectedRows={selectedRows} />
-      )
-  };
-
- const historyColumns = [
-    { name: "Time",         label: "Timestamp",     options: { 
-                                                        filter: false, 
-                                                        sort: false,
-                                customBodyRender: (value, tableMeta, updateValue) => { return timeConverter(value) }} },
-
-     { name: "Change",       label: "Event",         options: { filter: false, sort: false } },
-    { name: "",             label: "Timestamp",     options: { 
-                                                        filter: false, 
-                                                        sort: true,
-                                customBodyRender: (value, tableMeta, updateValue) => { return secondsToHms(value) }} }
-];
-
- const historyOptions = {
-    filter: false,
-    selectableRows: false,
-    viewColumns: false,
-    filterType: "dropdown",
-    responsive: "stacked",
-    rowsPerPage: 20,
-    print: false,
-    download: false,
-    customToolbarSelect: selectedRows => (
-        <CustomToolbarSelect selectedRows={selectedRows} />
-      )
-  };
 
 const Text =  ({content}) => {
     return (
@@ -255,38 +187,10 @@ const Text =  ({content}) => {
     );
 };
 
-function convertAlertsToTable(data) {
-
-    let alerts = []
-
-    for( let i in data ) {
-        let alert = []
-        for( let y in alertsColumns ) {
-            alert.push(data[i][alertsColumns[y].label])   
-        }
-        alerts.push(alert)
-    }
-    return alerts
-} 
-
-function convertHistoryToTable(data) {
-
-     let historyItems = []
-
-     for( let i in data ) {
-        let historyItem = []
-        for( let y in historyColumns ) {
-            historyItem.push(data[i][historyColumns[y].label])   
-        }
-        historyItems.push(historyItem)
-    }
-    return historyItems
-}
-
 class AlertView extends React.Component {
 
-    constructor(props){
-        super(props);
+    constructor(props, context){
+        super(props, context);
         this.classes = this.props.classes;
         this.api = new AlertManagerApi();
         this.id = this.props.match.params.id
@@ -305,13 +209,6 @@ class AlertView extends React.Component {
         this.updateAlert = this.updateAlert.bind(this);
     }
 
-    // updateStatus = () => event => {
-    //     this.setState({ status: event.target.value });
-    //     this.updateStatusColor()
-    //     this.api.updateAlertStatus({id: this.id, status: event.target.value })
-    //     this.showSuccessMessage()
-    // };
-
     updateSeverity = () => event => {
         this.setState({ severity: event.target.value });
         this.api.updateAlertSeverity({id: this.id, severity: event.target.value })
@@ -326,8 +223,6 @@ class AlertView extends React.Component {
 
     handleSuppressTimeDialogOpen() {
         this.setState({ suppress_time_dialog_open: true });
-        // this.api.alertSuppress({id: this.id, duration: "2h" })
-        // this.showSuccessMessage()
     };
 
     handleSuppressTimeDialogClose() {
@@ -399,7 +294,6 @@ class AlertView extends React.Component {
         const data = this.state.data;
         const description = ("Description" in this.state.data) ? this.state.data.Description.replace(/\n/g, "<br/>") : "";
         const { related_alerts } = this.state;
-
 
         return (
             <div> 
@@ -599,68 +493,52 @@ class AlertView extends React.Component {
                     ></Text>
                   </Grid>
                 </Grid>
-                
-                    {/* <List> */}
-  
-                        {/* <ListItem className={this.classes.alertItem}>
-                            <Avatar>
-                                <DescriptionIcon />
-                            </Avatar>
-                            <ListItemText primary="Source:" className={this.classes.alertItemTitle}/>
-                            <ListItemText primary={data.Source} className={this.classes.alertItemContent}/>
-                        </ListItem> */}
-                        {/* <ListItem className={this.classes.alertItem}>
-                            <Avatar>
-                                <DescriptionIcon />
-                            </Avatar>
-                            <ListItemText primary="Description:" className={this.classes.alertItemTitle}/>
-                            <ListItemText primary={data.Description} className={this.classes.alertItemContent}/>
-                        </ListItem> */}
-                        {/* <ListItem  className={this.classes.alertItem}>
-                            <Avatar>
-                                <BusinessIcon />
-                            </Avatar>
-                            <ListItemText primary="Site:" className={this.classes.alertItemTitle}/>
-                            <ListItemText primary={data.Site} className={this.classes.alertItemContent}/>
-                        </ListItem>
-                        <ListItem  className={this.classes.alertItem}>
-                            <Avatar>
-                                <StorageIcon />
-                            </Avatar>
-                            <ListItemText primary="Device:" className={this.classes.alertItemTitle}/>
-                            <ListItemText primary={data.Device} className={this.classes.alertItemContent}/>
-                        </ListItem> */}
-                        {/* <ListItem  className={this.classes.alertItem}>
-                            <Avatar>
-                                <AlbumIcon />
-                            </Avatar>
-                            <ListItemText primary="Entity:" className={this.classes.alertItemTitle}/>
-                            <ListItemText primary={data.Entity} className={this.classes.alertItemContent}/>
-                        </ListItem> */}
-                    {/* </List> */}
                 </CardContent>
             </Card>
-            <Typography className={this.classes.title} variant="h5">Contributing Alerts</Typography>
-            <Paper className={this.classes.paper} >
-                <MUIDataTable
-                        data={convertAlertsToTable(related_alerts)}
-                        columns={alertsColumns}
-                        options={alertsOptions}
-                    />
-            </Paper>
             <br/>
             <Typography className={this.classes.title} variant="h5">Change History</Typography>
             <Paper className={this.classes.paper} >
-                <MUIDataTable
-
-                        data={convertHistoryToTable(data.History)}
-                        columns={historyColumns}
-                        options={historyOptions}
-                    />
+                    <Grid container className={this.classes.AlertsListGrid}>
+                    <Grid container item 
+                            xs={12}
+                            className={this.classes.historyItemTitle}>
+                            <Grid item xs={12} sm={2}>Time</Grid>
+                            <Grid item xs={12} sm={8}>Change</Grid>
+                            <Grid item xs={12} sm={2}></Grid>
+                        </Grid>
+                        { (data.History) ? data.History.map((n, index) => {
+                            return (
+                                <HistoryItem key={index} data={n} />
+                            );
+                        }) : ""}
+                </Grid>
             </Paper>
+            <br/>
+            {(data.is_aggregate) ? (<div>
+            <Typography className={this.classes.title} variant="h5">Contributing Alerts</Typography>
+            <Paper className={this.classes.paper} >
+                <Grid container className={this.classes.AlertsListGrid}>
+                    <Grid container item 
+                            xs={12}
+                            className={this.classes.alertItemTitle}>
+                            <Grid item xs={12} sm={1}>Status</Grid>
+                            <Grid item xs={12} sm={3} md={4}>Name</Grid>
+                            <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
+                            <Grid item xs={12} sm={1}>Scope</Grid>
+                            <Grid item xs={12} sm={3} md={2}>Source</Grid>
+                            <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
+                        </Grid>
+                        { (related_alerts) ? (related_alerts.map(n => {
+                            return (
+                                <AlertItem key={n.Id} data={n} />
+                            );
+                        })) : ""}
+                </Grid>
+            </Paper>
+            </div>) : ""} 
             </div>
         );
     }
 }
 
-export default withStyles(styles)(AlertView);
+export default withRouter(withStyles(styles)(AlertView));

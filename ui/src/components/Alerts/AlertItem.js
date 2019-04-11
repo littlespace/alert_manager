@@ -133,7 +133,6 @@ class AlertItem extends React.Component {
                     <Grid item xs={12} className={this.classes.alertItemTimeItem}>Start: {timeConverter(this.props.data.start_time)}</Grid>
                     <Grid item xs={12} className={this.classes.alertItemTimeItem}>Last Active: {secondsToHms(this.props.data.last_active)}</Grid>
                 </Grid>
-                
             </Grid>
         
       );
