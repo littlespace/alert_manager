@@ -49,10 +49,13 @@ func (tx *MockTx) SelectAlertsWithHistory(query string, args ...interface{}) (Al
 	return alerts, nil
 }
 
-const baseQ = "SELECT * FROM alerts WHERE (cast(extract(epoch from now()) as integer) - last_active) < 5"
+const baseQ = "SELECT * FROM alerts"
 
 var testDatas = map[string]Querier{
-	baseQ + " AND alerts.id IN ('1') AND name IN ('foo')": Query{
+	baseQ: Query{
+		Table: "alerts",
+	},
+	baseQ + " WHERE (cast(extract(epoch from now()) as integer) - last_active) < 5 AND alerts.id IN ('1') AND name IN ('foo')": Query{
 		Table:     "alerts",
 		TimeRange: "5s",
 		Params: []Param{
@@ -60,48 +63,42 @@ var testDatas = map[string]Querier{
 			Param{Field: "name", Values: []string{"foo"}},
 		},
 	},
-	baseQ + " AND alerts.id IN ('1','2') AND status IN ('1')": Query{
-		Table:     "alerts",
-		TimeRange: "5s",
+	baseQ + " WHERE alerts.id IN ('1','2') AND status IN ('1')": Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "status", Values: []string{"ACTIVE"}},
 		},
 	},
-	baseQ + " AND alerts.id IN ('1','2') AND name IN ('foo','bar')": Query{
-		Table:     "alerts",
-		TimeRange: "5s",
+	baseQ + " WHERE alerts.id IN ('1','2') AND name IN ('foo','bar')": Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "name", Values: []string{"foo", "bar"}},
 		},
 	},
-	baseQ + " AND alerts.id IN ('1') AND 'foo' = ANY(tags)": Query{
-		Table:     "alerts",
-		TimeRange: "5s",
+	baseQ + " WHERE alerts.id IN ('1') AND 'foo' = ANY(tags)": Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "tags", Values: []string{"foo"}},
 		},
 	},
-	baseQ + " AND alerts.id IN ('1','2') AND 'foo' = ANY(tags) AND 'bar' = ANY(tags)": Query{
-		Table:     "alerts",
-		TimeRange: "5s",
+	baseQ + " WHERE alerts.id IN ('1','2') AND 'foo' = ANY(tags) AND 'bar' = ANY(tags)": Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "tags", Values: []string{"foo", "bar"}},
 		},
 	},
-	baseQ + " AND (device IN ('d1','d2') OR (labels::jsonb)->'device' ? 'd1' OR (labels::jsonb)->'device' ? 'd2')": Query{
-		Table:     "alerts",
-		TimeRange: "5s",
+	baseQ + " WHERE (device IN ('d1','d2') OR (labels::jsonb)->'device' ? 'd1' OR (labels::jsonb)->'device' ? 'd2')": Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "device", Values: []string{"d1", "d2"}},
 		},
 	},
-	baseQ + " AND (device IN ('d1') OR (labels::jsonb)->'device' ? 'd1') AND status IN ('1','2')": Query{
-		Table:     "alerts",
-		TimeRange: "5s",
+	baseQ + " WHERE (device IN ('d1') OR (labels::jsonb)->'device' ? 'd1') AND status IN ('1','2')": Query{
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "device", Values: []string{"d1"}},
 			Param{Field: "status", Values: []string{"ACTIVE", "SUPPRESSED"}},
@@ -148,8 +145,7 @@ func TestQuerySQL(t *testing.T) {
 
 func TestSelectQueryRun(t *testing.T) {
 	q := Query{
-		Table:     "alerts",
-		TimeRange: "5s",
+		Table: "alerts",
 		Params: []Param{
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "name", Values: []string{"foo"}},
@@ -157,7 +153,7 @@ func TestSelectQueryRun(t *testing.T) {
 	}
 	sql, err := q.toSQL()
 	assert.Nil(t, err)
-	assert.Equal(t, sql, baseQ+" AND alerts.id IN ('1') AND name IN ('foo')")
+	assert.Equal(t, sql, baseQ+" WHERE alerts.id IN ('1') AND name IN ('foo')")
 	tx := &MockTx{}
 	items, err := q.Run(tx)
 	if err != nil {

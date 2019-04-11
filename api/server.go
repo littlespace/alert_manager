@@ -373,12 +373,16 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 			er = s.handler.Clear(ctx, tx, alert)
 		case "ack":
 			owner, ok := queries["owner"]
-			team, ok := queries["team"]
 			if !ok {
-				http.Error(w, "Invalid query: expected owner and team", http.StatusBadRequest)
-				return fmt.Errorf("Invalid query: expected owner and team")
+				http.Error(w, "Invalid query: expected non empty owner", http.StatusBadRequest)
+				return fmt.Errorf("Invalid query: expected non empty owner")
 			}
-			er = s.handler.SetOwner(ctx, tx, alert, owner[0], team[0])
+			team := ""
+			teams, ok := queries["team"]
+			if ok {
+				team = teams[0]
+			}
+			er = s.handler.SetOwner(ctx, tx, alert, owner[0], team)
 		}
 		if er != nil {
 			glog.Errorf("Api: Unable to Action alerts: %v", er)

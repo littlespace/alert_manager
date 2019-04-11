@@ -125,6 +125,7 @@ func NewMockServer() *Server {
 		handler: &ah.AlertHandler{
 			Db:         d,
 			Suppressor: ah.GetSuppressor(d),
+			Teams:      models.Teams{&models.Team{Name: "bar"}},
 		},
 		authProvider:      &MockAuthProvider{},
 		statGets:          &tu.MockStat{},
