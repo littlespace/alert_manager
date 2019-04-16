@@ -131,7 +131,7 @@ func (p *Publisher) toIncident(event *models.AlertEvent) *Incident {
 	return incident
 }
 
-func (p *Publisher) Start(ctx context.Context) {
+func (p *Publisher) Start(ctx context.Context, options *plugins.Options) {
 	if err := p.Setup(); err != nil {
 		glog.Errorf("Failed to start amqp publisher: %v", err)
 	}
@@ -150,7 +150,7 @@ func (p *Publisher) Start(ctx context.Context) {
 			}
 			//TODO dont publish repeat notifications
 			if err := p.Publish(p.toIncident(event)); err != nil {
-				glog.Errorf("RabbitMq: Failed to publish incident: %v", err)
+				glog.Errorf("Amqp: Failed to publish incident: %v", err)
 			}
 		case <-ctx.Done():
 			return
