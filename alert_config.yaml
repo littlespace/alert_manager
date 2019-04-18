@@ -1,20 +1,18 @@
 # output config defines default output channels
 output_config:
   defaults:
-    - severity: INFO
+    - matches:
+        severity: WARN
       send_to: [ slack ]
-    - severity: WARN
-      send_to: [ slack ]
-    - severity: CRITICAL
-      send_to: [ slack ]
+    - matches:
+        severity: CRITICAL
+      send_to: [ victorops ]
 
 # static map of users to teams. Required for enabling team-view support
 team_config:
   users:
-    - name: user1
-      team: neteng
-    - name: user2
-      team: team2
+    user1: team1
+    user2: team2
 
 # alert_config defines non default config for expected alerts coming in. An alert
 # does not need to be defined here for it to be accepted by alert manager. Such an
@@ -42,10 +40,14 @@ alert_config:
       notify_on_clear: true
       # set of per-severity outputs to send the alert notification to
       outputs:
-        - severity: WARN
-          send_to: [ slack, email ]
-        - severity: CRITICAL
-          send_to: [ victorops ]
+        - matches:
+            severity: WARN
+            label1: value1
+          send_to: [ slack.slack1, email.email1 ]
+        - matches:
+            severity: CRITICAL
+            label2: value2
+          send_to: [ victorops.victorops1 ]
       # esc rules define how long an alert can remain unactioned(or unacknowledged)
       # before the severity gets bumped up. For e.g this can ultimately page the oncall
       escalation_rules:

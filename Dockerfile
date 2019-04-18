@@ -1,11 +1,17 @@
 FROM golang:alpine as builder
+
+ENV GO111MODULE=on
+
 RUN apk update && \
     apk upgrade && \
     apk add --no-cache make git alpine-sdk
-
 RUN mkdir -p /go/src/github.com/mayuresh82/alert_manager
+
 COPY . /go/src/github.com/mayuresh82/alert_manager
+
 WORKDIR /go/src/github.com/mayuresh82/alert_manager
+
+RUN go mod download
 RUN make
 
 FROM alpine:latest

@@ -2,6 +2,7 @@ package groupers
 
 import (
 	"fmt"
+
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
@@ -13,17 +14,17 @@ type fibercutGrouper struct {
 func (g fibercutGrouper) GrouperFunc() GroupingFunc {
 	return func(i, j *models.Alert) bool {
 		var match bool
-		if i.Labels["Provider"] != nil && j.Labels["Provider"] != nil {
-			match = match || i.Labels["Provider"] == j.Labels["Provider"]
+		if i.Labels["provider"] != nil && j.Labels["provider"] != nil {
+			match = match || i.Labels["provider"] == j.Labels["provider"]
 		}
-		if i.Labels["CktId"] != nil && j.Labels["CktId"] != nil {
-			match = match || i.Labels["CktId"] == j.Labels["CktId"]
+		if i.Labels["cktId"] != nil && j.Labels["cktId"] != nil {
+			match = match || i.Labels["cktId"] == j.Labels["cktId"]
 		}
 		return (match ||
 			// 2 ends of same circuit
-			(i.Labels["ASideDeviceName"] == j.Labels["ZSideDeviceName"] && i.Labels["ASideInterface"] == j.Labels["ZSideInterface"]) ||
+			(i.Labels["aSideDeviceName"] == j.Labels["zSideDeviceName"] && i.Labels["aSideInterface"] == j.Labels["zSideInterface"]) ||
 			// phy member of lag
-			(i.Labels["ASideDeviceName"] == j.Labels["ASideDeviceName"] && (i.Labels["ASideInterface"] == j.Labels["ASideAgg"] || i.Labels["ASideAgg"] == j.Labels["ASideInterface"])))
+			(i.Labels["aSideDeviceName"] == j.Labels["aSideDeviceName"] && (i.Labels["aSideInterface"] == j.Labels["aSideAgg"] || i.Labels["aSideAgg"] == j.Labels["aSideInterface"])))
 
 	}
 }
@@ -37,7 +38,7 @@ func (g *fibercutGrouper) AggDesc(alerts []*models.Alert) string {
 	for _, a := range alerts {
 		msg += fmt.Sprintf(
 			"%s:%s, Provider: %s, CktId: %s\n",
-			a.Device.String, a.Entity, a.Labels["Provider"].(string), a.Labels["CktId"].(string),
+			a.Device.String, a.Entity, a.Labels["provider"].(string), a.Labels["cktId"].(string),
 		)
 	}
 	return msg
@@ -46,7 +47,7 @@ func (g *fibercutGrouper) AggDesc(alerts []*models.Alert) string {
 func (g *fibercutGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	for _, alert := range alerts {
-		if len(alert.Labels) == 0 || alert.Labels["LabelType"] == nil || alert.Status != models.Status_ACTIVE {
+		if len(alert.Labels) == 0 || alert.Labels["labelType"] == nil || alert.Status != models.Status_ACTIVE {
 			continue
 		}
 		valid = append(valid, alert)

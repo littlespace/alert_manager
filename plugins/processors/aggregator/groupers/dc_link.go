@@ -2,6 +2,7 @@ package groupers
 
 import (
 	"fmt"
+
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
@@ -14,25 +15,25 @@ type dcCktGrouper struct {
 // Currently, it considers a/z endpoints as well as bgp peers
 func (g dcCktGrouper) GrouperFunc() GroupingFunc {
 	return func(i, j *models.Alert) bool {
-		switch i.Labels["LabelType"].(string) {
+		switch i.Labels["labelType"].(string) {
 		case "Circuit":
-			switch j.Labels["LabelType"].(string) {
+			switch j.Labels["labelType"].(string) {
 			case "Circuit":
-				return i.Labels["ASideDeviceName"] == j.Labels["ZSideDeviceName"] && j.Labels["ASideDeviceName"] == i.Labels["ZSideDeviceName"]
+				return i.Labels["aSideDeviceName"] == j.Labels["zSideDeviceName"] && j.Labels["aSideDeviceName"] == i.Labels["zSideDeviceName"]
 
 			case "Bgp":
-				m := (j.Labels["LocalInterface"] == i.Labels["ASideInterface"] && j.Labels["LocalDeviceName"] == i.Labels["ASideDeviceName"]) && (j.Labels["RemoteInterface"] == i.Labels["ZSideInterface"] && j.Labels["RemoteDeviceName"] == i.Labels["ZSideDeviceName"])
-				n := (j.Labels["LocalInterface"] == i.Labels["ZSideInterface"] && j.Labels["LocalDeviceName"] == i.Labels["ZSideDeviceName"]) && (j.Labels["RemoteInterface"] == i.Labels["ASideInterface"] && j.Labels["RemoteDeviceName"] == i.Labels["ASideDeviceName"])
+				m := (j.Labels["localInterface"] == i.Labels["aSideInterface"] && j.Labels["localDeviceName"] == i.Labels["aSideDeviceName"]) && (j.Labels["remoteInterface"] == i.Labels["zSideInterface"] && j.Labels["remoteDeviceName"] == i.Labels["zSideDeviceName"])
+				n := (j.Labels["localInterface"] == i.Labels["zSideInterface"] && j.Labels["localDeviceName"] == i.Labels["zSideDeviceName"]) && (j.Labels["remoteInterface"] == i.Labels["aSideInterface"] && j.Labels["remoteDeviceName"] == i.Labels["aSideDeviceName"])
 				return m || n
 			}
 		case "Bgp":
-			switch j.Labels["LabelType"].(string) {
+			switch j.Labels["labelType"].(string) {
 			case "Circuit":
-				m := (i.Labels["LocalInterface"] == j.Labels["ASideInterface"] && i.Labels["LocalDeviceName"] == j.Labels["ASideDeviceName"]) && (i.Labels["RemoteInterface"] == j.Labels["ZSideInterface"] && i.Labels["RemoteDeviceName"] == j.Labels["ZSideDeviceName"])
-				n := (i.Labels["LocalInterface"] == j.Labels["ZSideInterface"] && i.Labels["LocalDeviceName"] == j.Labels["ZSideDeviceName"]) && (i.Labels["RemoteInterface"] == j.Labels["ASideInterface"] && i.Labels["RemoteDeviceName"] == j.Labels["ASideDeviceName"])
+				m := (i.Labels["localInterface"] == j.Labels["aSideInterface"] && i.Labels["localDeviceName"] == j.Labels["aSideDeviceName"]) && (i.Labels["remoteInterface"] == j.Labels["zSideInterface"] && i.Labels["remoteDeviceName"] == j.Labels["zSideDeviceName"])
+				n := (i.Labels["localInterface"] == j.Labels["zSideInterface"] && i.Labels["localDeviceName"] == j.Labels["zSideDeviceName"]) && (i.Labels["remoteInterface"] == j.Labels["aSideInterface"] && i.Labels["remoteDeviceName"] == j.Labels["aSideDeviceName"])
 				return m || n
 			case "Bgp":
-				return (i.Labels["LocalDeviceName"] == j.Labels["RemoteDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["LocalDeviceName"]) || (i.Labels["LocalDeviceName"] == j.Labels["LocalDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["RemoteDeviceName"])
+				return (i.Labels["localDeviceName"] == j.Labels["remoteDeviceName"] && i.Labels["remoteDeviceName"] == j.Labels["LocalDeviceName"]) || (i.Labels["localDeviceName"] == j.Labels["localDeviceName"] && i.Labels["remoteDeviceName"] == j.Labels["remoteDeviceName"])
 			}
 		}
 		return false
@@ -60,10 +61,10 @@ func (g *dcCktGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	allBgp := true
 	for _, alert := range alerts {
-		if len(alert.Labels) == 0 || alert.Labels["LabelType"] == nil || alert.Status != models.Status_ACTIVE {
+		if len(alert.Labels) == 0 || alert.Labels["labelType"] == nil || alert.Status != models.Status_ACTIVE {
 			continue
 		}
-		allBgp = allBgp && alert.Labels["LabelType"].(string) == "Bgp"
+		allBgp = allBgp && alert.Labels["labelType"].(string) == "Bgp"
 		valid = append(valid, alert)
 	}
 	if allBgp {

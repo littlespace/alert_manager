@@ -3,14 +3,15 @@ package aggregator
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"time"
+
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
 	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/mayuresh82/alert_manager/plugins/processors/aggregator/groupers"
-	"regexp"
-	"time"
 )
 
 const EXPIRY_CHECK_INTERVAL = 2 * time.Minute
@@ -135,12 +136,11 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out c
 			return err
 		}
 		agg.Id = id
+		agg.ExtendLabels()
 		a.statAggsActive.Add(1)
 		event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: agg}
 		out <- event
-		if influxOut, ok := ah.GetOutput("influx"); ok {
-			influxOut <- event
-		}
+		plugins.Send("influx", event)
 		return nil
 	})
 }

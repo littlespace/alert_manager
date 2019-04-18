@@ -63,7 +63,7 @@ func (p *Ns1Parser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		Labels:  make(models.Labels),
 	}
 
-	l.Labels["VipIp"] = d.Job.Config.Host
+	l.Labels["vipIp"] = d.Job.Config.Host
 
 	if strings.ToLower(d.State) == "up" {
 		l.Status = listener.Status_CLEARED

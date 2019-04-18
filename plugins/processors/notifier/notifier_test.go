@@ -1,14 +1,17 @@
 package notifier
 
 import (
+	"context"
 	"flag"
-	ah "github.com/mayuresh82/alert_manager/handler"
-	"github.com/mayuresh82/alert_manager/internal/models"
-	tu "github.com/mayuresh82/alert_manager/testutil"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 	"time"
+
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/plugins"
+	tu "github.com/mayuresh82/alert_manager/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 type MockDb struct{}
@@ -37,13 +40,20 @@ func (t *MockTx) NewRecord(alertId int64, event string) (int64, error) {
 	return 1, nil
 }
 
+type MockOutput struct{}
+
+func (m *MockOutput) Name() string { return "slack" }
+
+func (m *MockOutput) Start(ctx context.Context, opts *plugins.Options) {}
+
 func TestNotify(t *testing.T) {
 	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{}, nil)
+	mockAlert.ExtendLabels()
 	event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: mockAlert}
 	db := &MockDb{}
 	notif := &Notifier{notifiedAlerts: make(map[int64]*notification), db: db}
-	notifyChan := make(chan *models.AlertEvent, 2)
-	ah.RegisterOutput("slack", notifyChan)
+	notifyChan := make(chan *plugins.SendRequest, 3)
+	plugins.AddOutput(&MockOutput{}, notifyChan)
 
 	// test notify delay
 	notif.Notify(event)
@@ -52,9 +62,10 @@ func TestNotify(t *testing.T) {
 	// test first notification
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
 	notif.Notify(event)
-	recvd := <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_ACTIVE)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req := <-notifyChan
+	assert.Equal(t, req.Name, "default")
+	assert.Equal(t, req.Event.Type, models.EventType_ACTIVE)
+	assert.Equal(t, req.Event.Alert, mockAlert)
 	lastNotified := notif.notifiedAlerts[1].lastNotified
 
 	// test second notification
@@ -63,34 +74,37 @@ func TestNotify(t *testing.T) {
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)
 
 	// test escalated
-	event.Type = models.EventType_ESCALATED
+	mockAlert.Severity = models.Sev_CRITICAL
+	mockAlert.ExtendLabels()
+	event = &models.AlertEvent{Type: models.EventType_ESCALATED, Alert: mockAlert}
 	notif.Notify(event)
-	recvd = <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_ESCALATED)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req = <-notifyChan
+	assert.Equal(t, req.Name, "test1")
+	assert.Equal(t, req.Event.Type, models.EventType_ESCALATED)
 
 	// test clear notify
 	event = &models.AlertEvent{Type: models.EventType_CLEARED, Alert: mockAlert}
 	notif.Notify(event)
-	recvd = <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_CLEARED)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req = <-notifyChan
+	assert.Equal(t, req.Event.Type, models.EventType_CLEARED)
+	assert.Equal(t, req.Event.Alert, mockAlert)
 }
 
 func TestNotifyReminder(t *testing.T) {
 	mockAlert := tu.MockAlert(1, "Test Alert 5", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{}, nil)
+	mockAlert.ExtendLabels()
 	event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: mockAlert}
 	db := &MockDb{}
 	notif := &Notifier{notifiedAlerts: make(map[int64]*notification), db: db}
-	notifyChan := make(chan *models.AlertEvent, 1)
-	ah.RegisterOutput("slack", notifyChan)
+	notifyChan := make(chan *plugins.SendRequest, 5)
+	plugins.AddOutput(&MockOutput{}, notifyChan)
 
 	// first notif
 	mockAlert.LastActive.Time = mockAlert.LastActive.Add(10 * time.Minute)
 	notif.Notify(event)
-	recvd := <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_ACTIVE)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req := <-notifyChan
+	assert.Equal(t, req.Event.Type, models.EventType_ACTIVE)
+	assert.Equal(t, req.Event.Alert, mockAlert)
 	lastNotified := notif.notifiedAlerts[1].lastNotified
 
 	// not remind
@@ -106,22 +120,25 @@ func TestNotifyReminder(t *testing.T) {
 	// remind
 	notif.notifiedAlerts[mockAlert.Id].lastNotified = time.Now().Add(-20 * time.Minute)
 	notif.remind()
-	recvd = <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_ACTIVE)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req = <-notifyChan
+	assert.Equal(t, req.Name, "default")
+	assert.Equal(t, req.Event.Type, models.EventType_ACTIVE)
+	assert.Equal(t, req.Event.Alert, mockAlert)
 
 	// escalate and remind
 	mockAlert.Severity = models.Sev_CRITICAL
+	mockAlert.ExtendLabels()
 	event = &models.AlertEvent{Type: models.EventType_ESCALATED, Alert: mockAlert}
 	notif.Notify(event)
-	recvd = <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_ESCALATED)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req = <-notifyChan
+	assert.Equal(t, req.Name, "test1")
+	assert.Equal(t, req.Event.Type, models.EventType_ESCALATED)
+	assert.Equal(t, req.Event.Alert, mockAlert)
 	notif.notifiedAlerts[mockAlert.Id].lastNotified = time.Now().Add(-20 * time.Minute)
 	notif.remind()
-	recvd = <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_ESCALATED)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req = <-notifyChan
+	assert.Equal(t, req.Event.Type, models.EventType_ESCALATED)
+	assert.Equal(t, req.Event.Alert, mockAlert)
 	lastNotified = notif.notifiedAlerts[1].lastNotified
 
 	// alert suppressed - no remind
@@ -135,9 +152,9 @@ func TestNotifyReminder(t *testing.T) {
 	mockAlert.Status = models.Status_EXPIRED
 	event = &models.AlertEvent{Type: models.EventType_EXPIRED, Alert: mockAlert}
 	notif.Notify(event)
-	recvd = <-notifyChan
-	assert.Equal(t, recvd.Type, models.EventType_EXPIRED)
-	assert.Equal(t, recvd.Alert, mockAlert)
+	req = <-notifyChan
+	assert.Equal(t, req.Event.Type, models.EventType_EXPIRED)
+	assert.Equal(t, req.Event.Alert, mockAlert)
 
 	assert.Equal(t, len(notif.notifiedAlerts), 0)
 	notif.remind()

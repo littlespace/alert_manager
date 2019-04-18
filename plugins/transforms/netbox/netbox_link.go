@@ -2,8 +2,9 @@ package netbox
 
 import (
 	"fmt"
-	"github.com/mayuresh82/alert_manager/internal/models"
 	"net"
+
+	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
 const queryURL = "/api/rblx/device/dm/v1/"
@@ -32,29 +33,29 @@ func ifaceLabels(ifaceData map[string]interface{}) (models.Labels, error) {
 		return nil, fmt.Errorf("Link is not connected or inactive")
 	}
 	labels := make(models.Labels)
-	labels["Description"] = ifaceData["rblx_description"]
+	labels["description"] = ifaceData["rblx_description"]
 	if ifaceData["is_lag"].(bool) {
-		labels["Type"] = "agg"
+		labels["type"] = "agg"
 	} else {
-		labels["Type"] = "phy"
+		labels["type"] = "phy"
 		if ifaceData["lag"] != nil {
 			lag := ifaceData["lag"].(map[string]interface{})
-			labels["Agg"] = lag["name"]
+			labels["agg"] = lag["name"]
 		}
 	}
-	labels["PeerDevice"] = ifaceData["peer_name"]
-	labels["PeerIntf"] = ifaceData["peer_int"]
-	if labels["PeerDevice"] == nil || labels["PeerIntf"] == nil {
-		labels["Role"] = "peering"
+	labels["peerDevice"] = ifaceData["peer_name"]
+	labels["peerIntf"] = ifaceData["peer_int"]
+	if labels["peerDevice"] == nil || labels["peerIntf"] == nil {
+		labels["role"] = "peering"
 		return labels, nil
 	}
 	if ifaceData["peer_is_lag"].(bool) && labels["Type"] == "phy" {
-		labels["PeerAgg"] = ifaceData["peer_lag_name"]
+		labels["peerAgg"] = ifaceData["peer_lag_name"]
 	}
 	if ifaceData["peer_role"].(string) == "border-router" {
-		labels["Role"] = "bb"
+		labels["role"] = "bb"
 	} else {
-		labels["Role"] = "dc"
+		labels["role"] = "dc"
 	}
 	return labels, nil
 }
@@ -78,10 +79,10 @@ func InterfaceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	if err != nil {
 		return nil, err
 	}
-	labels["LabelType"] = "Interface"
-	labels["Device"] = alert.Device.String
-	labels["Status"] = result["status"]
-	labels["Interface"] = alert.Entity
+	labels["labelType"] = "Interface"
+	labels["device"] = alert.Device.String
+	labels["status"] = result["status"]
+	labels["interface"] = alert.Entity
 	return labels, nil
 }
 
@@ -105,39 +106,39 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	if err != nil {
 		return nil, err
 	}
-	iLabels["Device"] = alert.Device.String
-	iLabels["Interface"] = alert.Entity
+	iLabels["device"] = alert.Device.String
+	iLabels["interface"] = alert.Entity
 
 	labels := make(models.Labels)
-	labels["LabelType"] = "Circuit"
+	labels["labelType"] = "Circuit"
 
-	labels["Role"] = iLabels["Role"]
+	labels["role"] = iLabels["role"]
 
-	labels["ASideDeviceName"] = result["name"]
+	labels["aSideDeviceName"] = result["name"]
 	ip, _, _ := net.ParseCIDR(result["primary_ip"].(string))
-	labels["ASideDeviceIp"] = ip.String()
-	labels["ASideDeviceStatus"] = result["status"]
-	labels["ASideInterface"] = iLabels["Interface"]
-	labels["ASideAgg"] = iLabels["Agg"]
+	labels["aSideDeviceIp"] = ip.String()
+	labels["aSideDeviceStatus"] = result["status"]
+	labels["aSideInterface"] = iLabels["interface"]
+	labels["aSideAgg"] = iLabels["agg"]
 
-	if iLabels["PeerDevice"] != nil {
-		peerDevice := iLabels["PeerDevice"].(string)
+	if iLabels["peerDevice"] != nil {
+		peerDevice := iLabels["peerDevice"].(string)
 		dLabels, err := deviceLabels(n, peerDevice)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to query peer Device: %s, %v", peerDevice, err)
 		}
-		labels["ZSideDeviceName"] = dLabels["Name"]
-		labels["ZSideDeviceIp"] = dLabels["Ip"]
-		labels["ZSideDeviceStatus"] = dLabels["Status"]
-		labels["ZSideInterface"] = iLabels["PeerIntf"]
-		labels["ZSideAgg"] = iLabels["PeerAgg"]
+		labels["zSideDeviceName"] = dLabels["name"]
+		labels["zSideDeviceIp"] = dLabels["ip"]
+		labels["zSideDeviceStatus"] = dLabels["status"]
+		labels["zSideInterface"] = iLabels["peerIntf"]
+		labels["zSideAgg"] = iLabels["peerAgg"]
 	}
 
-	if labels["Role"].(string) == "dc" {
+	if labels["role"].(string) == "dc" {
 		return labels, nil
 	}
 
-	if iLabels["Type"].(string) == "agg" {
+	if iLabels["type"].(string) == "agg" {
 		// pull a/z, provider info from children
 		children := ifaceData["childs"].(map[string]interface{})
 		for c, v := range children {
@@ -155,16 +156,16 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	}
 	term := ifaceData["circuit_termination"].(map[string]interface{})
 	if term["term_side"].(string) == "Z" {
-		labels = swap(labels, "ASideDeviceName", "ZSideDeviceName")
-		labels = swap(labels, "ASideDeviceIp", "ZSideDeviceIp")
-		labels = swap(labels, "ASideDeviceStatus", "ZSideDeviceStatus")
-		labels = swap(labels, "ASideInterface", "ZSideInterface")
-		labels = swap(labels, "ASideAgg", "ZSideAgg")
+		labels = swap(labels, "aSideDeviceName", "zSideDeviceName")
+		labels = swap(labels, "aSideDeviceIp", "zSideDeviceIp")
+		labels = swap(labels, "aSideDeviceStatus", "zSideDeviceStatus")
+		labels = swap(labels, "aSideInterface", "zSideInterface")
+		labels = swap(labels, "aSideAgg", "zSideAgg")
 	}
-	labels["CktId"] = ifaceData["circuit_id"]
+	labels["cktId"] = ifaceData["circuit_id"]
 	ckt := ifaceData["circuit"].(map[string]interface{})
 	provider := ckt["provider"].(map[string]interface{})
-	labels["Provider"] = provider["slug"]
+	labels["provider"] = provider["slug"]
 
 	return labels, nil
 }

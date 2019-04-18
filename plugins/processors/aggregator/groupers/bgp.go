@@ -16,9 +16,9 @@ func (g bgpGrouper) GrouperFunc() GroupingFunc {
 		// same host
 		i.Device.String == j.Device.String ||
 			// two ends of the same session
-			i.Labels["LocalDeviceName"] == j.Labels["RemoteDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["LocalDeviceName"] ||
+			i.Labels["localDeviceName"] == j.Labels["remoteDeviceName"] && i.Labels["remoteDeviceName"] == j.Labels["localDeviceName"] ||
 			// two sessions from/to same device
-			i.Labels["LocalDeviceName"] == j.Labels["LocalDeviceName"] && i.Labels["RemoteDeviceName"] == j.Labels["RemoteDeviceName"])
+			i.Labels["localDeviceName"] == j.Labels["localDeviceName"] && i.Labels["remoteDeviceName"] == j.Labels["remoteDeviceName"])
 	}
 }
 
@@ -37,10 +37,10 @@ func (g *bgpGrouper) AggDesc(alerts []*models.Alert) string {
 func (g *bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	for _, alert := range alerts {
-		if len(alert.Labels) == 0 || alert.Labels["LabelType"] == nil || alert.Status != models.Status_ACTIVE {
+		if len(alert.Labels) == 0 || alert.Labels["labelType"] == nil || alert.Status != models.Status_ACTIVE {
 			continue
 		}
-		if alert.Labels["LabelType"].(string) != "Bgp" {
+		if alert.Labels["labelType"].(string) != "Bgp" {
 			glog.V(2).Infof("Bgp Agg: Found non bgp alert, skip grouping")
 			return []*models.Alert{}
 		}

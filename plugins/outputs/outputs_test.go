@@ -3,14 +3,16 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mayuresh82/alert_manager/internal/models"
-	tu "github.com/mayuresh82/alert_manager/testutil"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/plugins"
+	tu "github.com/mayuresh82/alert_manager/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOutputSlack(t *testing.T) {
@@ -26,8 +28,8 @@ func TestOutputSlack(t *testing.T) {
 	defer ts.Close()
 	s := &SlackNotifier{
 		Url: ts.URL,
-		Recipients: []*SlackRecipient{
-			&SlackRecipient{Team: "t1", Channel: "#test"},
+		Recipients: map[string]*SlackRecipient{
+			"default": &SlackRecipient{Channel: "#test"},
 		},
 	}
 	event := &models.AlertEvent{
@@ -35,7 +37,7 @@ func TestOutputSlack(t *testing.T) {
 		Alert: tu.MockAlert(0, "Neteng BGP Down", "This alert has fired", "dev1", "PeerX", "src", "scp", "t1", "1", "WARN", []string{}, nil),
 	}
 
-	data, err := s.formatBody(event, "http://localhost")
+	data, err := s.formatBody(&plugins.SendRequest{Name: "default", Event: event}, "http://localhost")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,8 +101,8 @@ func TestOutputEmail(t *testing.T) {
 	n := &EmailNotifier{
 		Emailer: emailer,
 		rawTpl:  mockTpl,
-		Recipients: []*EmailRecipient{
-			&EmailRecipient{Team: "t1", From: "a@foo.com", To: []string{"b@bar.com"}},
+		Recipients: map[string]*EmailRecipient{
+			"default": &EmailRecipient{From: "a@foo.com", To: []string{"b@bar.com"}},
 		},
 	}
 	event := &models.AlertEvent{
@@ -116,7 +118,7 @@ func TestOutputEmail(t *testing.T) {
 			StartTime:   models.MyTime{time.Unix(1136239445, 0)},
 		},
 	}
-	n.start(event, "htt://localhost")
+	n.start(&plugins.SendRequest{Name: "default", Event: event}, "htt://localhost")
 	assert.Equal(t, emailer.subject, "Alert Manager: [ACTIVE] Test Alert: [testent]")
 	assert.Equal(t, emailer.body, renderedTpl)
 	assert.Equal(t, emailer.from, "a@foo.com")

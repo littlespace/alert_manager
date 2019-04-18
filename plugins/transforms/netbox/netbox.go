@@ -97,7 +97,7 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 	case "bgp_peer":
 		l, err = BgpLabels(n, alert)
 	case "dns_monitor":
-		if val, ok := alert.Labels["VipIp"]; ok {
+		if val, ok := alert.Labels["vipIp"]; ok {
 			deviceName, er := IptoDevice(n, val.(string))
 			if er == nil {
 				alert.AddDevice(deviceName)

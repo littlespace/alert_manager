@@ -26,10 +26,12 @@ alert_config:
       notify_remind: 15m
       notify_on_clear: true
       outputs:
-        - severity: WARN
+        - matches:
+            severity: WARN
           send_to: [ slack ]
-        - severity: CRITICAL
-          send_to: [ slack ]
+        - matches:
+            severity: CRITICAL
+          send_to: [ slack.test1 ]
 
   - name: Neteng BGP Down
     config:
@@ -52,9 +54,11 @@ aggregation_rules:
         tags: [ neteng, bgp ]
         auto_expire: true  ## aggregated alert will expire only when all component alerts expire
         outputs:
-          - severity: WARN
+          - matches:
+              severity: WARN
             send_to: [ slack ]
-          - severity: CRITICAL
+          - matches:
+              severity: CRITICAL
             send_to: [ slack ]
 
   - name: label_group
