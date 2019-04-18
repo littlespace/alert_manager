@@ -10,16 +10,14 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 type VoRecipient struct {
-	Team        string
-	Url         string
-	AutoResolve bool `mapstructure:"auto_resolve"`
-	SendAck     bool `mapstructure:"send_ack"`
+	RoutingKey  string `mapstructure:"routing_key"`
+	AutoResolve bool   `mapstructure:"auto_resolve"`
+	SendAck     bool   `mapstructure:"send_ack"`
 }
 
 type victorOpsMsg struct {
@@ -31,21 +29,14 @@ type victorOpsMsg struct {
 }
 
 type VictorOpsNotifier struct {
-	Notif      chan *models.AlertEvent
-	Recipients []*VoRecipient
+	ApiUrl     string `mapstructure:"api_url"`
+	ApiKey     string `mapstructure:"api_key"`
+	Notif      chan *plugins.SendRequest
+	Recipients map[string]*VoRecipient
 }
 
 func (n *VictorOpsNotifier) Name() string {
 	return "victorops"
-}
-
-func (n *VictorOpsNotifier) getRecipient(team string) *VoRecipient {
-	for _, recp := range n.Recipients {
-		if recp.Team == team {
-			return recp
-		}
-	}
-	return nil
 }
 
 func (n *VictorOpsNotifier) formatBody(event *models.AlertEvent, weburl string) ([]byte, error) {
@@ -94,10 +85,11 @@ func (n *VictorOpsNotifier) post(data []byte, url string, timeout time.Duration)
 func (n *VictorOpsNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
-		case event := <-n.Notif:
-			recp := n.getRecipient(event.Alert.Team)
-			if recp == nil {
-				glog.Errorf("Failed to get recipient for team %s", event.Alert.Team)
+		case req := <-n.Notif:
+			event := req.Event
+			recp, ok := n.Recipients[req.Name]
+			if !ok {
+				glog.Errorf("Failed to get recipient for output %s", req.Name)
 				break
 			}
 			if event.Type == models.EventType_CLEARED && !recp.AutoResolve {
@@ -111,7 +103,8 @@ func (n *VictorOpsNotifier) Start(ctx context.Context, opts *plugins.Options) {
 				glog.Errorf("Output: Victorops: Cant get json body for alert: %v", err)
 				break
 			}
-			n.post(body, recp.Url, opts.ClientTimeout)
+			url := n.ApiUrl + fmt.Sprintf("/%s/%s", n.ApiKey, recp.RoutingKey)
+			n.post(body, url, opts.ClientTimeout)
 		case <-ctx.Done():
 			return
 		}
@@ -119,7 +112,6 @@ func (n *VictorOpsNotifier) Start(ctx context.Context, opts *plugins.Options) {
 }
 
 func init() {
-	n := &VictorOpsNotifier{Notif: make(chan *models.AlertEvent)}
-	ah.RegisterOutput(n.Name(), n.Notif)
-	plugins.AddOutput(n)
+	n := &VictorOpsNotifier{Notif: make(chan *plugins.SendRequest)}
+	plugins.AddOutput(n, n.Notif)
 }

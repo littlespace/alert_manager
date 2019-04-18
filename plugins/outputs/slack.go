@@ -10,13 +10,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 type SlackRecipient struct {
-	Team    string
 	Channel string
 	Upload  bool
 	Token   string
@@ -26,8 +24,8 @@ type SlackRecipient struct {
 
 type SlackNotifier struct {
 	Url        string
-	Recipients []*SlackRecipient
-	Notif      chan *models.AlertEvent
+	Recipients map[string]*SlackRecipient
+	Notif      chan *plugins.SendRequest
 
 	//statPostsSent stat.Stat
 	//statPostsError stat.Stat
@@ -39,19 +37,11 @@ func (n *SlackNotifier) Name() string {
 	return "slack"
 }
 
-func (n *SlackNotifier) getRecipient(team string) *SlackRecipient {
-	for _, recp := range n.Recipients {
-		if recp.Team == team {
-			return recp
-		}
-	}
-	return nil
-}
-
-func (n *SlackNotifier) formatBody(event *models.AlertEvent, weburl string) ([]byte, error) {
-	recipient := n.getRecipient(event.Alert.Team)
-	if recipient == nil {
-		return []byte{}, fmt.Errorf("Failed to get recipient for team %s", event.Alert.Team)
+func (n *SlackNotifier) formatBody(req *plugins.SendRequest, weburl string) ([]byte, error) {
+	event := req.Event
+	recipient, ok := n.Recipients[req.Name]
+	if !ok {
+		return []byte{}, fmt.Errorf("Failed to get recipient for output %s", req.Name)
 	}
 	message := recipient.Mention
 	// dont send message on clear
@@ -121,13 +111,13 @@ func (n *SlackNotifier) post(data []byte, timeout time.Duration) {
 func (n *SlackNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
-		case event := <-n.Notif:
-			if event.Type == models.EventType_ACKD {
+		case req := <-n.Notif:
+			if req.Event.Type == models.EventType_ACKD {
 				break
 			}
-			body, err := n.formatBody(event, opts.WebUrl)
+			body, err := n.formatBody(req, opts.WebUrl)
 			if err != nil {
-				glog.Errorf("Output: Slack: Cant get json body for alert %s: %v", event.Alert.Name, err)
+				glog.Errorf("Output: Slack: Cant get json body for alert %s: %v", req.Event.Alert.Name, err)
 				break
 			}
 			n.post(body, opts.ClientTimeout)
@@ -138,7 +128,6 @@ func (n *SlackNotifier) Start(ctx context.Context, opts *plugins.Options) {
 }
 
 func init() {
-	n := &SlackNotifier{Notif: make(chan *models.AlertEvent)}
-	ah.RegisterOutput(n.Name(), n.Notif)
-	plugins.AddOutput(n)
+	n := &SlackNotifier{Notif: make(chan *plugins.SendRequest)}
+	plugins.AddOutput(n, n.Notif)
 }

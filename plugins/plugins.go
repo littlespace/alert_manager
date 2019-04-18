@@ -2,9 +2,12 @@ package plugins
 
 import (
 	"context"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
-	"time"
 )
 
 // Listener is any agent that listens to alerts. Alerts are sent down a channel that
@@ -50,7 +53,8 @@ type ApiPlugins struct {
 var (
 	Listeners  = make(map[string]Listener)
 	Processors []Processor
-	Outputs    = make(map[string]Output)
+	Outputs    = make(map[Output]chan *SendRequest)
+	gMu        sync.Mutex
 )
 
 func AddListener(l Listener) {
@@ -61,8 +65,45 @@ func AddProcessor(p Processor) {
 	Processors = append(Processors, p)
 }
 
-func AddOutput(o Output) {
-	Outputs[o.Name()] = o
+func AddOutput(o Output, notif chan *SendRequest) {
+	gMu.Lock()
+	defer gMu.Unlock()
+	Outputs[o] = notif
+}
+
+func GetOutput(name string) Output {
+	gMu.Lock()
+	defer gMu.Unlock()
+	for o := range Outputs {
+		if o.Name() == name {
+			return o
+		}
+	}
+	return nil
+}
+
+type SendRequest struct {
+	Name  string
+	Event *models.AlertEvent
+}
+
+func Send(outputName string, event *models.AlertEvent) {
+	parts := strings.Split(outputName, ".")
+	if len(parts) > 2 {
+		return
+	}
+	gMu.Lock()
+	defer gMu.Unlock()
+	toSend := "default"
+	if len(parts) == 2 {
+		toSend = parts[1]
+	}
+	for output, notif := range Outputs {
+		if output.Name() == parts[0] {
+			notif <- &SendRequest{Name: toSend, Event: event}
+			return
+		}
+	}
 }
 
 func Init(ctx context.Context, db models.Dbase, options ...PluginOption) error {
@@ -81,8 +122,8 @@ func Init(ctx context.Context, db models.Dbase, options ...PluginOption) error {
 	}
 
 	// start all the outputs
-	for name, output := range Outputs {
-		glog.Infof("Starting output: %s", name)
+	for output := range Outputs {
+		glog.Infof("Starting output: %s", output.Name())
 		go output.Start(ctx, opts)
 	}
 
@@ -103,7 +144,7 @@ func GetApiPluginsList() ApiPlugins {
 	}
 
 	for k := range Outputs {
-		choices.Outputs = append(choices.Outputs, k)
+		choices.Outputs = append(choices.Outputs, k.Name())
 	}
 
 	for k := range Listeners {

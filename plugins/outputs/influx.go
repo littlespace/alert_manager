@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/reporting"
 	"github.com/mayuresh82/alert_manager/plugins"
@@ -69,7 +68,7 @@ func (n *InfluxNotifier) parseFromEvent(event *models.AlertEvent) *reporting.Dat
 type InfluxNotifier struct {
 	Url         string
 	Measurement string
-	Notif       chan *models.AlertEvent
+	Notif       chan *plugins.SendRequest
 }
 
 func (n *InfluxNotifier) Name() string {
@@ -83,8 +82,8 @@ func (n *InfluxNotifier) Type() string {
 func (n *InfluxNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
-		case event := <-n.Notif:
-			d := n.parseFromEvent(event)
+		case req := <-n.Notif:
+			d := n.parseFromEvent(req.Event)
 			reporting.DataChan <- d
 		case <-ctx.Done():
 			return
@@ -93,7 +92,6 @@ func (n *InfluxNotifier) Start(ctx context.Context, opts *plugins.Options) {
 }
 
 func init() {
-	n := &InfluxNotifier{Notif: make(chan *models.AlertEvent)}
-	ah.RegisterOutput(n.Name(), n.Notif)
-	plugins.AddOutput(n)
+	n := &InfluxNotifier{Notif: make(chan *plugins.SendRequest)}
+	plugins.AddOutput(n, n.Notif)
 }

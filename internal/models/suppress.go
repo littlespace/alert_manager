@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"regexp"
 	"time"
 )
 
@@ -44,38 +43,9 @@ type SuppressionRule struct {
 func (s SuppressionRule) Match(labels Labels) bool {
 	switch s.Mcond {
 	case MatchCond_ALL:
-		for ek, ev := range s.Entities {
-			lv, ok := labels[ek]
-			if !ok {
-				return false
-			}
-			var match bool
-			if _, ok = lv.(string); ok {
-				match, _ = regexp.MatchString(ev.(string), lv.(string))
-			} else {
-				match = lv == ev
-			}
-			if !match {
-				return false
-			}
-		}
-		return true
+		return s.Entities.MatchAll(labels)
 	case MatchCond_ANY:
-		for ek, ev := range s.Entities {
-			lv, ok := labels[ek]
-			if !ok {
-				continue
-			}
-			var match bool
-			if _, ok = lv.(string); ok {
-				match, _ = regexp.MatchString(ev.(string), lv.(string))
-			} else {
-				match = lv == ev
-			}
-			if match {
-				return true
-			}
-		}
+		return s.Entities.MatchAny(labels)
 	}
 	return false
 }

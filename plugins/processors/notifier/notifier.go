@@ -3,12 +3,13 @@ package notifier
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/golang/glog"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
-	"sync"
-	"time"
 )
 
 const remindCheckInterval = 2 * time.Minute
@@ -80,10 +81,10 @@ func (n *Notifier) remind() {
 		notif.lastNotified = time.Now()
 		glog.V(2).Infof("Sending notification reminder for %d:%s", notif.event.Alert.Id, notif.event.Alert.Name)
 		if alertConfig, ok := ah.Config.GetAlertConfig(notif.event.Alert.Name); ok {
-			n.send(notif.event, alertConfig.Config.Outputs.Get(notif.event.Alert.Severity.String()))
+			n.send(notif.event, alertConfig.Config.Outputs.Get(notif.event.Alert.Labels))
 		} else {
 			outputConf := ah.Config.GetOutputConfig()
-			n.send(notif.event, outputConf.Defaults.Get(notif.event.Alert.Severity.String()))
+			n.send(notif.event, outputConf.Defaults.Get(notif.event.Alert.Labels))
 		}
 	}
 }
@@ -109,11 +110,11 @@ func (n *Notifier) Notify(event *models.AlertEvent) {
 	defer n.Unlock()
 	var outputs []string
 	if ok {
-		outputs = alertConfig.Config.Outputs.Get(event.Alert.Severity.String())
+		outputs = alertConfig.Config.Outputs.Get(event.Alert.Labels)
 	}
 	if len(outputs) == 0 {
 		outputConf := ah.Config.GetOutputConfig()
-		outputs = outputConf.Defaults.Get(event.Alert.Severity.String())
+		outputs = outputConf.Defaults.Get(event.Alert.Labels)
 	}
 	notif, alreadyNotified := n.notifiedAlerts[alert.Id]
 	if alreadyNotified {
@@ -157,10 +158,8 @@ func (n *Notifier) Notify(event *models.AlertEvent) {
 
 func (n *Notifier) send(event *models.AlertEvent, outputs []string) {
 	for _, output := range outputs {
-		if outChan, ok := ah.GetOutput(output); ok {
-			glog.V(2).Infof("Sending alert %s to %s", event.Alert.Name, output)
-			outChan <- event
-		}
+		glog.V(2).Infof("Sending alert %s to %s", event.Alert.Name, output)
+		plugins.Send(output, event)
 	}
 }
 

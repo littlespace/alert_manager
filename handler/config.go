@@ -1,22 +1,24 @@
 package handler
 
 import (
-	"github.com/golang/glog"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/mayuresh82/alert_manager/internal/models"
+	"gopkg.in/yaml.v2"
 )
 
-type Outs []struct {
-	Severity string
-	SendTo   []string `yaml:"send_to"`
+type Outputs []struct {
+	Matches models.Labels
+	SendTo  []string `yaml:"send_to"`
 }
 
-func (o Outs) Get(sev string) []string {
+func (o Outputs) Get(labels models.Labels) []string {
 	for _, i := range o {
-		if i.Severity == sev {
+		if i.Matches.MatchAll(labels) {
 			return i.SendTo
 		}
 	}
@@ -24,7 +26,7 @@ func (o Outs) Get(sev string) []string {
 }
 
 type OutputConfig struct {
-	Defaults Outs
+	Defaults Outputs
 }
 
 type TeamConfig struct {
@@ -46,7 +48,7 @@ type AlertConfig struct {
 		NotifyDelay      time.Duration `yaml:"notify_delay"`
 		NotifyRemind     time.Duration `yaml:"notify_remind"`
 		DisableNotify    bool          `yaml:"disable_notify"`
-		Outputs          Outs
+		Outputs          Outputs
 		StaticLabels     map[string]interface{} `yaml:"static_labels"`
 		AggregationRules []string               `yaml:"aggregation_rules"`
 		EscalationRules  []struct {

@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-mail/mail"
 	"github.com/golang/glog"
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 	tpl "github.com/mayuresh82/alert_manager/template"
@@ -49,20 +48,19 @@ func (e *EmailSender) send(addr, username, pwd, from, subject, body string, reci
 }
 
 type EmailRecipient struct {
-	Team string
 	From string
 	To   []string
 }
 
 type EmailNotifier struct {
-	Notif        chan *models.AlertEvent
+	Notif        chan *plugins.SendRequest
 	rawTpl       string
 	Emailer      Emailer
 	SmtpAddr     string `mapstructure:"smtp_addr"`
 	UseAuth      bool   `mapstructure:"use_auth"`
 	SmtpUsername string `mapstructure:"smtp_username"`
 	SmtpPassword string `mapstructure:"smtp_password"`
-	Recipients   []*EmailRecipient
+	Recipients   map[string]*EmailRecipient
 }
 
 type TplData struct {
@@ -77,15 +75,6 @@ type TplData struct {
 
 func (e *EmailNotifier) Name() string {
 	return "email"
-}
-
-func (e *EmailNotifier) getRecipient(team string) *EmailRecipient {
-	for _, recp := range e.Recipients {
-		if recp.Team == team {
-			return recp
-		}
-	}
-	return nil
 }
 
 func (e *EmailNotifier) renderTemplate(data *TplData) (string, error) {
@@ -111,7 +100,8 @@ func (e *EmailNotifier) subject(event *models.AlertEvent) string {
 	return subject
 }
 
-func (e *EmailNotifier) start(event *models.AlertEvent, weburl string) {
+func (e *EmailNotifier) start(req *plugins.SendRequest, weburl string) {
+	event := req.Event
 	startTime := event.Alert.StartTime.UTC().Format("Mon Jan 2 15:04:05 MST 2006")
 	data := &TplData{
 		Subject:       e.subject(event),
@@ -135,9 +125,9 @@ func (e *EmailNotifier) start(event *models.AlertEvent, weburl string) {
 		glog.Errorf("Output: Email: Failed to render template: %v", err)
 		return
 	}
-	recp := e.getRecipient(event.Alert.Team)
-	if recp == nil {
-		glog.Errorf("Failed to get recipient for team %s", event.Alert.Team)
+	recp, ok := e.Recipients[req.Name]
+	if !ok {
+		glog.Errorf("Failed to get recipient for output %s", req.Name)
 		return
 	}
 	if err := e.Emailer.send(
@@ -155,8 +145,8 @@ func (e *EmailNotifier) start(event *models.AlertEvent, weburl string) {
 func (e *EmailNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
-		case event := <-e.Notif:
-			e.start(event, opts.WebUrl)
+		case req := <-e.Notif:
+			e.start(req, opts.WebUrl)
 		case <-ctx.Done():
 			return
 		}
@@ -165,10 +155,9 @@ func (e *EmailNotifier) Start(ctx context.Context, opts *plugins.Options) {
 
 func init() {
 	e := &EmailNotifier{
-		Notif:   make(chan *models.AlertEvent),
+		Notif:   make(chan *plugins.SendRequest),
 		rawTpl:  tpl.EmailTemplate,
 		Emailer: &EmailSender{},
 	}
-	ah.RegisterOutput(e.Name(), e.Notif)
-	plugins.AddOutput(e)
+	plugins.AddOutput(e, e.Notif)
 }

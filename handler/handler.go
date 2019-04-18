@@ -3,14 +3,15 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/mayuresh82/alert_manager/internal/models"
-	"github.com/mayuresh82/alert_manager/internal/stats"
-	"github.com/mayuresh82/alert_manager/plugins"
 	"regexp"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/mayuresh82/alert_manager/internal/models"
+	"github.com/mayuresh82/alert_manager/internal/stats"
+	"github.com/mayuresh82/alert_manager/plugins"
 )
 
 const (
@@ -334,9 +335,7 @@ func (h *AlertHandler) notifyReceivers(alert *models.Alert, eventType models.Eve
 	if len(plugins.Processors) > 0 {
 		h.procChan <- event
 	}
-	if influxOut, ok := GetOutput("influx"); ok {
-		influxOut <- event
-	}
+	plugins.Send("influx", event)
 }
 
 func (h *AlertHandler) handleExpiry(ctx context.Context) {

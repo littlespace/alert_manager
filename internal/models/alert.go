@@ -3,9 +3,10 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/lib/pq"
-	"time"
 )
 
 var (
@@ -254,6 +255,7 @@ func (a *Alert) ExtendLabels() {
 	a.Labels["device"] = a.Device.String
 	a.Labels["entity"] = a.Entity
 	a.Labels["alert_name"] = a.Name
+	a.Labels["severity"] = a.Severity.String()
 	a.Labels["source"] = a.Source
 	if a.Labels["scope"] == nil {
 		a.Labels["scope"] = a.Scope

@@ -2,8 +2,9 @@ package netbox
 
 import (
 	"fmt"
-	"github.com/mayuresh82/alert_manager/internal/models"
 	"net"
+
+	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
 const queryUrl = "/api/rblx/device/dm/v1/"
@@ -19,14 +20,14 @@ func deviceLabels(n *Netbox, device string) (models.Labels, error) {
 		return nil, err
 	}
 	labels := make(models.Labels)
-	labels["LabelType"] = "Device"
-	labels["Name"] = result["name"]
+	labels["labelType"] = "Device"
+	labels["name"] = result["name"]
 	ip, _, _ := net.ParseCIDR(result["primary_ip"].(string))
-	labels["Ip"] = ip.String()
+	labels["ip"] = ip.String()
 	site := result["site_data"].(map[string]interface{})
-	labels["Site"] = site["name"]
-	labels["Region"] = result["region"]
-	labels["Status"] = result["status"]
+	labels["site"] = site["name"]
+	labels["region"] = result["region"]
+	labels["status"] = result["status"]
 	return labels, nil
 }
 
@@ -35,6 +36,6 @@ func DeviceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	if err != nil {
 		return nil, err
 	}
-	alert.AddSite(labels["Site"].(string))
+	alert.AddSite(labels["site"].(string))
 	return labels, nil
 }

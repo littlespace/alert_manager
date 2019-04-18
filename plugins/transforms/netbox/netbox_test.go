@@ -456,7 +456,7 @@ func TestNetboxDevice(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, a.Site.String, "bb1")
-	exp := models.Labels{"LabelType": "Device", "Name": "dev1-bb1", "Ip": "12.8.1.1", "Site": "bb1", "Region": "US_WEST", "Status": "Active"}
+	exp := models.Labels{"labelType": "Device", "name": "dev1-bb1", "ip": "12.8.1.1", "site": "bb1", "region": "US_WEST", "status": "Active"}
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }
 
@@ -468,15 +468,15 @@ func TestNetboxIntf(t *testing.T) {
 	}
 	assert.Equal(t, a.Site.String, "dc1")
 	exp := models.Labels{
-		"LabelType":   "Interface",
-		"Device":      "dev1-dc1",
-		"Status":      "Active",
-		"Interface":   "et-0/0/47",
-		"Description": "et-0/0/31.dev2-dc1",
-		"Role":        "dc",
-		"Type":        "phy",
-		"PeerDevice":  "dev2-dc1",
-		"PeerIntf":    "et-0/0/31",
+		"labelType":   "Interface",
+		"device":      "dev1-dc1",
+		"status":      "Active",
+		"interface":   "et-0/0/47",
+		"description": "et-0/0/31.dev2-dc1",
+		"role":        "dc",
+		"type":        "phy",
+		"peerDevice":  "dev2-dc1",
+		"peerIntf":    "et-0/0/31",
 	}
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }
@@ -488,23 +488,23 @@ func TestNetboxLink(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Equal(t, a.Site.String, "dc1")
-	assert.Equal(t, a.Labels["ASideDeviceName"], "dev1-dc1")
-	assert.Equal(t, a.Labels["ASideInterface"], "et-0/0/47")
-	assert.Equal(t, a.Labels["ZSideDeviceName"], "dev2-dc1")
-	assert.Equal(t, a.Labels["ZSideInterface"], "et-0/0/31")
+	assert.Equal(t, a.Labels["aSideDeviceName"], "dev1-dc1")
+	assert.Equal(t, a.Labels["aSideInterface"], "et-0/0/47")
+	assert.Equal(t, a.Labels["zSideDeviceName"], "dev2-dc1")
+	assert.Equal(t, a.Labels["zSideInterface"], "et-0/0/31")
 
 	a = tu.MockAlert(1, "Test", "", "dev1-bb1", "et-0/0/3:0", "src1", "link", "t1", "1", "WARN", []string{}, nil)
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, a.Site.String, "bb1")
-	assert.Equal(t, a.Labels["ASideDeviceName"], "dev2-bb1")
-	assert.Equal(t, a.Labels["ASideInterface"], "et-0/0/3:0")
-	assert.Equal(t, a.Labels["ZSideDeviceName"], "dev1-bb1")
-	assert.Equal(t, a.Labels["ZSideInterface"], "et-0/0/3:0")
-	assert.Equal(t, a.Labels["Role"], "bb")
-	assert.Equal(t, a.Labels["CktId"], "XXXX-000062-1")
-	assert.Equal(t, a.Labels["Provider"], "telia")
+	assert.Equal(t, a.Labels["aSideDeviceName"], "dev2-bb1")
+	assert.Equal(t, a.Labels["aSideInterface"], "et-0/0/3:0")
+	assert.Equal(t, a.Labels["zSideDeviceName"], "dev1-bb1")
+	assert.Equal(t, a.Labels["zSideInterface"], "et-0/0/3:0")
+	assert.Equal(t, a.Labels["role"], "bb")
+	assert.Equal(t, a.Labels["cktId"], "XXXX-000062-1")
+	assert.Equal(t, a.Labels["provider"], "telia")
 }
 
 func TestNetboxBgp(t *testing.T) {
@@ -516,18 +516,18 @@ func TestNetboxBgp(t *testing.T) {
 	}
 	assert.Equal(t, a.Site.String, "dc1")
 	exp := models.Labels{
-		"LabelType":          "Bgp",
-		"Type":               "ebgp",
-		"LocalIp":            "10.1.1.120",
-		"LocalDeviceName":    "dev1-dc1",
-		"LocalDeviceIp":      "10.1.1.1",
-		"LocalInterface":     "et-0/0/47",
-		"LocalDeviceStatus":  "Active",
-		"RemoteIp":           "10.1.1.121",
-		"RemoteDeviceName":   "dev2-dc1",
-		"RemoteInterface":    "et-0/0/31",
-		"RemoteDeviceIp":     "10.1.1.2",
-		"RemoteDeviceStatus": "Active",
+		"labelType":          "Bgp",
+		"type":               "ebgp",
+		"localIp":            "10.1.1.120",
+		"localDeviceName":    "dev1-dc1",
+		"localDeviceIp":      "10.1.1.1",
+		"localInterface":     "et-0/0/47",
+		"localDeviceStatus":  "Active",
+		"remoteIp":           "10.1.1.121",
+		"remoteDeviceName":   "dev2-dc1",
+		"remoteInterface":    "et-0/0/31",
+		"remoteDeviceIp":     "10.1.1.2",
+		"remoteDeviceStatus": "Active",
 	}
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 
@@ -538,18 +538,18 @@ func TestNetboxBgp(t *testing.T) {
 	}
 	assert.Equal(t, a.Site.String, "bb1")
 	exp = models.Labels{
-		"LabelType":          "Bgp",
-		"Type":               "ibgp",
-		"LocalIp":            "12.8.1.1",
-		"LocalDeviceIp":      "12.8.1.1",
-		"LocalDeviceName":    "dev1-bb1",
-		"LocalDeviceStatus":  "Active",
-		"LocalInterface":     "lo0",
-		"RemoteIp":           "13.8.1.1",
-		"RemoteDeviceName":   "dev2-bb1",
-		"RemoteDeviceIp":     "13.8.1.1",
-		"RemoteInterface":    "lo0",
-		"RemoteDeviceStatus": "Active",
+		"labelType":          "Bgp",
+		"type":               "ibgp",
+		"localIp":            "12.8.1.1",
+		"localDeviceIp":      "12.8.1.1",
+		"localDeviceName":    "dev1-bb1",
+		"localDeviceStatus":  "Active",
+		"localInterface":     "lo0",
+		"remoteIp":           "13.8.1.1",
+		"remoteDeviceName":   "dev2-bb1",
+		"remoteDeviceIp":     "13.8.1.1",
+		"remoteInterface":    "lo0",
+		"remoteDeviceStatus": "Active",
 	}
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }
