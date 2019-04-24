@@ -5,6 +5,8 @@ const url_alerts = 'api/alerts';
 const url_supprules = 'api/suppression_rules';
 const url_supprules_persistent = 'api/suppression_rules/persistent';
 const url_auth = 'api/auth';
+const url_team_list = 'api/teams';
+const url_user_list = 'api/users';
 
 function handleErrors(response) {
     if (!response.ok) {
@@ -27,6 +29,7 @@ export class AlertManagerApi {
             this.logout()
         }
     }
+
 
     /// -------------------------------------------------------------------
     /// Alerts Management Queries
@@ -330,7 +333,6 @@ export class AlertManagerApi {
         this.token = data.token;
         console.log(this.token);
     }
-    
     /// -------------------------------------------------------------------
     /// Authentication and Session Management
     /// -------------------------------------------------------------------
@@ -364,14 +366,16 @@ export class AlertManagerApi {
             callback_success()
             return true
         })
+    }
 
-        //   return this.fetch(`${this.domain}/user`, {
-        //     method: 'GET'
-        //   })
-        // }).then(res => {
-        //   this.setProfile(res)
-        //   return Promise.resolve(res)
-        // })
+    getTeamList(){
+        return fetch(`${this.url}${url_team_list}` )
+          .then(response => response.json());
+    }
+
+    getUserList(){
+        return fetch(`${this.url}${url_user_list}` )
+          .then(response => response.json());
     }
 
     loggedIn(){

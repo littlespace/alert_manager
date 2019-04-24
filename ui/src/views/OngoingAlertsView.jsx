@@ -161,14 +161,17 @@ class OngoingAlertsView extends React.Component {
             ShowActive: ('active' in url_params_parsed && url_params_parsed.active === 0) ? false : true,
             ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed === 1) ? true : false,
             ShowAssigned: ('assigned' in url_params_parsed ) ? url_params_parsed.assigned : "all",
+            ShowTeam: ('team' in url_params_parsed ) ? url_params_parsed.team : "all",
             NbrActive: 0,
-            NbrSuppressed: 0,
+            NbrSuppressed: 0, 
             alerts: [],
+            TeamList: []
         };
     };
 
     componentDidMount(){
         this.updateAlertsList()
+        this.getTeamList()
     }
 
     updateAlertsList = () => {
@@ -176,6 +179,11 @@ class OngoingAlertsView extends React.Component {
             .then(data => this.processAlertsList(data));
        
         this.updateUrl();
+    }
+
+    getTeamList = () => {
+        this.api.getTeamList()
+            .then(data => this.setState({ TeamList: data }));
     }
 
     processAlertsList(data) {
@@ -249,6 +257,14 @@ class OngoingAlertsView extends React.Component {
             }
             url_params = url_params + 'assigned=' + this.state.ShowAssigned 
         }
+        if (this.state.ShowTeam !== "all") {
+            if (first === true) {
+                first = false
+            } else {
+                url_params = url_params + '&'
+            }
+            url_params = url_params + 'team=' + this.state.ShowTeam 
+        }
 
         // Update url in browser
         if (first === true) {
@@ -260,12 +276,15 @@ class OngoingAlertsView extends React.Component {
 
     render() {
         let username = Auth.getUsername()
+        let teams = this.state.TeamList
 
         let filteredAlerts = this.state.alerts.filter(
             (alert) => {
                 if (this.state.ShowAssigned === "mine" && alert.Owner !==  username ) {
                     return false
                 } else if (this.state.ShowAssigned === "not-assigned" && alert.Owner !== "" ) {
+                    return false
+                } else if (this.state.ShowTeam !== "all" && alert.Team !== this.state.ShowTeam ) {
                     return false
                 } else if (alert.Status === "ACTIVE" && this.state.ShowActive) {
                     return true
@@ -274,7 +293,6 @@ class OngoingAlertsView extends React.Component {
                 } else {
                     return false
                 } 
-                    
             }
         )
         let NbrActive = this.state.NbrActive;
@@ -317,6 +335,23 @@ class OngoingAlertsView extends React.Component {
                         </div>
                         <div className={this.classes.grow} />
                         <div className={this.classes.leftAlign}>
+                        <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="teams">Team</InputLabel>
+                            <Select
+                                value={this.state.ShowTeam}
+                                onChange={this.handleChangeSelect('ShowTeam')}
+                                // inputProps={{
+                                // name: 'age',
+                                // id: 'age-simple',
+                                // }}
+                            >
+                                <MenuItem value="all">All</MenuItem>
+                                { teams instanceof Array ? teams.map(n => {
+                                    return (
+                                        <MenuItem value={n.Name}>{n.Name}</MenuItem>
+                                    );}) : ""}
+                            </Select>
+                            </FormControl>
                         <FormControl variant="outlined" className={this.classes.formControl}>
                             <InputLabel htmlFor="assigned">Display Assigned?</InputLabel>
                             <Select
