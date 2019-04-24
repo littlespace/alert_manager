@@ -38,6 +38,7 @@ export class AlertManagerApi {
         limit=500, 
         aggregate=true, 
         timerange_h=null, 
+        teams=[],
         sites=[], 
         devices=[],
         severity=[],
@@ -55,6 +56,10 @@ export class AlertManagerApi {
 
         if (sites.length !== 0) {
             params = params + `&site__in=${sites.join(',')}`
+        }
+
+        if (teams.length !== 0) {
+            params = params + `&team__in=${teams.join(',')}`
         }
 
         if (devices.length !== 0) {

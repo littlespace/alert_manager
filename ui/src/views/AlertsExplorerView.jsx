@@ -159,17 +159,20 @@ class AlertsExplorerView extends React.Component {
             NbrSuppressed: 0,
             NbrExpired: 0,
             alerts: [],
+            TeamList: [],
             FilterAssigned: ('assigned' in url_params_parsed && url_params_parsed.assigned !== '') ? url_params_parsed.assigned : "all",
             FilterStatus: ('status' in url_params_parsed && url_params_parsed.status !== '') ? url_params_parsed.status.split(',') : [],
             FilterSite: ('site' in url_params_parsed && url_params_parsed.site !== '') ? url_params_parsed.site : null,
             FilterDevice: ('device' in url_params_parsed && url_params_parsed.device !== '') ? url_params_parsed.device : null,
             FilterSeverity: ('severity' in url_params_parsed && url_params_parsed.severity !== '') ? url_params_parsed.severity.split(',') : [],
             FilterTime: ('time' in url_params_parsed && url_params_parsed.time !== '') ? url_params_parsed.time : '24h',
+            FilterTeam: ('team' in url_params_parsed && url_params_parsed.team !== '') ? url_params_parsed.team : 'all',
         };
     };
 
     componentDidMount(){
         this.updateAlertsList()
+        this.getTeamList()
     }
 
     updateAlertsList = () => {
@@ -188,6 +191,9 @@ class AlertsExplorerView extends React.Component {
         if (this.state.FilterSeverity.lenght !== 0) {
             query_params["severity"] = this.state.FilterSeverity
         }
+        if (this.state.FilterTeam !== 'all') {
+            query_params["teams"] = [this.state.FilterTeam]
+        }
 
         query_params["timerange_h"] = this.state.FilterTime
         
@@ -195,6 +201,11 @@ class AlertsExplorerView extends React.Component {
             .then(data => this.processAlertsList(data));
        
         this.updateUrl();
+    }
+
+    getTeamList = () => {
+        api.getTeamList()
+            .then(data => this.setState({ TeamList: data }));
     }
 
     processAlertsList(data) {
@@ -238,6 +249,14 @@ class AlertsExplorerView extends React.Component {
             { [name]: event.target.checked }, 
         )
     };
+
+    handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            console.log("key " + e.key )
+            this.updateAlertsList()
+        }
+    }
+
 
     handleChangeSelect = name => event => {
         this.setState(
@@ -291,6 +310,16 @@ class AlertsExplorerView extends React.Component {
             url_params = url_params + 'status=' + this.state.FilterStatus.join(',')
         }
 
+        if (this.state.FilterTeam !== "all") {
+            if (first === true) {
+                first = false
+            } else {
+                url_params = url_params + '&'
+            }
+            url_params = url_params + 'team=' + this.state.FilterTeam
+        }
+
+
         // Update url in browser
         if (first === true) {
             this.context.router.history.push(url_alone)
@@ -302,6 +331,8 @@ class AlertsExplorerView extends React.Component {
     render() {
         
         let NbrAlerts = 0
+        let teams = this.state.TeamList
+
         let filteredAlerts = this.state.alerts.filter(
             (alert) => {
                 if (this.state.FilterAssigned === "mine" && alert.Owner !== username ) {
@@ -317,7 +348,7 @@ class AlertsExplorerView extends React.Component {
         return (
         <div>
             <Typography className={this.classes.pageTitle} variant="h5">Alerts Explorer</Typography>   
-            <Paper className={this.classes.paper}>
+            <Paper className={this.classes.paper}  onKeyDown={this.handleKeyDown}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
                         <div className={this.classes.rightAlign}>
@@ -400,6 +431,19 @@ class AlertsExplorerView extends React.Component {
                                     </MenuItem>))}
                             </Select>
                         </FormControl>
+                        <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="teams">Team</InputLabel>
+                            <Select
+                                value={this.state.FilterTeam}
+                                onChange={this.handleChangeSelect('FilterTeam')}
+                            >
+                                <MenuItem value="all">All</MenuItem>
+                                { teams instanceof Array ? teams.map(n => {
+                                    return (
+                                        <MenuItem value={n.Name}>{n.Name}</MenuItem>
+                                    );}) : ""}
+                            </Select>
+                            </FormControl>
                         {/* <FormControl variant="outlined" className={this.classes.formControl}>
                             <InputLabel htmlFor="status">status</InputLabel>
                             <SelectAlertStatusList 
