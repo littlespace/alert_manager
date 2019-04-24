@@ -237,9 +237,9 @@ export class AlertManagerApi {
         });
     }
 
-    alertAcknowledge({id, owner="owner", team="neteng"}={}) {
+    alertAcknowledge({id, owner="owner"}={}) {
         // api/alerts/{id}/acknowledge?owner=foo&team=bar
-        let url = `${this.url}${url_alerts}/${id}/ack?owner=${owner}&team=${team}`
+        let url = `${this.url}${url_alerts}/${id}/ack?owner=${owner}`
         
         let obj = {
             method: 'PATCH',
