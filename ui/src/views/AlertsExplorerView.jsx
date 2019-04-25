@@ -9,18 +9,24 @@ import Toolbar from '@material-ui/core/Toolbar';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
 import Fab from '@material-ui/core/Fab';
-
-import { AlertManagerApi } from '../library/AlertManagerApi';
-
+import Tooltip from '@material-ui/core/Tooltip';
 import FormControl from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
 import MenuItem from '@material-ui/core/MenuItem';
 import Select from '@material-ui/core/Select';
-
 import TextField from '@material-ui/core/TextField';
 
-import AlertItem from '../components/Alerts/AlertItem';
+import { AlertManagerApi } from '../library/AlertManagerApi';
 
+import AlertItem from '../components/Alerts/AlertItem';
+import PageHelp from '../components/PageHelp';
+
+import { PagesDoc } from '../static';
+
+/// -------------------------------------
+/// Icons 
+/// -------------------------------------
+import HelpIcon from '@material-ui/icons/Help';
 import SearchIcon from '@material-ui/icons/Search';
 
 
@@ -138,7 +144,25 @@ const styles = theme => ({
         lineHeight: "30px",
         paddingLeft: "15px",
         paddingTop: "10px"
-    }
+    },
+    pageTitle:{
+        height: "30px",
+        lineHeight: "30px",
+        paddingLeft: "15px",
+        paddingTop: "10px"
+      },
+      titleBar:{
+        display: "flex",
+        position: "relative",
+      }, 
+      helpButton: {
+        width:  "30px",
+        height: "30px",
+        minHeight:  "20px",
+        marginTop: "9px",
+        marginLeft: "10px",
+      }
+
 });
 
 class AlertsExplorerView extends React.Component {
@@ -167,7 +191,10 @@ class AlertsExplorerView extends React.Component {
             FilterSeverity: ('severity' in url_params_parsed && url_params_parsed.severity !== '') ? url_params_parsed.severity.split(',') : [],
             FilterTime: ('time' in url_params_parsed && url_params_parsed.time !== '') ? url_params_parsed.time : '24h',
             FilterTeam: ('team' in url_params_parsed && url_params_parsed.team !== '') ? url_params_parsed.team : 'all',
+            openHelp: false
         };
+
+        this.openHelp = this.openHelp.bind(this)
     };
 
     componentDidMount(){
@@ -206,6 +233,10 @@ class AlertsExplorerView extends React.Component {
     getTeamList = () => {
         api.getTeamList()
             .then(data => this.setState({ TeamList: data }));
+    }
+
+    openHelp = () => { 
+        this.setState({ openHelp: true })
     }
 
     processAlertsList(data) {
@@ -347,7 +378,20 @@ class AlertsExplorerView extends React.Component {
         )
         return (
         <div>
-            <Typography className={this.classes.pageTitle} variant="h5">Alerts Explorer</Typography>   
+            <div className={this.classes.titleBar}>
+            <Typography className={this.classes.pageTitle} variant="h5">{PagesDoc.alertsExplorer.title}</Typography>   
+            <Tooltip title="help">
+                <Fab 
+                    size="small" 
+                    color="primary" 
+                    aria-label="help" 
+                    onClick={this.openHelp}
+                    className={this.classes.helpButton}>
+                    <HelpIcon />
+                </Fab>
+            </Tooltip>
+            <PageHelp title={PagesDoc.alertsExplorer.title} description={PagesDoc.alertsExplorer.help} open={this.state.openHelp} />
+            </div>
             <Paper className={this.classes.paper}  onKeyDown={this.handleKeyDown}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
