@@ -8,6 +8,8 @@ import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Grid from '@material-ui/core/Grid';
 import Typography from '@material-ui/core/Typography';
+import Tooltip from '@material-ui/core/Tooltip';
+import Fab from '@material-ui/core/Fab';
 
 import { fade } from '@material-ui/core/styles/colorManipulator';
 
@@ -24,7 +26,15 @@ import Checkbox from '@material-ui/core/Checkbox';
 import Badge from '@material-ui/core/Badge';
 
 import AlertItem from '../components/Alerts/AlertItem';
+import PageHelp from '../components/PageHelp';
 
+/// -------------------------------------
+/// Icons 
+/// -------------------------------------
+import HelpIcon from '@material-ui/icons/Help';
+
+
+const helpDescription = "The ongoing alert page is designed to show all Active and Suppressed Alerts (only active are visible by default).<br/> On the left side, you can filter on the team and or on the alerts that have been assigned or not";
 
 const Auth = new AlertManagerApi()
 
@@ -128,7 +138,19 @@ const styles = theme => ({
         lineHeight: "30px",
         paddingLeft: "15px",
         paddingTop: "10px"
+      },
+      titleBar:{
+        display: "flex",
+        position: "relative",
+      }, 
+      helpButton: {
+        width:  "30px",
+        height: "30px",
+        minHeight:  "20px",
+        marginTop: "9px",
+        marginLeft: "10px",
       }
+
 });
 
 function dynamicSort(property) {
@@ -165,8 +187,11 @@ class OngoingAlertsView extends React.Component {
             NbrActive: 0,
             NbrSuppressed: 0, 
             alerts: [],
-            TeamList: []
+            TeamList: [],
+            openHelp: false
         };
+
+        this.openHelp = this.openHelp.bind(this)
     };
 
     componentDidMount(){
@@ -216,8 +241,11 @@ class OngoingAlertsView extends React.Component {
                 this.updateUrl()
             }
         )
-        
     };
+
+    openHelp = () => { 
+        this.setState({ openHelp: true })
+    }
 
     handleChangeSelect = name => event => {
         this.setState(
@@ -275,7 +303,7 @@ class OngoingAlertsView extends React.Component {
     }
 
     render() {
-        let username = Auth.getUsername()
+        let username = this.api.getUsername()
         let teams = this.state.TeamList
 
         let filteredAlerts = this.state.alerts.filter(
@@ -297,10 +325,24 @@ class OngoingAlertsView extends React.Component {
         )
         let NbrActive = this.state.NbrActive;
         let NbrSuppressed = this.state.NbrSuppressed;
+        let openHelp = this.state.openHelp;
         
         return (
         <div>
+            <div className={this.classes.titleBar}>
             <Typography className={this.classes.pageTitle} variant="h5">Ongoing Alerts</Typography>   
+            <Tooltip title="help">
+                <Fab 
+                    size="small" 
+                    color="primary" 
+                    aria-label="help" 
+                    onClick={this.openHelp}
+                    className={this.classes.helpButton}>
+                    <HelpIcon />
+                </Fab>
+            </Tooltip>
+            <PageHelp title="Ongoing Alerts" description={helpDescription} open={this.state.openHelp} />
+            </div>
             <Paper className={this.classes.paper}>
                 <AppBar position="static" color="default">
                     <Toolbar className={this.classes.searchBar}>
