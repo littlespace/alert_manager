@@ -185,6 +185,7 @@ class OngoingAlertsView extends React.Component {
             ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed === 1) ? true : false,
             ShowAssigned: ('assigned' in url_params_parsed ) ? url_params_parsed.assigned : "all",
             ShowTeam: ('team' in url_params_parsed ) ? url_params_parsed.team : "all",
+            FilterSeverity:  ('severity' in url_params_parsed ) ? url_params_parsed.severity.split(',') : ["all"],
             NbrActive: 0,
             NbrSuppressed: 0, 
             alerts: [],
@@ -232,7 +233,6 @@ class OngoingAlertsView extends React.Component {
             NbrActive: NbrActive,
             NbrSuppressed: NbrSuppressed
          })
-
     }
 
     handleChange = name => event => {
@@ -294,6 +294,14 @@ class OngoingAlertsView extends React.Component {
             }
             url_params = url_params + 'team=' + this.state.ShowTeam 
         }
+        if (!this.state.FilterSeverity.includes("all")) {
+            if (first === true) {
+                first = false
+            } else {
+                url_params = url_params + '&'
+            }
+            url_params = url_params + 'severity=' + this.state.FilterSeverity.join(',')
+        }
 
         // Update url in browser
         if (first === true) {
@@ -314,6 +322,8 @@ class OngoingAlertsView extends React.Component {
                 } else if (this.state.ShowAssigned === "not-assigned" && alert.Owner !== "" ) {
                     return false
                 } else if (this.state.ShowTeam !== "all" && alert.Team !== this.state.ShowTeam ) {
+                    return false
+                } else if (!this.state.FilterSeverity.includes("all") && !this.state.FilterSeverity.includes(alert.Severity.toLowerCase())) {
                     return false
                 } else if (alert.Status === "ACTIVE" && this.state.ShowActive) {
                     return true
@@ -375,6 +385,19 @@ class OngoingAlertsView extends React.Component {
                                 label="Suppressed"
                                 />
                         </Badge>
+                        <FormControl variant="outlined" className={this.classes.formControl}>
+                            <InputLabel htmlFor="severity">Severity</InputLabel>
+                            <Select
+                            multiple
+                                value={this.state.FilterSeverity}
+                                onChange={this.handleChangeSelect('FilterSeverity')}
+                            >
+                                <MenuItem value="all">All</MenuItem>
+                                <MenuItem value="info">Info</MenuItem>
+                                <MenuItem value="warn">Warn</MenuItem>
+                                <MenuItem value="critical">Critical</MenuItem>
+                            </Select>
+                        </FormControl>
                         </div>
                         <div className={this.classes.grow} />
                         <div className={this.classes.leftAlign}>
@@ -383,10 +406,6 @@ class OngoingAlertsView extends React.Component {
                             <Select
                                 value={this.state.ShowTeam}
                                 onChange={this.handleChangeSelect('ShowTeam')}
-                                // inputProps={{
-                                // name: 'age',
-                                // id: 'age-simple',
-                                // }}
                             >
                                 <MenuItem value="all">All</MenuItem>
                                 { teams instanceof Array ? teams.map(n => {
