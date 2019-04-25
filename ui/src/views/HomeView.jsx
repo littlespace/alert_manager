@@ -15,6 +15,8 @@ import Badge from '@material-ui/core/Badge';
 
 import { Link } from 'react-router-dom'
 
+import { PagesDoc } from './../static'
+
 const AM = new AlertManagerApi()
 
 const styles = theme => ({
@@ -122,13 +124,13 @@ class HomeView extends React.Component {
             <Card className={this.classes.card}>
               <CardContent>
                 <Typography variant="h5" component="h2">
-                  Ongoing Alerts
+                    {PagesDoc.ongoingAlerts.title}
                 </Typography>
                 <Typography className={this.classes.pos} color="textSecondary">
-                  All Alerts in Active and Suppressed status
+                    {PagesDoc.ongoingAlerts.sub_title}
                 </Typography>
                 <Typography component="p">
-                  List of all live/ongoing alerts
+                    {PagesDoc.ongoingAlerts.short_desc}
                 </Typography>
                 {/* <Typography component="p">
                     <Badge showZero className={this.classes.badge} badgeContent={this.state.NbrActive} color="primary">
@@ -146,13 +148,13 @@ class HomeView extends React.Component {
             <Card className={this.classes.card}>
               <CardContent>
                 <Typography variant="h5" component="h2">
-                    Alerts Explorer
+                {PagesDoc.alertsExplorer.title}
                 </Typography>
                 <Typography className={this.classes.pos} color="textSecondary">
-                    All Alerts
+                {PagesDoc.alertsExplorer.sub_title}
                 </Typography>
                 <Typography component="p">
-                    Let you explore and query all alerts recorded by the alert manager
+                {PagesDoc.alertsExplorer.short_desc}
                 </Typography>
               </CardContent>
               <CardActions>
@@ -162,13 +164,13 @@ class HomeView extends React.Component {
             <Card className={this.classes.card}>
               <CardContent>
                 <Typography variant="h5" component="h2">
-                  Suppression Rules
+                {PagesDoc.suppressionRules.title}
                 </Typography>
                 <Typography className={this.classes.pos} color="textSecondary">
-                  Show all suppression rules
+                {PagesDoc.suppressionRules.sub_title}
                 </Typography>
                 <Typography component="p">
-                  List of all active suppression rules, both defined in the configuration and dynamically created by the alert manager.
+                {PagesDoc.suppressionRules.short_desc}
                 </Typography>
               </CardContent>
               <CardActions>

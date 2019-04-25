@@ -15,6 +15,9 @@ import MenuItemLink from './MenuItemLink';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import CodeIcon from '@material-ui/icons/Code';
+import HomeIcon from '@material-ui/icons/Home';
+
+import { PagesDoc } from './../static';
 
 // const styles = {
 //     root: {
@@ -77,23 +80,29 @@ class Menu extends React.Component {
         return (
         <div>
           <MenuList>
-              <MenuItemLink className={this.classes.menuItem} to="/ongoing-alerts">
+            <MenuItemLink className={this.classes.menuItem} to={PagesDoc.home.url}>
+                  <ListItemIcon className={this.classes.icon}>
+                      <HomeIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.home.title}/>
+              </MenuItemLink>
+              <MenuItemLink className={this.classes.menuItem} to={PagesDoc.ongoingAlerts.url}>
                   <ListItemIcon className={this.classes.icon}>
                       <ViewListIcon />
                   </ListItemIcon>
-                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Ongoing Alerts" />
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.ongoingAlerts.title}/>
               </MenuItemLink>
-              <MenuItemLink className={this.classes.menuItem} to="/alerts-explorer">
+              <MenuItemLink className={this.classes.menuItem} to={PagesDoc.alertsExplorer.url}>
                   <ListItemIcon className={this.classes.icon}>
                       <ViewListIcon />
                   </ListItemIcon>
-                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts Explorer" />
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.alertsExplorer.title} />
               </MenuItemLink>
-              <MenuItemLink className={this.classes.menuItem} to="/suppression-rules">
+              <MenuItemLink className={this.classes.menuItem} to={PagesDoc.suppressionRules.url}>
                   <ListItemIcon className={this.classes.icon}>
                       <CodeIcon />
                   </ListItemIcon>
-                  <ListItemText classes={{ primary:this.classes.primary }} inset primary="Suppression Rules" />
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.suppressionRules.title} />
               </MenuItemLink>
           </MenuList>
         </div>

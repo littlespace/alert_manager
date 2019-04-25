@@ -28,6 +28,7 @@ import SuppressionRulesListView from './views/SuppRulesList';
 /// ------------------------------------------------------
 import SignIn from './components/SignIn/SignIn'
 import Header from './components/Header/Header';
+import { PagesDoc } from './static';
 
 import { AlertManagerApi } from './library/AlertManagerApi';
 
@@ -49,10 +50,10 @@ export default class App extends Component {
                 <Switch>
                   <Route exact path="/login" component={SignIn} />
                   <PrivateRoute exact authed={Auth.checkToken()} path="/" component={HomeView} />
-                  <PrivateRoute exact authed={Auth.checkToken()} path="/ongoing-alerts" component={OngoingAlertsView} />
-                  <PrivateRoute exact authed={Auth.checkToken()} path="/alerts-explorer" component={AlertsExplorerView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path={PagesDoc.ongoingAlerts.url} component={OngoingAlertsView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path={PagesDoc.alertsExplorer.url} component={AlertsExplorerView} />
                   <PrivateRoute exact authed={Auth.checkToken()} path="/alert/:id/" component={AlertView} />
-                  <PrivateRoute exact authed={Auth.checkToken()} path="/suppression-rules" component={SuppressionRulesListView} />
+                  <PrivateRoute exact authed={Auth.checkToken()} path={PagesDoc.suppressionRules.url} component={SuppressionRulesListView} />
                   <Route render={this._redirectToHome} />
                 </Switch>
             </div>
