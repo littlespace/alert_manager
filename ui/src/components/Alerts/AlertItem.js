@@ -88,7 +88,6 @@ const alert_mapping = {
 
 
 class AlertItem extends React.Component {
-
     constructor(props, context){
       super(props, context);
       this.classes = this.props.classes;

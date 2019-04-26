@@ -145,17 +145,11 @@ const styles = theme => ({
         paddingLeft: "15px",
         paddingTop: "10px"
     },
-    pageTitle:{
-        height: "30px",
-        lineHeight: "30px",
-        paddingLeft: "15px",
-        paddingTop: "10px"
-      },
-      titleBar:{
+    titleBar:{
         display: "flex",
         position: "relative",
       }, 
-      helpButton: {
+    helpButton: {
         width:  "30px",
         height: "30px",
         minHeight:  "20px",

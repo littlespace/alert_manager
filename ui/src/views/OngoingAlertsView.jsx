@@ -35,9 +35,6 @@ import HelpIcon from '@material-ui/icons/Help';
 import { PagesDoc } from '../static';
 
 
-const helpDescription = "The ongoing alert page is designed to show all Active and Suppressed Alerts (only active are visible by default).<br/> On the left side, you can filter on the team and or on the alerts that have been assigned or not";
-
-const Auth = new AlertManagerApi()
 
 const queryString = require('query-string');
 
@@ -336,8 +333,7 @@ class OngoingAlertsView extends React.Component {
         )
         let NbrActive = this.state.NbrActive;
         let NbrSuppressed = this.state.NbrSuppressed;
-        let openHelp = this.state.openHelp;
-        
+
         return (
         <div>
             <div className={this.classes.titleBar}>

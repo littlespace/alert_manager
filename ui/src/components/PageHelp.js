@@ -9,10 +9,7 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogActions from '@material-ui/core/DialogActions';
-import Avatar from '@material-ui/core/Avatar';
 
-import IconButton from '@material-ui/core/IconButton';
-import CloseIcon from '@material-ui/icons/Close';
 import Typography from '@material-ui/core/Typography';
 
 
@@ -59,7 +56,7 @@ class PageHelp extends React.Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (nextProps.open != this.state.open) {
+        if (nextProps.open !== this.state.open) {
             this.setState({ open: nextProps.open });
         }
     };

@@ -2,7 +2,6 @@
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 
-
 import Typography from '@material-ui/core/Typography';
 
 import { AlertManagerApi } from '../library/AlertManagerApi';
@@ -11,13 +10,10 @@ import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
 import CardContent from '@material-ui/core/CardContent';
 import Button from '@material-ui/core/Button';
-import Badge from '@material-ui/core/Badge';
 
 import { Link } from 'react-router-dom'
 
 import { PagesDoc } from './../static'
-
-const AM = new AlertManagerApi()
 
 const styles = theme => ({
     root: {
@@ -44,12 +40,12 @@ const styles = theme => ({
         paddingLeft: "15px",
         paddingTop: "10px"
       },
-      content: {
-        flexGrow: 1,
-        padding: theme.spacing.unit * 3,
-        height: '100vh',
-        overflow: 'auto',
-      },
+    // content: {
+    //     flexGrow: 1,
+    //     padding: theme.spacing.unit * 3,
+    //     height: '100vh',
+    //     overflow: 'auto',
+    //   },
       tableContainer: {
         height: "90%",
         display: 'flex',
