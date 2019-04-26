@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
-	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/streadway/amqp"
@@ -36,7 +35,7 @@ type Publisher struct {
 	AmqpQueueName string        `mapstructure:"amqp_queue_name"`
 	ConnectRetry  time.Duration `mapstructure:"connect_retry"`
 	ready         bool
-	Notif         chan *models.AlertEvent
+	Notif         chan *plugins.SendRequest
 	channel       *amqp.Channel
 
 	sync.Mutex
@@ -90,7 +89,7 @@ func (p *Publisher) Setup() error {
 	for {
 		conn, err = amqp.Dial(p.uri())
 		if err != nil {
-			glog.V(2).Infof("Rabbimq: Error connecting to server %s: %v", p.uri, err)
+			glog.V(2).Infof("Rabbitmq: Error connecting to server %s: %v", p.uri(), err)
 			time.Sleep(p.ConnectRetry)
 			continue
 		}
@@ -137,7 +136,7 @@ func (p *Publisher) Start(ctx context.Context, options *plugins.Options) {
 	}
 	for {
 		select {
-		case event := <-p.Notif:
+		case req := <-p.Notif:
 			p.Lock()
 			if !p.ready {
 				glog.V(2).Infof("Amqp publisher not ready, skipping event")
@@ -145,11 +144,11 @@ func (p *Publisher) Start(ctx context.Context, options *plugins.Options) {
 				break
 			}
 			p.Unlock()
-			if event.Type != models.EventType_ACTIVE && event.Type != models.EventType_CLEARED {
+			if req.Event.Type != models.EventType_ACTIVE && req.Event.Type != models.EventType_CLEARED {
 				break
 			}
 			//TODO dont publish repeat notifications
-			if err := p.Publish(p.toIncident(event)); err != nil {
+			if err := p.Publish(p.toIncident(req.Event)); err != nil {
 				glog.Errorf("Amqp: Failed to publish incident: %v", err)
 			}
 		case <-ctx.Done():
@@ -159,7 +158,6 @@ func (p *Publisher) Start(ctx context.Context, options *plugins.Options) {
 }
 
 func init() {
-	p := &Publisher{Notif: make(chan *models.AlertEvent)}
-	ah.RegisterOutput(p.Name(), p.Notif)
-	plugins.AddOutput(p)
+	p := &Publisher{Notif: make(chan *plugins.SendRequest)}
+	plugins.AddOutput(p, p.Notif)
 }
