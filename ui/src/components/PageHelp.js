@@ -62,6 +62,7 @@ class PageHelp extends React.Component {
     };
 
     handleClose = () => {
+        this.props.close()
         this.setState({ open: false });
     };
 

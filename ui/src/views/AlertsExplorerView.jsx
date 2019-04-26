@@ -189,6 +189,7 @@ class AlertsExplorerView extends React.Component {
         };
 
         this.openHelp = this.openHelp.bind(this)
+        this.closeHelp = this.closeHelp.bind(this)
     };
 
     componentDidMount(){
@@ -231,6 +232,10 @@ class AlertsExplorerView extends React.Component {
 
     openHelp = () => { 
         this.setState({ openHelp: true })
+    }
+
+    closeHelp = () => { 
+        this.setState({ openHelp: false })
     }
 
     processAlertsList(data) {
@@ -384,7 +389,11 @@ class AlertsExplorerView extends React.Component {
                     <HelpIcon />
                 </Fab>
             </Tooltip>
-            <PageHelp title={PagesDoc.alertsExplorer.title} description={PagesDoc.alertsExplorer.help} open={this.state.openHelp} />
+            <PageHelp 
+                title={PagesDoc.alertsExplorer.title} 
+                description={PagesDoc.alertsExplorer.help} 
+                open={this.state.openHelp}
+                close={this.closeHelp}/>
             </div>
             <Paper className={this.classes.paper}  onKeyDown={this.handleKeyDown}>
                 <AppBar position="static" color="default">

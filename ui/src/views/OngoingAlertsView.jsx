@@ -191,6 +191,7 @@ class OngoingAlertsView extends React.Component {
         };
 
         this.openHelp = this.openHelp.bind(this)
+        this.closeHelp = this.closeHelp.bind(this)
     };
 
     componentDidMount(){
@@ -243,6 +244,10 @@ class OngoingAlertsView extends React.Component {
 
     openHelp = () => { 
         this.setState({ openHelp: true })
+    }
+
+    closeHelp = () => { 
+        this.setState({ openHelp: false })
     }
 
     handleChangeSelect = name => event => {
@@ -348,7 +353,12 @@ class OngoingAlertsView extends React.Component {
                     <HelpIcon />
                 </Fab>
             </Tooltip>
-            <PageHelp title={PagesDoc.ongoingAlerts.title} description={PagesDoc.ongoingAlerts.help} open={this.state.openHelp} />
+            <PageHelp 
+                title={PagesDoc.ongoingAlerts.title} 
+                description={PagesDoc.ongoingAlerts.help} 
+                open={this.state.openHelp}
+                close={this.closeHelp}
+            />
             </div>
             <Paper className={this.classes.paper}>
                 <AppBar position="static" color="default">
