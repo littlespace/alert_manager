@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom'
 import { withRouter } from 'react-router-dom'
 import { withStyles } from "@material-ui/core/styles";
 
@@ -124,10 +123,10 @@ const styles = theme => ({
         marginLeft: 0,
         paddingLeft: 0
     },
-    alertItemTitle: {
-        minWidth: 150,
-        maxWidth: 150,
-     },
+    // alertItemTitle: {
+    //     minWidth: 150,
+    //     maxWidth: 150,
+    //  },
     alertItemContent: {
         // width: 200,
         flex: "initial"
@@ -179,8 +178,6 @@ const styles = theme => ({
     },
 });
 
-const Auth = new AlertManagerApi()
-
 const Text =  ({content}) => {
     return (
        <p dangerouslySetInnerHTML={{__html: content}}></p>
@@ -189,12 +186,24 @@ const Text =  ({content}) => {
 
 class AlertView extends React.Component {
 
+    static getDerivedStateFromProps(props, state) {
+        if (props.match.params.id !== state.id) {
+          return {
+            match: props.match,
+          };
+        }
+    
+        // Return null if the state hasn't changed
+        return null;
+    }
+    
+
     constructor(props, context){
         super(props, context);
         this.classes = this.props.classes;
         this.api = new AlertManagerApi();
-        this.id = this.props.match.params.id
         this.state = {
+            id: this.props.match.params.id,
             status: null,
             severity: null,
             status_color: '#8DE565',
@@ -211,12 +220,12 @@ class AlertView extends React.Component {
 
     updateSeverity = () => event => {
         this.setState({ severity: event.target.value });
-        this.api.updateAlertSeverity({id: this.id, severity: event.target.value })
+        this.api.updateAlertSeverity({id: this.state.id, severity: event.target.value })
         this.showSuccessMessage()
     };
 
     clearAlert = () => event => {
-        this.api.alertClear({id: this.id })
+        this.api.alertClear({id: this.state.id })
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
     };
@@ -234,14 +243,14 @@ class AlertView extends React.Component {
     }
 
     suppressAlert() {
-        this.api.alertSuppress({id: this.id, duration: this.state.suppress_time })
+        this.api.alertSuppress({id: this.state.id, duration: this.state.suppress_time })
         this.setState({ suppress_time_dialog_open: false });
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
     }
    
     acknowledgeAlert = () => event => {
-        this.api.alertAcknowledge({id: this.id, owner: Auth.getUsername() })
+        this.api.alertAcknowledge({id: this.state.id, owner: this.api.getUsername() })
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
     };
@@ -276,16 +285,22 @@ class AlertView extends React.Component {
         setInterval(this.updateAlert, 10000); //Refresh every 10s 
     }
 
+    componentDidUpdate(prevProps, prevState) {
+        if (this.props.match.params.id !== prevProps.match.params.id) {
+            this.setState({ id: this.props.match.params.id }, () => {this.updateAlert()})
+        }
+      }
+
     updateAlert() {
         console.log("Updating Alert Information")
-        this.api.getAlertWithHistory( this.id )
+        this.api.getAlertWithHistory( this.state.id )
           .then(data => {
               this.setState({ data: data })
               this.setState({ status: data.Status })
               this.setState({ severity: data.Severity })
             });
 
-        this.api.getContributingAlerts( this.id )
+        this.api.getContributingAlerts( this.state.id )
             .then(data => this.setState({ related_alerts: data }));
 
     }
