@@ -266,8 +266,6 @@ func (a *Alert) Clear() {
 func (a *Alert) ExtendLabels() {
 	a.Labels["device"] = a.Device.String
 	a.Labels["entity"] = a.Entity
-	a.Labels["site"] = a.Site
-	a.Labels["team"] = a.Team
 	a.Labels["alert_name"] = a.Name
 	a.Labels["severity"] = a.Severity.String()
 	a.Labels["source"] = a.Source
