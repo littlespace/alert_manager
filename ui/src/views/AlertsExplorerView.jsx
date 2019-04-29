@@ -393,7 +393,8 @@ class AlertsExplorerView extends React.Component {
                 title={PagesDoc.alertsExplorer.title} 
                 description={PagesDoc.alertsExplorer.help} 
                 open={this.state.openHelp}
-                close={this.closeHelp}/>
+                close={this.closeHelp}
+                showAlertLegent={true} />
             </div>
             <Paper className={this.classes.paper}  onKeyDown={this.handleKeyDown}>
                 <AppBar position="static" color="default">
