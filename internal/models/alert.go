@@ -192,12 +192,10 @@ func NewAlert(name, description, entity, source, scope, team string, extId strin
 
 func (a *Alert) AddDevice(device string) {
 	a.Device = sql.NullString{device, true}
-	a.Labels["device"] = a.Device.String
 }
 
 func (a *Alert) AddSite(site string) {
 	a.Site = sql.NullString{site, true}
-	a.Labels["site"] = a.Site.String
 }
 
 func (a *Alert) AddTags(tags ...string) {
