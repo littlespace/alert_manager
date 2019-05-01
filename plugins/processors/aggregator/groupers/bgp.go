@@ -1,7 +1,6 @@
 package groupers
 
 import (
-	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
@@ -36,13 +35,19 @@ func (g *bgpGrouper) AggDesc(alerts []*models.Alert) string {
 
 func (g *bgpGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
+	var nonBgpFound bool
 	for _, alert := range alerts {
 		if len(alert.Labels) == 0 || alert.Labels["labelType"] == nil || alert.Status != models.Status_ACTIVE {
 			continue
 		}
 		if alert.Labels["labelType"].(string) != "Bgp" {
-			glog.V(2).Infof("Bgp Agg: Found non bgp alert, skip grouping")
-			return []*models.Alert{}
+			nonBgpFound = true
+			continue
+		}
+		// ebgp alerts seen together with non bgp alerts possibly indicate a dc link event,
+		// let the dc link grouper handle it
+		if nonBgpFound && alert.Labels["type"] == "ebgp" {
+			continue
 		}
 		valid = append(valid, alert)
 	}

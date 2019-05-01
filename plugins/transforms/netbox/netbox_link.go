@@ -164,6 +164,10 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	}
 	labels["cktId"] = ifaceData["circuit_id"]
 	ckt := ifaceData["circuit"].(map[string]interface{})
+	if ckt["status"] != nil {
+		status := ckt["status"].(map[string]interface{})
+		labels["status"] = status["label"]
+	}
 	provider := ckt["provider"].(map[string]interface{})
 	labels["provider"] = provider["slug"]
 

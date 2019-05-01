@@ -47,7 +47,7 @@ func (g *dcCktGrouper) Name() string {
 func (g *dcCktGrouper) AggDesc(alerts []*models.Alert) string {
 	msg := "Affected entities:\n"
 	for _, a := range alerts {
-		switch a.Labels["LabelType"].(string) {
+		switch a.Labels["labelType"].(string) {
 		case "Circuit":
 			msg += fmt.Sprintf("Interface: %s:%s\n", a.Device.String, a.Entity)
 		case "Bgp":
@@ -62,6 +62,10 @@ func (g *dcCktGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	allBgp := true
 	for _, alert := range alerts {
 		if len(alert.Labels) == 0 || alert.Labels["labelType"] == nil || alert.Status != models.Status_ACTIVE {
+			continue
+		}
+		// ibgp alerts are possibly not due to dc link events, so let the bgp grouper handle them
+		if alert.Labels["labelType"].(string) == "Bgp" && alert.Labels["type"].(string) == "ibgp" {
 			continue
 		}
 		allBgp = allBgp && alert.Labels["labelType"].(string) == "Bgp"
