@@ -59,6 +59,7 @@ func (tx *MockTx) SelectAlerts(query string, arg ...interface{}) (models.Alerts,
 			Entity:      "e1",
 			Source:      "src",
 			Scope:       "scp",
+			Labels:      make(models.Labels),
 		}
 		if len(arg) == 0 {
 			alerts = append(alerts, a)
@@ -80,7 +81,8 @@ func (tx *MockTx) UpdateAlert(alert *models.Alert) error {
 func (tx *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, error) {
 	return &models.Alert{
 		Status: models.Status_ACTIVE,
-		Id:     args[0].(int64)}, nil
+		Id:     args[0].(int64),
+		Labels: make(models.Labels)}, nil
 }
 
 func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {

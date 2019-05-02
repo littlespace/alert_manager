@@ -236,14 +236,17 @@ func (a *Alert) Unsuppress() {
 func (a *Alert) SetOwner(name, team string) {
 	glog.V(2).Infof("Setting alert %d owner to %s:%s", a.Id, name, team)
 	a.Owner = sql.NullString{name, true}
+	a.Labels["owner"] = a.Owner.String
 	if team != "" {
 		a.Team = team
+		a.Labels["team"] = a.Team
 	}
 }
 
 func (a *Alert) SetSeverity(sev AlertSeverity) {
 	glog.V(2).Infof("Setting alert %d Severity to %v", a.Id, sev)
 	a.Severity = sev
+	a.Labels["severity"] = a.Severity.String()
 }
 
 func (a *Alert) Clear() {
@@ -259,6 +262,12 @@ func (a *Alert) ExtendLabels() {
 	a.Labels["source"] = a.Source
 	if a.Labels["scope"] == nil {
 		a.Labels["scope"] = a.Scope
+	}
+	if a.Owner.Valid {
+		a.Labels["owner"] = a.Owner.String
+	}
+	if a.Team != "" {
+		a.Labels["team"] = a.Team
 	}
 }
 

@@ -146,6 +146,9 @@ func (e *EmailNotifier) Start(ctx context.Context, opts *plugins.Options) {
 	for {
 		select {
 		case req := <-e.Notif:
+			if req.Event.Type == models.EventType_ACKD {
+				break
+			}
 			e.start(req, opts.WebUrl)
 		case <-ctx.Done():
 			return

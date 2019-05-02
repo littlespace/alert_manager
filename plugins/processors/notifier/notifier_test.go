@@ -74,8 +74,7 @@ func TestNotify(t *testing.T) {
 	assert.Equal(t, notif.notifiedAlerts[1].lastNotified.Equal(lastNotified), true)
 
 	// test escalated
-	mockAlert.Severity = models.Sev_CRITICAL
-	mockAlert.ExtendLabels()
+	mockAlert.SetSeverity(models.Sev_CRITICAL)
 	event = &models.AlertEvent{Type: models.EventType_ESCALATED, Alert: mockAlert}
 	notif.Notify(event)
 	req = <-notifyChan
@@ -126,8 +125,7 @@ func TestNotifyReminder(t *testing.T) {
 	assert.Equal(t, req.Event.Alert, mockAlert)
 
 	// escalate and remind
-	mockAlert.Severity = models.Sev_CRITICAL
-	mockAlert.ExtendLabels()
+	mockAlert.SetSeverity(models.Sev_CRITICAL)
 	event = &models.AlertEvent{Type: models.EventType_ESCALATED, Alert: mockAlert}
 	notif.Notify(event)
 	req = <-notifyChan
