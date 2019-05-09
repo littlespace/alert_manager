@@ -156,7 +156,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 }
 
 func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
-	if h.checkExisting(tx, alert) || h.checkAggregated(tx, alert) {
+	if h.checkExisting(tx, alert) {
 		return nil
 	}
 	// add transforms
@@ -166,6 +166,9 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	alert.ExtendLabels()
 	if rule := h.Suppressor.Match(alert.Labels); rule != nil && rule.TimeLeft() > 0 {
 		glog.V(2).Infof("Found matching suppression rule for %s:%s:%s: %d:%s", alert.Name, alert.Entity, alert.Device.String, rule.Id, rule.Name)
+		return nil
+	}
+	if h.checkAggregated(tx, alert) {
 		return nil
 	}
 	// new alert
@@ -450,6 +453,7 @@ func (h *AlertHandler) Suppress(
 				return fmt.Errorf("Unable to suppress alert %d: %v", a.Id, err)
 			}
 		}
+		return nil
 	}
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, duration); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)

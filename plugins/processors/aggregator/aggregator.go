@@ -125,7 +125,7 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out c
 	return models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		agg := group.aggAlert()
 		supp := ah.GetSuppressor(a.db)
-		labels := models.Labels{"alert_name": agg.Name, "entity": "Various"}
+		labels := models.Labels{"alert_name": agg.Name}
 		rule := supp.Match(labels)
 		if rule != nil && rule.TimeLeft() > 0 {
 			glog.V(2).Infof("Found matching suppression rule for alert %s: %d:%s", agg.Name, rule.Id, rule.Name)

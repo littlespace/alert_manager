@@ -278,6 +278,7 @@ func (s *Server) GetItems(w http.ResponseWriter, req *http.Request) {
 	q, err := buildSelectQuery(req)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Unable to fetch items: %s", err.Error()), http.StatusBadRequest)
+		return
 	}
 	items, err := s.fetchResults(q)
 	if err != nil {
@@ -301,7 +302,6 @@ func (s *Server) GetAlert(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			return err
 		}
-		s.statError.Add(1)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(alert)
 		return nil
@@ -338,7 +338,6 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 	alert, err := s.handler.GetExisting(tx, a)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Alert %d not found", id), http.StatusBadRequest)
-		s.statError.Add(1)
 		return
 	}
 	ctx := req.Context()
@@ -387,6 +386,7 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 		if er != nil {
 			glog.Errorf("Api: Unable to Action alerts: %v", er)
 			http.Error(w, fmt.Sprintf("Unable to Update alerts: %s", er.Error()), http.StatusInternalServerError)
+			s.statError.Add(1)
 		}
 		return er
 	})
@@ -420,6 +420,7 @@ func (s *Server) CreateSuppRule(w http.ResponseWriter, req *http.Request) {
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create suppression rule: %v", err), http.StatusInternalServerError)
+		s.statError.Add(1)
 		return
 	}
 	s.statPosts.Add(1)
@@ -437,6 +438,7 @@ func (s *Server) ClearSuppRule(w http.ResponseWriter, req *http.Request) {
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Unable to delete suppression rule: %v", err), http.StatusBadRequest)
+		s.statError.Add(1)
 		return
 	}
 }
@@ -479,6 +481,7 @@ func (s *Server) CreateUser(w http.ResponseWriter, req *http.Request) {
 	})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create user: %v", err), http.StatusInternalServerError)
+		s.statError.Add(1)
 		return
 	}
 	s.statPosts.Add(1)
