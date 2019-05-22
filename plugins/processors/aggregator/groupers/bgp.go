@@ -1,7 +1,6 @@
 package groupers
 
 import (
-	"fmt"
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
