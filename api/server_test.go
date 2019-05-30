@@ -235,7 +235,7 @@ func TestServerGet(t *testing.T) {
 	if err := json.NewDecoder(rr.Result().Body).Decode(&a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a["Id"].(float64), float64(2))
+	assert.Equal(t, a["id"].(float64), float64(2))
 
 	req, err = http.NewRequest("GET", "/api/suppression_rules", nil)
 	if err != nil {
@@ -287,8 +287,8 @@ func TestServerAlertAction(t *testing.T) {
 	if err := json.NewDecoder(rr.Result().Body).Decode(&a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a["Id"].(float64), float64(1))
-	assert.Equal(t, a["Status"].(string), "SUPPRESSED")
+	assert.Equal(t, a["id"].(float64), float64(1))
+	assert.Equal(t, a["status"].(string), "SUPPRESSED")
 
 	// test clear
 	req, _ = http.NewRequest("PATCH", "/api/alerts/1/clear", nil)
@@ -298,8 +298,8 @@ func TestServerAlertAction(t *testing.T) {
 	if err := json.NewDecoder(rr.Result().Body).Decode(&a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a["Id"].(float64), float64(1))
-	assert.Equal(t, a["Status"].(string), "CLEARED")
+	assert.Equal(t, a["id"].(float64), float64(1))
+	assert.Equal(t, a["status"].(string), "CLEARED")
 
 	// test ack
 	req, _ = http.NewRequest("PATCH", "/api/alerts/1/ack?owner=foo&team=bar", nil)
@@ -309,10 +309,10 @@ func TestServerAlertAction(t *testing.T) {
 	if err := json.NewDecoder(rr.Result().Body).Decode(&a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a["Id"].(float64), float64(1))
-	assert.Equal(t, a["Status"].(string), "ACTIVE")
-	assert.Equal(t, a["Owner"].(string), "foo")
-	assert.Equal(t, a["Team"].(string), "bar")
+	assert.Equal(t, a["id"].(float64), float64(1))
+	assert.Equal(t, a["status"].(string), "ACTIVE")
+	assert.Equal(t, a["owner"].(string), "foo")
+	assert.Equal(t, a["team"].(string), "bar")
 }
 
 func TestSuppRule(t *testing.T) {
@@ -340,7 +340,7 @@ func TestSuppRule(t *testing.T) {
 	if err := json.NewDecoder(rr.Result().Body).Decode(&a); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, a["Id"].(float64), float64(1))
+	assert.Equal(t, a["id"].(float64), float64(1))
 
 	req, _ = http.NewRequest("DELETE", "/api/suppression_rules/1/clear", nil)
 	rr = httptest.NewRecorder()
@@ -358,10 +358,10 @@ func TestSuppRule(t *testing.T) {
 	}
 	assert.Equal(t, len(b), 1)
 	c := b[0].(map[string]interface{})
-	assert.Equal(t, c["Id"].(float64), float64(0))
-	assert.Equal(t, c["Name"].(string), "Dummy SuppRule")
-	assert.Equal(t, c["Creator"].(string), "alert manager")
-	assert.Equal(t, c["DontExpire"].(bool), true)
+	assert.Equal(t, c["id"].(float64), float64(0))
+	assert.Equal(t, c["name"].(string), "Dummy SuppRule")
+	assert.Equal(t, c["creator"].(string), "alert manager")
+	assert.Equal(t, c["dont_expire"].(bool), true)
 }
 
 func TestMain(m *testing.M) {
