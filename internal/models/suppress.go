@@ -29,15 +29,15 @@ var (
 )
 
 type SuppressionRule struct {
-	Id         int64
-	Mcond      MatchCondition
-	Name       string
-	Entities   Labels
-	CreatedAt  MyTime `db:"created_at"`
-	Duration   int64
-	Reason     string
-	Creator    string
-	DontExpire bool
+	Id         int64          `json:"id"`
+	Mcond      MatchCondition `json:"mcond"`
+	Name       string         `json:"name"`
+	Entities   Labels         `json:"entities"`
+	CreatedAt  MyTime         `db:"created_at" json:"created_at"`
+	Duration   int64          `json:"duration"`
+	Reason     string         `json:"reason"`
+	Creator    string         `json:"creator"`
+	DontExpire bool           `json:"dont_expire"`
 }
 
 func (s SuppressionRule) Match(labels Labels) bool {

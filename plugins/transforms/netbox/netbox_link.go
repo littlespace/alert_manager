@@ -171,6 +171,8 @@ func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	}
 	provider := ckt["provider"].(map[string]interface{})
 	labels["provider"] = provider["slug"]
+	custom := ckt["custom_fields"].(map[string]interface{})
+	labels["provider_id"] = custom["vendor_id"]
 
 	return labels, nil
 }

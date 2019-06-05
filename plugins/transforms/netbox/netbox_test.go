@@ -216,6 +216,9 @@ var testDatas = map[string][]byte{
                 "provider": {
                     "slug": "telia",
                     "asn": 1299
+                },
+                "custom_fields": {
+                    "vendor_id": "telia-123"
                 }
             },
             "circuit_termination": {
@@ -505,6 +508,7 @@ func TestNetboxLink(t *testing.T) {
 	assert.Equal(t, a.Labels["role"], "bb")
 	assert.Equal(t, a.Labels["cktId"], "XXXX-000062-1")
 	assert.Equal(t, a.Labels["provider"], "telia")
+	assert.Equal(t, a.Labels["provider_id"], "telia-123")
 }
 
 func TestNetboxBgp(t *testing.T) {

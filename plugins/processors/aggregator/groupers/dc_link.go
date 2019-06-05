@@ -40,11 +40,11 @@ func (g dcCktGrouper) GrouperFunc() GroupingFunc {
 	}
 }
 
-func (g *dcCktGrouper) Name() string {
+func (g dcCktGrouper) Name() string {
 	return g.name
 }
 
-func (g *dcCktGrouper) AggDesc(alerts []*models.Alert) string {
+func (g dcCktGrouper) AggDesc(alerts []*models.Alert) string {
 	msg := "Affected entities:\n"
 	for _, a := range alerts {
 		switch a.Labels["labelType"].(string) {
@@ -57,7 +57,7 @@ func (g *dcCktGrouper) AggDesc(alerts []*models.Alert) string {
 	return msg
 }
 
-func (g *dcCktGrouper) Valid(alerts []*models.Alert) []*models.Alert {
+func (g dcCktGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	var valid []*models.Alert
 	allBgp := true
 	for _, alert := range alerts {

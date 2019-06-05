@@ -104,13 +104,13 @@ type mockGrouper struct {
 	name string
 }
 
-func (m *mockGrouper) Name() string { return m.name }
+func (m mockGrouper) Name() string { return m.name }
 
-func (m *mockGrouper) AggDesc(alerts []*models.Alert) string {
+func (m mockGrouper) AggDesc(alerts []*models.Alert) string {
 	return mockAlerts["agg_bgp_12"].Description
 }
 
-func (m *mockGrouper) Valid(alerts []*models.Alert) []*models.Alert {
+func (m mockGrouper) Valid(alerts []*models.Alert) []*models.Alert {
 	return alerts
 }
 
