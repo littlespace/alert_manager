@@ -5,17 +5,18 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/gorilla/mux"
-	ah "github.com/mayuresh82/alert_manager/handler"
-	"github.com/mayuresh82/alert_manager/internal/models"
-	tu "github.com/mayuresh82/alert_manager/testutil"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/gorilla/mux"
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
+	tu "github.com/mayuresh82/alert_manager/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 var mockRules = map[string]models.SuppressionRule{
@@ -175,6 +176,19 @@ func TestServerAuth(t *testing.T) {
 	if err := json.NewDecoder(rr.Result().Body).Decode(&tk); err != nil {
 		t.Fatal(err)
 	}
+	assert.Equal(t, tk.ExpiresAt > 0, true)
+
+	// test admin user
+	s.admin = &User{Username: "foo", Password: "bar"}
+	body = bytes.NewReader(data)
+	req, _ = http.NewRequest("POST", "/api/auth", body)
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	tk = JwtToken{}
+	if err := json.NewDecoder(rr.Result().Body).Decode(&tk); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, tk.ExpiresAt, int64(0))
 
 	var testFunc = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {})
 

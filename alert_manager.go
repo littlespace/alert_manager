@@ -3,15 +3,16 @@ package alert_manager
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/api"
 	ah "github.com/mayuresh82/alert_manager/handler"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/internal/stats"
 	"github.com/mayuresh82/alert_manager/plugins"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 // global flags
@@ -65,7 +66,11 @@ func Run(config *Config) {
 			glog.Errorf("Failed to init ldap: %v", err)
 		}
 	}
-	server := api.NewServer(config.Api.ApiAddr, config.Api.ApiKey, auth, handler)
+	var admin *api.User
+	if config.Api.AdminUsername != "" {
+		admin = &api.User{Username: config.Api.AdminUsername, Password: config.Api.AdminPassword}
+	}
+	server := api.NewServer(config.Api.ApiAddr, config.Api.ApiKey, admin, auth, handler)
 	go server.Start(ctx)
 
 	// start the reporting agent

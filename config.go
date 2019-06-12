@@ -18,14 +18,16 @@ type AgentConfig struct {
 }
 
 type ApiConfig struct {
-	ApiAddr      string `mapstructure:"api_addr"`
-	ApiKey       string `mapstructure:"api_key"`
-	AuthProvider string `mapstructure:"auth_provider"`
-	LdapUri      string `mapstructure:"ldap_uri"`
-	LdapBindDN   string `mapstructure:"ldap_binddn"`
-	LdapBaseDN   string `mapstructure:"ldap_basedn"`
-	LdapBinduser string `mapstructure:"ldap_binduser"`
-	LdapBindpass string `mapstructure:"ldap_bindpass"`
+	AdminUsername string `mapstructure:"admin_username"`
+	AdminPassword string `mapstructure:"admin_password"`
+	ApiAddr       string `mapstructure:"api_addr"`
+	ApiKey        string `mapstructure:"api_key"`
+	AuthProvider  string `mapstructure:"auth_provider"`
+	LdapUri       string `mapstructure:"ldap_uri"`
+	LdapBindDN    string `mapstructure:"ldap_binddn"`
+	LdapBaseDN    string `mapstructure:"ldap_basedn"`
+	LdapBinduser  string `mapstructure:"ldap_binduser"`
+	LdapBindpass  string `mapstructure:"ldap_bindpass"`
 }
 
 type DbConfig struct {
