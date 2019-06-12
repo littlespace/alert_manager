@@ -5,16 +5,19 @@ import PropTypes from 'prop-types';
 
 import { withStyles } from '@material-ui/core/styles';
 import MenuList from '@material-ui/core/MenuList';
-import MenuItem from '@material-ui/core/MenuItem';
-import Divider from  '@material-ui/core/Divider'
 import ListItemText from '@material-ui/core/ListItemText'
-import Drawer from '@material-ui/core/Drawer';
+
+import MenuItemLink from './MenuItemLink';
+
+// -------------------------------------------------------
+// Icons
+// -------------------------------------------------------
 import ListItemIcon from '@material-ui/core/ListItemIcon';
-import DashboardIcon from '@material-ui/icons/Dashboard';
 import ViewListIcon from '@material-ui/icons/ViewList';
 import CodeIcon from '@material-ui/icons/Code';
-import { Link } from 'react-router-dom'
-import MenuItemLink from './MenuItemLink';
+import HomeIcon from '@material-ui/icons/Home';
+
+import { PagesDoc } from './../static';
 
 // const styles = {
 //     root: {
@@ -57,7 +60,9 @@ const styles = theme => ({
     },
   },
   primary: {},
-  icon: {},
+  icon: {
+    marginRight: "0px"
+  },
 });
 
 class Menu extends React.Component {
@@ -74,52 +79,34 @@ class Menu extends React.Component {
     render() {
         return (
         <div>
-            <Drawer
-                    variant="permanent"
-                    classes={{
-                    paper: this.classes.drawerPaper,
-                    }}
-                >
-                <MenuList>
-                    {/* <MenuItemLink className={this.classes.menuItem} to="/" >
-                        <ListItemIcon className={this.classes.icon}>
-                            <DashboardIcon />
-                        </ListItemIcon>
-                        <ListItemText classes={{ primary: this.classes.primary }} inset primary="Dashboard" />
-                    </MenuItemLink> */}
-                    <MenuItemLink className={this.classes.menuItem} to="/alerts">
-                        <ListItemIcon className={this.classes.icon}>
-                            <ViewListIcon />
-                        </ListItemIcon>
-                        <ListItemText classes={{ primary:this.classes.primary }} inset primary="Alerts List" />
-                    </MenuItemLink>
-                    {/* <MenuItemLink className={this.classes.menuItem} to="/">
-                        <ListItemIcon className={this.classes.icon}>
-                            <CodeIcon />
-                        </ListItemIcon>
-                        <ListItemText classes={{ primary: this.classes.primary }} inset primary="..." />
-                    </MenuItemLink> */}
-                </MenuList>
-            </Drawer>
+          <MenuList>
+            <MenuItemLink className={this.classes.menuItem} to={PagesDoc.home.url}>
+                  <ListItemIcon className={this.classes.icon}>
+                      <HomeIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.home.title}/>
+              </MenuItemLink>
+              <MenuItemLink className={this.classes.menuItem} to={PagesDoc.ongoingAlerts.url}>
+                  <ListItemIcon className={this.classes.icon}>
+                      <ViewListIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.ongoingAlerts.title}/>
+              </MenuItemLink>
+              <MenuItemLink className={this.classes.menuItem} to={PagesDoc.alertsExplorer.url}>
+                  <ListItemIcon className={this.classes.icon}>
+                      <ViewListIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.alertsExplorer.title} />
+              </MenuItemLink>
+              <MenuItemLink className={this.classes.menuItem} to={PagesDoc.suppressionRules.url}>
+                  <ListItemIcon className={this.classes.icon}>
+                      <CodeIcon />
+                  </ListItemIcon>
+                  <ListItemText classes={{ primary:this.classes.primary }} inset primary={PagesDoc.suppressionRules.title} />
+              </MenuItemLink>
+          </MenuList>
         </div>
         )};
 }
 
 export default withStyles(styles)(Menu);
-
-            {/* <List component="nav">
-                <ListItem button>
-                <ListItemText primary="Inbox" />
-                </ListItem>
-                <Divider />
-                <ListItem button divider>
-                <ListItemText primary="Drafts" />
-                </ListItem>
-                <ListItem button>
-                <ListItemText primary="Trash" />
-                </ListItem>
-                <Divider light />
-                <ListItem button>
-                <ListItemText primary="Spam" />
-                </ListItem>
-            </List> */}

@@ -11,4 +11,13 @@ export default createMuiTheme({
     status: {
       danger: 'orange',
     },
+    typography: {
+      useNextVariants: true,
+    },
+    pageTitle:{
+      height: "30px",
+      lineHeight: "30px",
+      paddingLeft: "15px",
+      paddingTop: "10px"
+    }
   });

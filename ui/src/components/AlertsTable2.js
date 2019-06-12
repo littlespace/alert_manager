@@ -157,7 +157,7 @@ class AlertsTable extends React.Component {
         super(props, context);
         this.classes = this.props.classes;
         // this.history = this.props.history;
-        this.api = new AlertManagerApi(process.env.REACT_APP_ALERT_MANAGER_SERVER);
+        this.api = new AlertManagerApi();
         
         var url_params_parsed = queryString.parse(this.context.router.history.location.search);
         
