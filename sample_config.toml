@@ -4,6 +4,9 @@
   clear_holddown_interval = "5m"
 
 [api]
+  # admin
+  admin_username = "admin"
+  admin_password = "abcd"
   # api listen addr
   api_addr = ":8181"
   # api key is used to generate tokens and needs to be unique per instane

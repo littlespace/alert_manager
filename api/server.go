@@ -89,6 +89,7 @@ type Server struct {
 	handler      *ah.AlertHandler
 	authProvider AuthProvider
 	apiKey       string
+	admin        *User
 
 	statGets          stats.Stat
 	statPosts         stats.Stat
@@ -97,10 +98,11 @@ type Server struct {
 	statsAuthFailures stats.Stat
 }
 
-func NewServer(addr, apiKey string, authProvider AuthProvider, handler *ah.AlertHandler) *Server {
+func NewServer(addr, apiKey string, admin *User, authProvider AuthProvider, handler *ah.AlertHandler) *Server {
 	return &Server{
 		addr:              addr,
 		apiKey:            apiKey,
+		admin:             admin,
 		handler:           handler,
 		authProvider:      authProvider,
 		statGets:          stats.NewCounter("api.gets"),
@@ -191,11 +193,13 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 	} else {
 		err := json.NewDecoder(req.Body).Decode(&user)
 		if err != nil {
+			glog.Errorf("Unable to decode user: %v", err)
 			http.Error(w, "Invalid credentials", http.StatusBadRequest)
 			return
 		}
 	}
-	if s.authProvider != nil {
+	isAdmin := s.admin != nil && user.Username == s.admin.Username && user.Password == s.admin.Password
+	if s.authProvider != nil && !isAdmin {
 		auth, err := s.authProvider.Authenticate(user.Username, user.Password)
 		if err != nil {
 			glog.Errorf("Failed to auth %s: %v", user.Username, err)
@@ -207,13 +211,13 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	expirationTime := time.Now().Add(tokenExpiryTime).Unix()
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &Claims{
-		Username: user.Username,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime,
-		},
-	})
+	claims := &Claims{Username: user.Username, StandardClaims: jwt.StandardClaims{}}
+	var expirationTime int64
+	if !isAdmin {
+		expirationTime = time.Now().Add(tokenExpiryTime).Unix()
+		claims.StandardClaims.ExpiresAt = expirationTime
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.apiKey))
 	if err != nil {
 		s.statsAuthFailures.Add(1)
