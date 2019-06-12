@@ -89,7 +89,7 @@ func (p *Publisher) Setup() error {
 	for {
 		conn, err = amqp.Dial(p.uri())
 		if err != nil {
-			glog.V(2).Infof("Rabbitmq: Error connecting to server %s: %v", p.uri(), err)
+			glog.V(2).Infof("Rabbitmq: Error connecting to server %s: %v", p.AmqpAddr, err)
 			time.Sleep(p.ConnectRetry)
 			continue
 		}
@@ -158,6 +158,6 @@ func (p *Publisher) Start(ctx context.Context, options *plugins.Options) {
 }
 
 func init() {
-	p := &Publisher{Notif: make(chan *plugins.SendRequest)}
+	p := &Publisher{ConnectRetry: 60 * time.Second, Notif: make(chan *plugins.SendRequest)}
 	plugins.AddOutput(p, p.Notif)
 }
