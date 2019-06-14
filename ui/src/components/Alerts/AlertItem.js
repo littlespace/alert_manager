@@ -10,9 +10,9 @@ import Tooltip from '@material-ui/core/Tooltip';
 
 import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
 
-import { 
-    timeConverter, 
-    secondsToHms 
+import {
+    timeConverter,
+    secondsToHms
 } from '../../library/utils';
 
 const styles = theme => ({
@@ -21,7 +21,7 @@ const styles = theme => ({
     },
     root: {
         flexGrow: 1,
-      },
+    },
     alertItem: {
         fontSize: "0.75rem",
         letterSpacing: "0.01071em",
@@ -73,7 +73,7 @@ const styles = theme => ({
         backgroundColor: '#FFF3E0'
     },
     alertCritical: {
-        backgroundColor: '#ffebee'  
+        backgroundColor: '#ffebee'
     },
     alertInfo: {
         backgroundColor: '#E3F2FD'
@@ -88,54 +88,54 @@ const alert_mapping = {
 
 
 class AlertItem extends React.Component {
-    constructor(props, context){
-      super(props, context);
-      this.classes = this.props.classes;
-      this.state = {}
+    constructor(props, context) {
+        super(props, context);
+        this.classes = this.props.classes;
+        this.state = {}
     }
-    
+
     redirectToAlert = () => {
-        this.props.history.push(`/alert/${this.props.data.Id}`)
+        this.props.history.push(`/alert/${this.props.data.id}`)
     }
 
     render() {
 
-      return (
-        
-            <Grid container item 
+        return (
+
+            <Grid container item
                 xs={12}
                 onClick={this.redirectToAlert}
-                className={classNames(this.classes.alertItem,this.classes[alert_mapping[this.props.data.Severity]])}>
+                className={classNames(this.classes.alertItem, this.classes[alert_mapping[this.props.data.severity]])}>
                 <Grid container item xs={4} sm={1} md={1} className={this.classes.alertCell}>
                     <Grid item xs={9} sm={8}>
                         <Button variant="contained" color="primary" className={this.classes.button}>
-                            {(this.props.data.Status === 'SUPPRESSED') ? "SUPPR" : this.props.data.Status}
+                            {(this.props.data.status === 'SUPPRESSED') ? "SUPPR" : this.props.data.status}
                         </Button>
                     </Grid>
                     <Grid item xs={3} sm={4} >
-                        { (this.props.data.Owner !== "") ? 
-                        <Tooltip title={this.props.data.Owner} placement="bottom">
-                            <Avatar className={this.classes.ownerBadge}>
-                                <AssignmentTurnedInIcon className={this.classes.ownerBadgeIcon}/>
-                            </Avatar>
-                        </Tooltip> : "" }
+                        {(this.props.data.owner !== "") ?
+                            <Tooltip title={this.props.data.owner} placement="bottom">
+                                <Avatar className={this.classes.ownerBadge}>
+                                    <AssignmentTurnedInIcon className={this.classes.ownerBadgeIcon} />
+                                </Avatar>
+                            </Tooltip> : ""}
                     </Grid>
                 </Grid>
-                <Grid item xs={8} sm={3} md={4} className={classNames(this.classes.alertCell,this.classes.alertItemName)}>{this.props.data.Name}</Grid>
-                <Grid container item xs={6} sm={2} md={2} className={classNames(this.classes.alertCell,this.classes.alertItemTimes)}>
-                    <Grid item xs={12}>Site: {(this.props.data.Site !== "") ? this.props.data.Site : "undefined" }</Grid>
-                    <Grid item xs={12}>Device: {(this.props.data.Device!== "") ? this.props.data.Device : "undefined"}</Grid>
+                <Grid item xs={8} sm={3} md={4} className={classNames(this.classes.alertCell, this.classes.alertItemName)}>{this.props.data.name}</Grid>
+                <Grid container item xs={6} sm={2} md={2} className={classNames(this.classes.alertCell, this.classes.alertItemTimes)}>
+                    <Grid item xs={12}>Site: {(this.props.data.site !== "") ? this.props.data.site : "undefined"}</Grid>
+                    <Grid item xs={12}>Device: {(this.props.data.device !== "") ? this.props.data.device : "undefined"}</Grid>
                 </Grid>
-                <Grid item xs={6} sm={1} className={this.classes.alertCell}>{this.props.data.Scope}</Grid>
-                <Grid item xs={6} sm={3} md={2} className={this.classes.alertCell}>{this.props.data.Source}</Grid>
-                <Grid container item xs={6} sm={2} className={classNames(this.classes.alertCell,this.classes.alertItemTimes)}>
+                <Grid item xs={6} sm={1} className={this.classes.alertCell}>{this.props.data.scope}</Grid>
+                <Grid item xs={6} sm={3} md={2} className={this.classes.alertCell}>{this.props.data.source}</Grid>
+                <Grid container item xs={6} sm={2} className={classNames(this.classes.alertCell, this.classes.alertItemTimes)}>
                     <Grid item xs={12} className={this.classes.alertItemTimeItem}>Start: {timeConverter(this.props.data.start_time)}</Grid>
                     <Grid item xs={12} className={this.classes.alertItemTimeItem}>Last Active: {secondsToHms(this.props.data.last_active)}</Grid>
                 </Grid>
             </Grid>
-        
-      );
+
+        );
     }
-  }
-  
+}
+
 export default withRouter(withStyles(styles)(AlertItem))

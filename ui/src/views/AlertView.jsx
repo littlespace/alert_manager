@@ -53,20 +53,20 @@ import HistoryItem from '../components/Alerts/HistoryItem';
 
 const styles = theme => ({
     root: {
-      flexGrow: 1,
-    //   height: 440,
-      zIndex: 1,
-      overflow: 'hidden',
-      position: 'relative',
-      display: 'flex',
-      height: '100%',
+        flexGrow: 1,
+        //   height: 440,
+        zIndex: 1,
+        overflow: 'hidden',
+        position: 'relative',
+        display: 'flex',
+        height: '100%',
     },
 
     content: {
-      flexGrow: 1,
-      backgroundColor: theme.palette.background.default,
-      padding: theme.spacing.unit * 3,
-      minWidth: 0, // So the Typography noWrap works
+        flexGrow: 1,
+        backgroundColor: theme.palette.background.default,
+        padding: theme.spacing.unit * 3,
+        minWidth: 0, // So the Typography noWrap works
     },
     grow: {
         flexGrow: 1,
@@ -115,8 +115,8 @@ const styles = theme => ({
     message: {
         display: 'flex',
         alignItems: 'center',
-      },
-      button: {
+    },
+    button: {
         // backgroundColor: amber[700],
     },
     alertItem: {
@@ -131,28 +131,28 @@ const styles = theme => ({
         // width: 200,
         flex: "initial"
     },
-    
+
     alertElement: {
-      height: "45px",
-      lineHeight: "45px",
-      display: "flex"
+        height: "45px",
+        lineHeight: "45px",
+        display: "flex"
     },
     alertCardAvatar: {
-      height: "35px",
-      width: "35px",
-      marginTop: "5px",
-      marginRight: "10px",
-      marginLeft: "5px"
+        height: "35px",
+        width: "35px",
+        marginTop: "5px",
+        marginRight: "10px",
+        marginLeft: "5px"
     },
     alertCardIcon: {
 
     },
     alertDescription: {
-      lineHeight: "20px",
-      height: "auto",
+        lineHeight: "20px",
+        height: "auto",
     },
     alertDescriptionText: {
-      marginTop: "5px"
+        marginTop: "5px"
     },
     alertItemTitle: {
         fontSize: "1rem",
@@ -178,9 +178,9 @@ const styles = theme => ({
     },
 });
 
-const Text =  ({content}) => {
+const Text = ({ content }) => {
     return (
-       <p dangerouslySetInnerHTML={{__html: content}}></p>
+        <p dangerouslySetInnerHTML={{ __html: content }}></p>
     );
 };
 
@@ -188,17 +188,17 @@ class AlertView extends React.Component {
 
     static getDerivedStateFromProps(props, state) {
         if (props.match.params.id !== state.id) {
-          return {
-            match: props.match,
-          };
+            return {
+                match: props.match,
+            };
         }
-    
+
         // Return null if the state hasn't changed
         return null;
     }
-    
 
-    constructor(props, context){
+
+    constructor(props, context) {
         super(props, context);
         this.classes = this.props.classes;
         this.api = new AlertManagerApi();
@@ -220,12 +220,12 @@ class AlertView extends React.Component {
 
     updateSeverity = () => event => {
         this.setState({ severity: event.target.value });
-        this.api.updateAlertSeverity({id: this.state.id, severity: event.target.value })
+        this.api.updateAlertSeverity({ id: this.state.id, severity: event.target.value })
         this.showSuccessMessage()
     };
 
     clearAlert = () => event => {
-        this.api.alertClear({id: this.state.id })
+        this.api.alertClear({ id: this.state.id })
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
     };
@@ -243,14 +243,14 @@ class AlertView extends React.Component {
     }
 
     suppressAlert() {
-        this.api.alertSuppress({id: this.state.id, duration: this.state.suppress_time })
+        this.api.alertSuppress({ id: this.state.id, duration: this.state.suppress_time })
         this.setState({ suppress_time_dialog_open: false });
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
     }
-   
+
     acknowledgeAlert = () => event => {
-        this.api.alertAcknowledge({id: this.state.id, owner: this.api.getUsername() })
+        this.api.alertAcknowledge({ id: this.state.id, owner: this.api.getUsername() })
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
     };
@@ -270,7 +270,7 @@ class AlertView extends React.Component {
 
     handleMessageClose = (event, reason) => {
         if (reason === 'clickaway') {
-          return;
+            return;
         }
         this.setState({ snackbarUpdateMessage: false });
     };
@@ -278,8 +278,8 @@ class AlertView extends React.Component {
     showSuccessMessage() {
         this.setState({ snackbarUpdateMessage: true });
     };
-      
-    componentDidMount() {        
+
+    componentDidMount() {
 
         this.updateAlert()
         setInterval(this.updateAlert, 10000); //Refresh every 10s 
@@ -287,270 +287,270 @@ class AlertView extends React.Component {
 
     componentDidUpdate(prevProps, prevState) {
         if (this.props.match.params.id !== prevProps.match.params.id) {
-            this.setState({ id: this.props.match.params.id }, () => {this.updateAlert()})
+            this.setState({ id: this.props.match.params.id }, () => { this.updateAlert() })
         }
-      }
+    }
 
     updateAlert() {
         console.log("Updating Alert Information")
-        this.api.getAlertWithHistory( this.state.id )
-          .then(data => {
-              this.setState({ data: data })
-              this.setState({ status: data.Status })
-              this.setState({ severity: data.Severity })
+        this.api.getAlertWithHistory(this.state.id)
+            .then(data => {
+                this.setState({ data: data })
+                this.setState({ status: data.status })
+                this.setState({ severity: data.severity })
             });
 
-        this.api.getContributingAlerts( this.state.id )
+        this.api.getContributingAlerts(this.state.id)
             .then(data => this.setState({ related_alerts: data }));
 
     }
 
     render() {
         const data = this.state.data;
-        const description = ("Description" in this.state.data) ? this.state.data.Description.replace(/\n/g, "<br/>") : "";
+        const description = ("description" in this.state.data) ? this.state.data.description.replace(/\n/g, "<br/>") : "";
         const { related_alerts } = this.state;
 
         return (
-            <div> 
-            <Snackbar
-                anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'left',
-                }}
-                open={this.state.snackbarUpdateMessage}
-                autoHideDuration={6000}
-                onClose={this.handleMessageClose}
+            <div>
+                <Snackbar
+                    anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'left',
+                    }}
+                    open={this.state.snackbarUpdateMessage}
+                    autoHideDuration={6000}
+                    onClose={this.handleMessageClose}
                 >
-                <SnackbarContent
-                    className={this.classes.info}
-                    aria-describedby="client-snackbar"
-                    message={
-                        <span id="client-snackbar" className={this.classes.message}>
-                        <InfoIcon />
-                        {'Alert Succefully updated'}
-                        </span>
-                    }
-                    action={[
-                        <IconButton
-                            key="close"
-                            aria-label="Close"
-                            color="inherit"
-                            className={this.classes.close}
-                            onClick={this.handleMessageClose}
-                        >
-                        <CloseIcon className={this.classes.icon} />
-                        </IconButton>,
-                    ]}
+                    <SnackbarContent
+                        className={this.classes.info}
+                        aria-describedby="client-snackbar"
+                        message={
+                            <span id="client-snackbar" className={this.classes.message}>
+                                <InfoIcon />
+                                {'Alert Succefully updated'}
+                            </span>
+                        }
+                        action={[
+                            <IconButton
+                                key="close"
+                                aria-label="Close"
+                                color="inherit"
+                                className={this.classes.close}
+                                onClick={this.handleMessageClose}
+                            >
+                                <CloseIcon className={this.classes.icon} />
+                            </IconButton>,
+                        ]}
                     />
-            </Snackbar>
-            <Dialog
-                open={this.state.suppress_time_dialog_open}
-                // onClose={this.handleClose}
-                aria-labelledby="alert-suppress-time-select"
+                </Snackbar>
+                <Dialog
+                    open={this.state.suppress_time_dialog_open}
+                    // onClose={this.handleClose}
+                    aria-labelledby="alert-suppress-time-select"
                 >
-                <DialogTitle id="alert-suppress-time-select-title">For how long would you like to suppress this alert ? </DialogTitle>
-                <DialogContent>
-                    {/* <DialogContentText>
+                    <DialogTitle id="alert-suppress-time-select-title">For how long would you like to suppress this alert ? </DialogTitle>
+                    <DialogContent>
+                        {/* <DialogContentText>
                     You can set my maximum width and whether to adapt or not.
                     </DialogContentText> */}
-                    <form className={this.classes.form} noValidate>
-                    <FormControl className={this.classes.formControl}>
-                        <Select
-                            native
-                            className={this.classes.select}
-                            value={this.state.suppress_time}
-                            onChange={this.updateSuppressTime()}
-                            input={
-                            <OutlinedInput
-                                name="suppress-time"
-                                labelWidth={50}
-                                id="suppress-time"
-                            />
-                            }
-                            >
-                            <option value={'5m'}>5m</option>
-                            <option value={'15m'}>15m</option>
-                            <option value={'30m'}>30m</option>
-                            <option value={'1h'}>1h</option>
-                            <option value={'2h'}>2h</option>
-                            <option value={'6h'}>6h</option>
-                            <option value={'24h'}>24h</option>
-                            <option value={'48h'}>48h</option>
-                            <option value={'168h'}>7d</option>
-                        </Select>
-                    </FormControl>
-                    </form>
-                </DialogContent>
-                <DialogActions>
-                    <Button 
-                        color="default" 
-                        onClick={this.handleSuppressTimeDialogClose}>
-                        Close
+                        <form className={this.classes.form} noValidate>
+                            <FormControl className={this.classes.formControl}>
+                                <Select
+                                    native
+                                    className={this.classes.select}
+                                    value={this.state.suppress_time}
+                                    onChange={this.updateSuppressTime()}
+                                    input={
+                                        <OutlinedInput
+                                            name="suppress-time"
+                                            labelWidth={50}
+                                            id="suppress-time"
+                                        />
+                                    }
+                                >
+                                    <option value={'5m'}>5m</option>
+                                    <option value={'15m'}>15m</option>
+                                    <option value={'30m'}>30m</option>
+                                    <option value={'1h'}>1h</option>
+                                    <option value={'2h'}>2h</option>
+                                    <option value={'6h'}>6h</option>
+                                    <option value={'24h'}>24h</option>
+                                    <option value={'48h'}>48h</option>
+                                    <option value={'168h'}>7d</option>
+                                </Select>
+                            </FormControl>
+                        </form>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button
+                            color="default"
+                            onClick={this.handleSuppressTimeDialogClose}>
+                            Close
                     </Button>
-                    <Button 
-                        color="secondary" 
-                        onClick={this.suppressAlert}>
-                        Suppress
+                        <Button
+                            color="secondary"
+                            onClick={this.suppressAlert}>
+                            Suppress
                     </Button>
-                </DialogActions>
-            </Dialog>
-{/* ---------------------------------------------------------
+                    </DialogActions>
+                </Dialog>
+                {/* ---------------------------------------------------------
                          Start of Page 
 --------------------------------------------------------- */}
-            <AppBar className={this.classes.bar} position="static" color='default'>
-                <Toolbar>
-                    <Tooltip title="Status">
-                        <Button variant="contained" className={this.classes.button}>
-                            {this.state.status}
-                        </Button>
-                    </Tooltip>
-                    <Tooltip title="Severity">
-                        <Select
-                            native
-                            className={this.classes.select}
-                            value={this.state.severity}
-                            onChange={this.updateSeverity()}
-                            input={
-                            <OutlinedInput
-                                name="severity"
-                                labelWidth={50}
-                                id="severity-label"
-                            />
-                            }
-                        >
-                            <option value={'CRITICAL'}>CRITICAL</option>
-                            <option value={'WARN'}>WARN</option>
-                            <option value={'INFO'}>INFO</option>
-                        </Select>
-                    </Tooltip>
-                    <Typography variant="title" color="inherit" className={this.classes.grow}>
-                        {data.Name}
-                    </Typography>
-                    <Tooltip title="Acknowledge">
-                        <Fab 
-                            size="small" 
-                            color="primary" 
-                            aria-label="Acknowledge" 
-                            onClick={this.acknowledgeAlert()}
-                            className={this.classes.select}>
-                            <CheckCircleIcon />
-                        </Fab>
-                    </Tooltip>
-                    <Tooltip title="Clear">
-                        <Fab 
-                            size="small" 
-                            color="primary" 
-                            aria-label="Clear" 
-                            onClick={this.clearAlert()}
-                            className={this.classes.select}>
-                            <AlarmOffIcon />
-                        </Fab>
-                    </Tooltip>
-                    <Tooltip title="Suppress">
-                        <Fab 
-                            size="small" 
-                            color="primary" 
-                            aria-label="Suppress" 
-                            onClick={this.handleSuppressTimeDialogOpen}
-                            className={this.classes.select}>
-                            <HourglassFullIcon />
-                        </Fab>
-                    </Tooltip>
-                </Toolbar>
-            </AppBar>
-            
-            <Card xs="12" className={this.classes.card}>
-              <CardContent>
-                <Grid container item xs={12} >
-                  <Grid item xs={6} className={this.classes.alertElement}>
-                    <Avatar className={this.classes.alertCardAvatar}>
-                        <AssignmentTurnedInIcon className={this.classes.alertCardIcon}/>
-                    </Avatar>
-                    <div>Owner: {data.Owner}</div>
-                  </Grid>
-                  <Grid item xs={6} className={this.classes.alertElement}>
-                    <Avatar className={this.classes.alertCardAvatar}>
-                        <GroupIcon className={this.classes.alertCardIcon}/>
-                    </Avatar>
-                    Team: {data.Team}
-                  </Grid>
-                  <Grid item xs={6} className={this.classes.alertElement}>
-                    <Avatar className={this.classes.alertCardAvatar}>
-                        <BusinessIcon className={this.classes.alertCardIcon}/>
-                    </Avatar>
-                    Site: {data.Site}
-                  </Grid>
-                  <Grid item xs={6} className={this.classes.alertElement}>
-                    <Avatar className={this.classes.alertCardAvatar}>
-                        <StorageIcon className={this.classes.alertCardIcon}/>
-                    </Avatar>
-                    Device: {data.Device}
-                  </Grid>
-                  <Grid item xs={6} className={this.classes.alertElement}>
-                    <Avatar className={this.classes.alertCardAvatar}>
-                        <DescriptionIcon className={this.classes.alertCardIcon}/>
-                    </Avatar>
-                    Source: {data.Source}
-                  </Grid>
-                  <Grid item xs={6} className={this.classes.alertElement}>
-                    <Avatar className={this.classes.alertCardAvatar}>
-                        <StorageIcon className={this.classes.alertCardIcon}/>
-                    </Avatar>
-                    Entity: {data.Entity}
-                  </Grid>
-                  <Grid item xs={9} className={[this.classes.alertDescription,this.classes.alertElement]}>
-                    <Avatar className={this.classes.alertCardAvatar}>
-                        <DescriptionIcon className={this.classes.alertCardIcon}/>
-                    </Avatar>
-                    <Text 
-                      className={this.classes.alertDescriptionText} 
-                      content={description}
-                    ></Text>
-                  </Grid>
-                </Grid>
-                </CardContent>
-            </Card>
-            <br/>
-            <Typography className={this.classes.title} variant="h5">Change History</Typography>
-            <Paper className={this.classes.paper} >
+                <AppBar className={this.classes.bar} position="static" color='default'>
+                    <Toolbar>
+                        <Tooltip title="Status">
+                            <Button variant="contained" className={this.classes.button}>
+                                {this.state.status}
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title="Severity">
+                            <Select
+                                native
+                                className={this.classes.select}
+                                value={this.state.severity}
+                                onChange={this.updateSeverity()}
+                                input={
+                                    <OutlinedInput
+                                        name="severity"
+                                        labelWidth={50}
+                                        id="severity-label"
+                                    />
+                                }
+                            >
+                                <option value={'CRITICAL'}>CRITICAL</option>
+                                <option value={'WARN'}>WARN</option>
+                                <option value={'INFO'}>INFO</option>
+                            </Select>
+                        </Tooltip>
+                        <Typography variant="title" color="inherit" className={this.classes.grow}>
+                            {data.name}
+                        </Typography>
+                        <Tooltip title="Acknowledge">
+                            <Fab
+                                size="small"
+                                color="primary"
+                                aria-label="Acknowledge"
+                                onClick={this.acknowledgeAlert()}
+                                className={this.classes.select}>
+                                <CheckCircleIcon />
+                            </Fab>
+                        </Tooltip>
+                        <Tooltip title="Clear">
+                            <Fab
+                                size="small"
+                                color="primary"
+                                aria-label="Clear"
+                                onClick={this.clearAlert()}
+                                className={this.classes.select}>
+                                <AlarmOffIcon />
+                            </Fab>
+                        </Tooltip>
+                        <Tooltip title="Suppress">
+                            <Fab
+                                size="small"
+                                color="primary"
+                                aria-label="Suppress"
+                                onClick={this.handleSuppressTimeDialogOpen}
+                                className={this.classes.select}>
+                                <HourglassFullIcon />
+                            </Fab>
+                        </Tooltip>
+                    </Toolbar>
+                </AppBar>
+
+                <Card xs="12" className={this.classes.card}>
+                    <CardContent>
+                        <Grid container item xs={12} >
+                            <Grid item xs={6} className={this.classes.alertElement}>
+                                <Avatar className={this.classes.alertCardAvatar}>
+                                    <AssignmentTurnedInIcon className={this.classes.alertCardIcon} />
+                                </Avatar>
+                                <div>Owner: {data.owner}</div>
+                            </Grid>
+                            <Grid item xs={6} className={this.classes.alertElement}>
+                                <Avatar className={this.classes.alertCardAvatar}>
+                                    <GroupIcon className={this.classes.alertCardIcon} />
+                                </Avatar>
+                                Team: {data.team}
+                            </Grid>
+                            <Grid item xs={6} className={this.classes.alertElement}>
+                                <Avatar className={this.classes.alertCardAvatar}>
+                                    <BusinessIcon className={this.classes.alertCardIcon} />
+                                </Avatar>
+                                Site: {data.site}
+                            </Grid>
+                            <Grid item xs={6} className={this.classes.alertElement}>
+                                <Avatar className={this.classes.alertCardAvatar}>
+                                    <StorageIcon className={this.classes.alertCardIcon} />
+                                </Avatar>
+                                Device: {data.device}
+                            </Grid>
+                            <Grid item xs={6} className={this.classes.alertElement}>
+                                <Avatar className={this.classes.alertCardAvatar}>
+                                    <DescriptionIcon className={this.classes.alertCardIcon} />
+                                </Avatar>
+                                Source: {data.source}
+                            </Grid>
+                            <Grid item xs={6} className={this.classes.alertElement}>
+                                <Avatar className={this.classes.alertCardAvatar}>
+                                    <StorageIcon className={this.classes.alertCardIcon} />
+                                </Avatar>
+                                Entity: {data.entity}
+                            </Grid>
+                            <Grid item xs={9} className={[this.classes.alertDescription, this.classes.alertElement]}>
+                                <Avatar className={this.classes.alertCardAvatar}>
+                                    <DescriptionIcon className={this.classes.alertCardIcon} />
+                                </Avatar>
+                                <Text
+                                    className={this.classes.alertDescriptionText}
+                                    content={description}
+                                ></Text>
+                            </Grid>
+                        </Grid>
+                    </CardContent>
+                </Card>
+                <br />
+                <Typography className={this.classes.title} variant="h5">Change History</Typography>
+                <Paper className={this.classes.paper} >
                     <Grid container className={this.classes.AlertsListGrid}>
-                    <Grid container item 
+                        <Grid container item
                             xs={12}
                             className={this.classes.historyItemTitle}>
                             <Grid item xs={12} sm={2}>Time</Grid>
                             <Grid item xs={12} sm={8}>Change</Grid>
                             <Grid item xs={12} sm={2}></Grid>
                         </Grid>
-                        { (data.History) ? data.History.map((n, index) => {
+                        {(data.history) ? data.history.map((n, index) => {
                             return (
                                 <HistoryItem key={index} data={n} />
                             );
                         }) : ""}
-                </Grid>
-            </Paper>
-            <br/>
-            {(data.is_aggregate) ? (<div>
-            <Typography className={this.classes.title} variant="h5">Contributing Alerts</Typography>
-            <Paper className={this.classes.paper} >
-                <Grid container className={this.classes.AlertsListGrid}>
-                    <Grid container item 
-                            xs={12}
-                            className={this.classes.alertItemTitle}>
-                            <Grid item xs={12} sm={1}>Status</Grid>
-                            <Grid item xs={12} sm={3} md={4}>Name</Grid>
-                            <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
-                            <Grid item xs={12} sm={1}>Scope</Grid>
-                            <Grid item xs={12} sm={3} md={2}>Source</Grid>
-                            <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
+                    </Grid>
+                </Paper>
+                <br />
+                {(data.is_aggregate) ? (<div>
+                    <Typography className={this.classes.title} variant="h5">Contributing Alerts</Typography>
+                    <Paper className={this.classes.paper} >
+                        <Grid container className={this.classes.AlertsListGrid}>
+                            <Grid container item
+                                xs={12}
+                                className={this.classes.alertItemTitle}>
+                                <Grid item xs={12} sm={1}>Status</Grid>
+                                <Grid item xs={12} sm={3} md={4}>Name</Grid>
+                                <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
+                                <Grid item xs={12} sm={1}>Scope</Grid>
+                                <Grid item xs={12} sm={3} md={2}>Source</Grid>
+                                <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
+                            </Grid>
+                            {(related_alerts) ? (related_alerts.map(n => {
+                                return (
+                                    <AlertItem key={n.Id} data={n} />
+                                );
+                            })) : ""}
                         </Grid>
-                        { (related_alerts) ? (related_alerts.map(n => {
-                            return (
-                                <AlertItem key={n.Id} data={n} />
-                            );
-                        })) : ""}
-                </Grid>
-            </Paper>
-            </div>) : ""} 
+                    </Paper>
+                </div>) : ""}
             </div>
         );
     }

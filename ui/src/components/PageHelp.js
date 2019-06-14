@@ -1,6 +1,6 @@
-   
-   
-   
+
+
+
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 import Button from '@material-ui/core/Button';
@@ -23,15 +23,15 @@ const styles = theme => ({
     legendAlertInfo: {
         margin: 10,
         backgroundColor: '#E3F2FD',
-      },
+    },
     legendAlertWarn: {
         margin: 10,
         backgroundColor: '#FFF3E0',
-      },
+    },
     legendAlertCritical: {
         margin: 10,
         backgroundColor: '#ffebee',
-      },
+    },
     // Card    
     card: {
         boxShadow: "none"
@@ -60,18 +60,18 @@ function ShowAlertLegend(props) {
             <Typography variant="h6">
                 Alert Legend
             </Typography>
-            <Text 
-            content="The color of the alert refects its severity:"
+            <Text
+                content="The color of the alert refects its severity:"
             ></Text>
             <div>
                 <Button size="small" disabled className={props.classes.legendAlertInfo}>
                     INFO
                 </Button>
                 <Button size="small" disabled className={props.classes.legendAlertWarn}>
-                WARNING
+                    WARNING
                 </Button>
                 <Button size="small" disabled className={props.classes.legendAlertCritical}>
-                CRITICAL
+                    CRITICAL
                 </Button>
             </div>
         </DialogContent>
@@ -84,34 +84,34 @@ function ShowSuppRuleLegend(props) {
             <Typography variant="h6">
                 Suppresion Rule Legent
             </Typography>
-            <Text 
-            content="The color of the badge, in the left corner refects its type"
+            <Text
+                content="The color of the badge, in the left corner reflects its type"
             ></Text>
             <Card className={props.classes.card}>
                 <CardHeader
-                        avatar={<Avatar aria-label="type" className={props.classes.cardHeaderAvatarPermanent}>
-                              P
+                    avatar={<Avatar aria-label="type" className={props.classes.cardHeaderAvatarPermanent}>
+                        P
                             </Avatar>}
-                        title="Permanent, this suppression rule has been defined in the global configuration of the alert manager"
-                        // subheader={subHeader}
-                        className={props.classes.cardHeader} >
-                    </CardHeader>
-                    <CardHeader
-                        avatar={<Avatar aria-label="type" className={props.classes.cardHeaderAvatarDynamic}>
-                              D
+                    title="Permanent, this suppression rule has been defined in the global configuration of the alert manager"
+                    // subheader={subHeader}
+                    className={props.classes.cardHeader} >
+                </CardHeader>
+                <CardHeader
+                    avatar={<Avatar aria-label="type" className={props.classes.cardHeaderAvatarDynamic}>
+                        D
                             </Avatar>}
-                        title="Dynamic, this suppression rule has been defined dynamically by the alert manager or my someone, these suppression rules will not persist after a restart"
-                        className={props.classes.cardHeader} >
-                    </CardHeader>
+                    title="Dynamic, this suppression rule has been defined dynamically by the alert manager or my someone. Has a set expiry time."
+                    className={props.classes.cardHeader} >
+                </CardHeader>
             </Card>
 
         </DialogContent>
     );
 }
 
-const Text =  ({content}) => {
+const Text = ({ content }) => {
     return (
-       <p dangerouslySetInnerHTML={{__html: content}}></p>
+        <p dangerouslySetInnerHTML={{ __html: content }}></p>
     );
 };
 
@@ -143,28 +143,28 @@ class PageHelp extends React.Component {
                     onClose={this.handleClose}
                     aria-labelledby="customized-dialog-title"
                     open={this.state.open}
-                    >
+                >
                     <DialogTitle id="customized-dialog-title" onClose={this.handleClose}>
                         {this.props.title}
                     </DialogTitle>
                     <DialogContent>
-                    <Text 
-                    //   className={this.classes.alertDescriptionText} 
-                      content={this.props.description}
-                    ></Text>
+                        <Text
+                            //   className={this.classes.alertDescriptionText} 
+                            content={this.props.description}
+                        ></Text>
                     </DialogContent>
-                    { this.props.showAlertLegent === true ? <ShowAlertLegend classes={this.classes} /> : ''}
-                    { this.props.showSuppRuleLegent === true ? <ShowSuppRuleLegend classes={this.classes} /> : ''}
-                    
+                    {this.props.showAlertLegent === true ? <ShowAlertLegend classes={this.classes} /> : ''}
+                    {this.props.showSuppRuleLegent === true ? <ShowSuppRuleLegend classes={this.classes} /> : ''}
+
                     <DialogActions>
                         <Button onClick={this.handleClose} color="primary">
-                        Close
+                            Close
                         </Button>
                     </DialogActions>
                 </Dialog>
             </div>
-    )};
+        )
+    };
 }
- 
- export default withStyles(styles)(PageHelp);
- 
+
+export default withStyles(styles)(PageHelp);

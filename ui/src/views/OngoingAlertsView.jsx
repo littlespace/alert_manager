@@ -40,20 +40,20 @@ const queryString = require('query-string');
 
 const styles = theme => ({
     root: {
-      flexGrow: 1,
-    //   height: 440,
-      zIndex: 1,
-      overflow: 'hidden',
-      position: 'relative',
-      display: 'flex',
-      height: '100%',
+        flexGrow: 1,
+        //   height: 440,
+        zIndex: 1,
+        overflow: 'hidden',
+        position: 'relative',
+        display: 'flex',
+        height: '100%',
     },
 
     content: {
-      flexGrow: 1,
-      backgroundColor: theme.palette.background.default,
-      padding: theme.spacing.unit * 3,
-      minWidth: 0, // So the Typography noWrap works
+        flexGrow: 1,
+        backgroundColor: theme.palette.background.default,
+        padding: theme.spacing.unit * 3,
+        minWidth: 0, // So the Typography noWrap works
     },
     paper: {
         // ...theme.mixins.gutters(),
@@ -62,7 +62,7 @@ const styles = theme => ({
     },
     badge: {
         margin: theme.spacing.unit * 2,
-      },
+    },
     select: {
         padding: "5px",
     },
@@ -91,17 +91,17 @@ const styles = theme => ({
         borderRadius: theme.shape.borderRadius,
         backgroundColor: fade(theme.palette.common.white, 0.15),
         '&:hover': {
-          backgroundColor: fade(theme.palette.common.white, 0.25),
+            backgroundColor: fade(theme.palette.common.white, 0.25),
         },
         marginRight: theme.spacing.unit * 2,
         marginLeft: 0,
         width: '100%',
         [theme.breakpoints.up('sm')]: {
-          marginLeft: theme.spacing.unit * 3,
-          width: 'auto',
+            marginLeft: theme.spacing.unit * 3,
+            width: 'auto',
         },
-      },
-      searchIcon: {
+    },
+    searchIcon: {
         width: theme.spacing.unit * 9,
         height: '100%',
         position: 'absolute',
@@ -109,12 +109,12 @@ const styles = theme => ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-      },
-      inputRoot: {
+    },
+    inputRoot: {
         color: 'inherit',
         width: '100%',
-      },
-      inputInput: {
+    },
+    inputInput: {
         paddingTop: theme.spacing.unit,
         paddingRight: theme.spacing.unit,
         paddingBottom: theme.spacing.unit,
@@ -122,42 +122,42 @@ const styles = theme => ({
         transition: theme.transitions.create('width'),
         width: '100%',
         [theme.breakpoints.up('md')]: {
-          width: 200,
+            width: 200,
         },
-      },
-      leftAlign: {
+    },
+    leftAlign: {
         position: 'relative'
-      },
-      grow: {
+    },
+    grow: {
         flexGrow: 1,
-      },
-      pageTitle:{
+    },
+    pageTitle: {
         height: "30px",
         lineHeight: "30px",
         paddingLeft: "15px",
         paddingTop: "10px"
-      },
-      titleBar:{
+    },
+    titleBar: {
         display: "flex",
         position: "relative",
-      }, 
-      helpButton: {
-        width:  "30px",
+    },
+    helpButton: {
+        width: "30px",
         height: "30px",
-        minHeight:  "20px",
+        minHeight: "20px",
         marginTop: "9px",
         marginLeft: "10px",
-      }
+    }
 
 });
 
 function dynamicSort(property) {
     var sortOrder = 1;
-    if(property[0] === "-") {
+    if (property[0] === "-") {
         sortOrder = -1;
         property = property.substr(1);
     }
-    return function (a,b) {
+    return function (a, b) {
         var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
         return result * sortOrder;
     }
@@ -174,17 +174,17 @@ class OngoingAlertsView extends React.Component {
         super(props, context);
         this.classes = this.props.classes;
         this.api = new AlertManagerApi();
-        
+
         var url_params_parsed = queryString.parse(this.context.router.history.location.search);
-        
+
         this.state = {
             ShowActive: ('active' in url_params_parsed && url_params_parsed.active === 0) ? false : true,
             ShowSuppressed: ('suppressed' in url_params_parsed && url_params_parsed.suppressed === 1) ? true : false,
-            ShowAssigned: ('assigned' in url_params_parsed ) ? url_params_parsed.assigned : "all",
-            ShowTeam: ('team' in url_params_parsed ) ? url_params_parsed.team : "all",
-            FilterSeverity:  ('severity' in url_params_parsed ) ? url_params_parsed.severity.split(',') : ["all"],
+            ShowAssigned: ('assigned' in url_params_parsed) ? url_params_parsed.assigned : "all",
+            ShowTeam: ('team' in url_params_parsed) ? url_params_parsed.team : "all",
+            FilterSeverity: ('severity' in url_params_parsed) ? url_params_parsed.severity.split(',') : ["all"],
             NbrActive: 0,
-            NbrSuppressed: 0, 
+            NbrSuppressed: 0,
             alerts: [],
             TeamList: [],
             openHelp: false
@@ -194,15 +194,15 @@ class OngoingAlertsView extends React.Component {
         this.closeHelp = this.closeHelp.bind(this)
     };
 
-    componentDidMount(){
+    componentDidMount() {
         this.updateAlertsList()
         this.getTeamList()
     }
 
     updateAlertsList = () => {
-        this.api.getAlertsList({status: [1,2]})
+        this.api.getAlertsList({ status: [1, 2] })
             .then(data => this.processAlertsList(data));
-       
+
         this.updateUrl();
     }
 
@@ -216,49 +216,49 @@ class OngoingAlertsView extends React.Component {
         let NbrActive = 0
         let NbrSuppressed = 0
 
-        for(var i in data) {
+        for (var i in data) {
 
             // Ignore all sites that are not listed in sites_location
-            if (data[i].Status === "ACTIVE") {
+            if (data[i].status === "ACTIVE") {
                 NbrActive++;
-            } else if (data[i].Status === "SUPPRESSED") {
+            } else if (data[i].status === "SUPPRESSED") {
                 NbrSuppressed++;
-            } 
+            }
         }
 
-        this.setState({ 
+        this.setState({
             alerts: data.sort(dynamicSort('-last_active')),
             NbrActive: NbrActive,
             NbrSuppressed: NbrSuppressed
-         })
+        })
     }
 
     handleChange = name => event => {
         this.setState(
-            { [name]: event.target.checked }, 
-            function() {
+            { [name]: event.target.checked },
+            function () {
                 this.updateUrl()
             }
         )
     };
 
-    openHelp = () => { 
+    openHelp = () => {
         this.setState({ openHelp: true })
     }
 
-    closeHelp = () => { 
+    closeHelp = () => {
         this.setState({ openHelp: false })
     }
 
     handleChangeSelect = name => event => {
         this.setState(
-            { [name]: event.target.value }, 
-            function() {
+            { [name]: event.target.value },
+            function () {
                 this.updateUrl()
             }
         )
     };
-    
+
     updateUrl = () => {
         var url_alone = '/ongoing-alerts'
         var url_params = '/ongoing-alerts?'
@@ -270,7 +270,7 @@ class OngoingAlertsView extends React.Component {
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'active=0' 
+            url_params = url_params + 'active=0'
         }
         if (this.state.ShowSuppressed === true) {
             if (first === true) {
@@ -278,7 +278,7 @@ class OngoingAlertsView extends React.Component {
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'suppressed=1' 
+            url_params = url_params + 'suppressed=1'
         }
         if (this.state.ShowAssigned !== "all") {
             if (first === true) {
@@ -286,7 +286,7 @@ class OngoingAlertsView extends React.Component {
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'assigned=' + this.state.ShowAssigned 
+            url_params = url_params + 'assigned=' + this.state.ShowAssigned
         }
         if (this.state.ShowTeam !== "all") {
             if (first === true) {
@@ -294,7 +294,7 @@ class OngoingAlertsView extends React.Component {
             } else {
                 url_params = url_params + '&'
             }
-            url_params = url_params + 'team=' + this.state.ShowTeam 
+            url_params = url_params + 'team=' + this.state.ShowTeam
         }
         if (!this.state.FilterSeverity.includes("all")) {
             if (first === true) {
@@ -310,7 +310,7 @@ class OngoingAlertsView extends React.Component {
             this.context.router.history.push(url_alone)
         } else {
             this.context.router.history.push(url_params)
-        } 
+        }
     }
 
     render() {
@@ -319,145 +319,146 @@ class OngoingAlertsView extends React.Component {
 
         let filteredAlerts = this.state.alerts.filter(
             (alert) => {
-                if (this.state.ShowAssigned === "mine" && alert.Owner !==  username ) {
+                if (this.state.ShowAssigned === "mine" && alert.owner !== username) {
                     return false
-                } else if (this.state.ShowAssigned === "not-assigned" && alert.Owner !== "" ) {
+                } else if (this.state.ShowAssigned === "not-assigned" && alert.owner !== "") {
                     return false
-                } else if (this.state.ShowTeam !== "all" && alert.Team !== this.state.ShowTeam ) {
+                } else if (this.state.ShowTeam !== "all" && alert.team !== this.state.ShowTeam) {
                     return false
-                } else if (!this.state.FilterSeverity.includes("all") && !this.state.FilterSeverity.includes(alert.Severity.toLowerCase())) {
+                } else if (!this.state.FilterSeverity.includes("all") && !this.state.FilterSeverity.includes(alert.severity.toLowerCase())) {
                     return false
-                } else if (alert.Status === "ACTIVE" && this.state.ShowActive) {
+                } else if (alert.status === "ACTIVE" && this.state.ShowActive) {
                     return true
-                } else if  (alert.Status === "SUPPRESSED" && this.state.ShowSuppressed) {
+                } else if (alert.status === "SUPPRESSED" && this.state.ShowSuppressed) {
                     return true
                 } else {
                     return false
-                } 
+                }
             }
         )
         let NbrActive = this.state.NbrActive;
         let NbrSuppressed = this.state.NbrSuppressed;
 
         return (
-        <div>
-            <div className={this.classes.titleBar}>
-            <Typography className={this.classes.pageTitle} variant="h5">Ongoing Alerts</Typography>   
-            <Tooltip title="help">
-                <Fab 
-                    size="small" 
-                    color="primary" 
-                    aria-label="help" 
-                    onClick={this.openHelp}
-                    className={this.classes.helpButton}>
-                    <HelpIcon />
-                </Fab>
-            </Tooltip>
-            <PageHelp 
-                title={PagesDoc.ongoingAlerts.title} 
-                description={PagesDoc.ongoingAlerts.help} 
-                open={this.state.openHelp}
-                close={this.closeHelp}
-            />
-            </div>
-            <Paper className={this.classes.paper}>
-                <AppBar position="static" color="default">
-                    <Toolbar className={this.classes.searchBar}>
-                        <div className={this.classes.rightAlign}>
-                        <Badge showZero className={this.classes.badge} badgeContent={NbrActive} color="primary">
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                    checked={this.state.ShowActive}
-                                    onChange={this.handleChange('ShowActive')}
-                                    value="Active"
-                                    className={this.classes.select}
+            <div>
+                <div className={this.classes.titleBar}>
+                    <Typography className={this.classes.pageTitle} variant="h5">Ongoing Alerts</Typography>
+                    <Tooltip title="help">
+                        <Fab
+                            size="small"
+                            color="primary"
+                            aria-label="help"
+                            onClick={this.openHelp}
+                            className={this.classes.helpButton}>
+                            <HelpIcon />
+                        </Fab>
+                    </Tooltip>
+                    <PageHelp
+                        title={PagesDoc.ongoingAlerts.title}
+                        description={PagesDoc.ongoingAlerts.help}
+                        open={this.state.openHelp}
+                        close={this.closeHelp}
+                    />
+                </div>
+                <Paper className={this.classes.paper}>
+                    <AppBar position="static" color="default">
+                        <Toolbar className={this.classes.searchBar}>
+                            <div className={this.classes.rightAlign}>
+                                <Badge showZero className={this.classes.badge} badgeContent={NbrActive} color="primary">
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={this.state.ShowActive}
+                                                onChange={this.handleChange('ShowActive')}
+                                                value="Active"
+                                                className={this.classes.select}
+                                            />
+                                        }
+
+                                        label="Active"
                                     />
-                                }
-                                
-                                label="Active"
-                            />
-                        </Badge>
-                        <Badge showZero className={this.classes.badge} badgeContent={NbrSuppressed} color="primary">
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                    checked={this.state.ShowSuppressed}
-                                    onChange={this.handleChange('ShowSuppressed')}
-                                    value="Suppressed"
-                                    className={this.classes.select}
+                                </Badge>
+                                <Badge showZero className={this.classes.badge} badgeContent={NbrSuppressed} color="primary">
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={this.state.ShowSuppressed}
+                                                onChange={this.handleChange('ShowSuppressed')}
+                                                value="Suppressed"
+                                                className={this.classes.select}
+                                            />
+                                        }
+                                        label="Suppressed"
                                     />
-                                }
-                                label="Suppressed"
-                                />
-                        </Badge>
-                        <FormControl variant="outlined" className={this.classes.formControl}>
-                            <InputLabel htmlFor="severity">Severity</InputLabel>
-                            <Select
-                            multiple
-                                value={this.state.FilterSeverity}
-                                onChange={this.handleChangeSelect('FilterSeverity')}
-                            >
-                                <MenuItem value="all">All</MenuItem>
-                                <MenuItem value="info">Info</MenuItem>
-                                <MenuItem value="warn">Warn</MenuItem>
-                                <MenuItem value="critical">Critical</MenuItem>
-                            </Select>
-                        </FormControl>
-                        </div>
-                        <div className={this.classes.grow} />
-                        <div className={this.classes.leftAlign}>
-                        <FormControl variant="outlined" className={this.classes.formControl}>
-                            <InputLabel htmlFor="teams">Team</InputLabel>
-                            <Select
-                                value={this.state.ShowTeam}
-                                onChange={this.handleChangeSelect('ShowTeam')}
-                            >
-                                <MenuItem value="all">All</MenuItem>
-                                { teams instanceof Array ? teams.map(n => {
-                                    return (
-                                        <MenuItem value={n.Name}>{n.Name}</MenuItem>
-                                    );}) : ""}
-                            </Select>
-                            </FormControl>
-                        <FormControl variant="outlined" className={this.classes.formControl}>
-                            <InputLabel htmlFor="assigned">Display Assigned?</InputLabel>
-                            <Select
-                                value={this.state.ShowAssigned}
-                                onChange={this.handleChangeSelect('ShowAssigned')}
-                                // inputProps={{
-                                // name: 'age',
-                                // id: 'age-simple',
-                                // }}
-                            >
-                                <MenuItem value="all">All</MenuItem>
-                                <MenuItem value="not-assigned">Not Assigned</MenuItem>
-                                <MenuItem value="mine">Only Mine</MenuItem>
-                            </Select>
-                            </FormControl>
-                        </div>
-                    </Toolbar>
-                </AppBar>
-                <Grid container className={this.classes.AlertsListGrid}>
-                    <Grid container item 
-                        xs={12}
-                        className={this.classes.alertItemTitle}>
-                        <Grid item xs={12} sm={1}>Status</Grid>
-                        <Grid item xs={12} sm={3} md={4}>Name</Grid>
-                        <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
-                        <Grid item xs={12} sm={1}>Scope</Grid>
-                        <Grid item xs={12} sm={3} md={2}>Source</Grid>
-                        <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
+                                </Badge>
+                                <FormControl variant="outlined" className={this.classes.formControl}>
+                                    <InputLabel htmlFor="severity">Severity</InputLabel>
+                                    <Select
+                                        multiple
+                                        value={this.state.FilterSeverity}
+                                        onChange={this.handleChangeSelect('FilterSeverity')}
+                                    >
+                                        <MenuItem value="all">All</MenuItem>
+                                        <MenuItem value="info">Info</MenuItem>
+                                        <MenuItem value="warn">Warn</MenuItem>
+                                        <MenuItem value="critical">Critical</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </div>
+                            <div className={this.classes.grow} />
+                            <div className={this.classes.leftAlign}>
+                                <FormControl variant="outlined" className={this.classes.formControl}>
+                                    <InputLabel htmlFor="teams">Team</InputLabel>
+                                    <Select
+                                        value={this.state.ShowTeam}
+                                        onChange={this.handleChangeSelect('ShowTeam')}
+                                    >
+                                        <MenuItem value="all">All</MenuItem>
+                                        {teams instanceof Array ? teams.map(n => {
+                                            return (
+                                                <MenuItem value={n.Name}>{n.Name}</MenuItem>
+                                            );
+                                        }) : ""}
+                                    </Select>
+                                </FormControl>
+                                <FormControl variant="outlined" className={this.classes.formControl}>
+                                    <InputLabel htmlFor="assigned">Display Assigned?</InputLabel>
+                                    <Select
+                                        value={this.state.ShowAssigned}
+                                        onChange={this.handleChangeSelect('ShowAssigned')}
+                                    // inputProps={{
+                                    // name: 'age',
+                                    // id: 'age-simple',
+                                    // }}
+                                    >
+                                        <MenuItem value="all">All</MenuItem>
+                                        <MenuItem value="not-assigned">Not Assigned</MenuItem>
+                                        <MenuItem value="mine">Only Mine</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </div>
+                        </Toolbar>
+                    </AppBar>
+                    <Grid container className={this.classes.AlertsListGrid}>
+                        <Grid container item
+                            xs={12}
+                            className={this.classes.alertItemTitle}>
+                            <Grid item xs={12} sm={1}>Status</Grid>
+                            <Grid item xs={12} sm={3} md={4}>Name</Grid>
+                            <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
+                            <Grid item xs={12} sm={1}>Scope</Grid>
+                            <Grid item xs={12} sm={3} md={2}>Source</Grid>
+                            <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
+                        </Grid>
+                        {filteredAlerts.map(n => {
+                            return (
+                                <AlertItem key={n.Id} data={n} />
+                            );
+                        })}
                     </Grid>
-                    { filteredAlerts.map(n => {
-                        return (
-                            <AlertItem key={n.Id} data={n} />
-                        );
-                    })}
-                </Grid>
-            </Paper>
+                </Paper>
             </div>
-        )          
+        )
 
     }
 }
@@ -465,6 +466,6 @@ class OngoingAlertsView extends React.Component {
 
 OngoingAlertsView.propTypes = {
     classes: PropTypes.object.isRequired,
-  };
+};
 
 export default withStyles(styles)(OngoingAlertsView);
