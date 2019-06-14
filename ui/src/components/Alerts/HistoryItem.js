@@ -4,9 +4,9 @@ import { withStyles } from "@material-ui/core/styles";
 
 import Grid from '@material-ui/core/Grid';
 
-import { 
-    timeConverter, 
-    secondsToHms 
+import {
+    timeConverter,
+    secondsToHms
 } from '../../library/utils';
 
 const styles = theme => ({
@@ -38,21 +38,21 @@ const styles = theme => ({
 
 class historyItem extends React.Component {
 
-    constructor(props, context){
-      super(props, context);
-      this.classes = this.props.classes;
-      this.state = {}
+    constructor(props, context) {
+        super(props, context);
+        this.classes = this.props.classes;
+        this.state = {}
     }
-    
+
     render() {
-      return (
+        return (
             <Grid container item xs={12} className={this.classes.historyItem}>
-                <Grid item xs={12}  sm={2} className={this.classes.historyCell}>{timeConverter(this.props.data.Timestamp)}</Grid>
-                <Grid item xs={12}  sm={8} className={this.classes.historyCell}>{this.props.data.Event}</Grid>
-                <Grid item xs={12}  sm={2} className={this.classes.historyCell}>{secondsToHms(this.props.data.Timestamp)}</Grid>
+                <Grid item xs={12} sm={2} className={this.classes.historyCell}>{timeConverter(this.props.data.timestamp)}</Grid>
+                <Grid item xs={12} sm={8} className={this.classes.historyCell}>{this.props.data.event}</Grid>
+                <Grid item xs={12} sm={2} className={this.classes.historyCell}>{secondsToHms(this.props.data.timestamp)}</Grid>
             </Grid>
-      );
+        );
     }
-  }
-  
+}
+
 export default withRouter(withStyles(styles)(historyItem))
