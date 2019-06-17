@@ -453,7 +453,8 @@ func (h *AlertHandler) Suppress(
 				return fmt.Errorf("Unable to suppress alert %d: %v", a.Id, err)
 			}
 		}
-		return nil
+		tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))
+		return h.Suppressor.SuppressAlert(ctx, tx, alert, duration)
 	}
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, duration); err != nil {
 		return fmt.Errorf("Unable to suppress alert %d: %v", alert.Id, err)
