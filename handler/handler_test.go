@@ -304,6 +304,7 @@ func TestHandlerAlertSuppress(t *testing.T) {
 	mockAlerts["existing_a1"].AggregatorId = a2.Id
 	mockAlerts["existing_a2"].AggregatorId = a2.Id
 	assert.Nil(t, h.Suppress(ctx, tx, a2, "test", "test", 1*time.Minute))
+	assert.Equal(t, a2.Status, models.Status_SUPPRESSED)
 	event = <-h.procChan
 	assert.Equal(t, event.Type, models.EventType_SUPPRESSED)
 	assert.Equal(t, event.Alert.Status, models.Status_SUPPRESSED)
