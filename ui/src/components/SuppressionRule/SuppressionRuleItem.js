@@ -7,12 +7,11 @@ import CardHeader from '@material-ui/core/CardHeader';
 import Grid from '@material-ui/core/Grid';
 import Avatar from '@material-ui/core/Avatar';
 
-import MoreVertIcon from '@material-ui/icons/MoreVert';
-import IconButton from '@material-ui/core/IconButton';
-
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
+
+import SuppressionRuleMenu from './SuppressionRuleMenu';
 
 import { timeConverter } from '../../library/utils';
 
@@ -75,7 +74,6 @@ class SuppressionRuleItem extends React.Component {
         const Entities = this.props.data.entities
         const isPermanent = this.props.data.dont_expire
 
-
         return (
 
             <Grid item xs={12} sm={6}>
@@ -93,9 +91,7 @@ class SuppressionRuleItem extends React.Component {
                         title={this.props.data.name}
                         subheader={subHeader}
                         action={
-                            <IconButton>
-                                <MoreVertIcon />
-                            </IconButton>
+                            <SuppressionRuleMenu id={this.props.data.id} onDelete={this.props.onDelete} />
                         }
                         className={this.classes.cardHeader} >
                     </CardHeader>

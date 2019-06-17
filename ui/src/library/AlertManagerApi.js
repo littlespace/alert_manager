@@ -35,14 +35,14 @@ export class AlertManagerApi {
     /// Alerts Management Queries
     /// -------------------------------------------------------------------
     getAlertsList({
-        limit=500, 
-        aggregate=true, 
-        timerange_h=null, 
-        teams=[],
-        sites=[], 
-        devices=[],
-        severity=[],
-        status=[1,2,3]}={}) {
+        limit = 500,
+        aggregate = true,
+        timerange_h = null,
+        teams = [],
+        sites = [],
+        devices = [],
+        severity = [],
+        status = [1, 2, 3] } = {}) {
 
         var params = `?limit=${limit}`
 
@@ -76,39 +76,39 @@ export class AlertManagerApi {
 
         console.log("fetching > " + this.url + url_alerts + params)
         return fetch(this.url + url_alerts + params)
-          .then(response => response.json());
+            .then(response => response.json());
     }
 
     getAlert(id) {
         return fetch(`${this.url}${url_alerts}/${id}`)
-          .then(response => response.json());
+            .then(response => response.json());
     }
     getAlertWithHistory(id) {
         return fetch(`${this.url}${url_alerts}?id=${id}&history=true`)
-          .then(response => response.json())
-          .then(data => data[0]);
+            .then(response => response.json())
+            .then(data => data[0]);
     }
 
-    bulkUpdateStatus({items, status}={}) {
+    bulkUpdateStatus({ items, status } = {}) {
 
-        for( var i in items) {
-           console.log(`Will update status for ${i} with ${status}`)
-       }
-   }
+        for (var i in items) {
+            console.log(`Will update status for ${i} with ${status}`)
+        }
+    }
 
     getContributingAlerts(id) {
-        return fetch(`${this.url}${url_alerts}?agg_id=${id}` )
-          .then(response => response.json());
+        return fetch(`${this.url}${url_alerts}?agg_id=${id}`)
+            .then(response => response.json());
     }
 
-    updateAlertOwner({id, owner, team}={}) {
+    updateAlertOwner({ id, owner, team } = {}) {
 
         // TODO 
         // - Check if user is loggedIn
         // - Integrate with new fetch method
 
         let url = `${this.url}${url_alerts}/${id}?owner=${owner}&team=${team}`
-        
+
         let obj = {
             method: 'PATCH',
             headers: {
@@ -117,31 +117,31 @@ export class AlertManagerApi {
             }
         }
 
-        return fetch( url, obj )
-          .then(handleErrors)
-          .catch(function(error) {
-            console.log(error);
-        });
+        return fetch(url, obj)
+            .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 
-    updateAlertStatus({id, status}={}) {
+    updateAlertStatus({ id, status } = {}) {
 
         // TODO 
         // - Check if user is loggedIn
         // - Integrate with new fetch method
 
         let status_to_id = {
-            ACTIVE:  1,
+            ACTIVE: 1,
             SUPPRESSED: 2,
             EXPIRED: 3,
             CLEARED: 4
         }
-        
+
         if (!(status.toUpperCase() in status_to_id)) {
             console.log(`Unable to update status for ${id}, Status: ${status} is not supported ..`);
             return
         }
-        
+
         let url = `${this.url}${url_alerts}/${id}?status=${status_to_id[status]}`
 
         let obj = {
@@ -152,21 +152,21 @@ export class AlertManagerApi {
             }
         }
 
-        return fetch( url, obj )
-          .then(handleErrors)
-          .catch(function(error) {
-            console.log(error);
-        });
+        return fetch(url, obj)
+            .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 
-    updateAlertSeverity({id, severity}={}) {
+    updateAlertSeverity({ id, severity } = {}) {
 
         // TODO 
         // - Check if user is loggedIn
         // - Integrate with new fetch method
 
         let severity_to_id = {
-            CRITICAL:  1,
+            CRITICAL: 1,
             WARN: 2,
             INFO: 3,
         }
@@ -175,9 +175,9 @@ export class AlertManagerApi {
             console.log(`Unable to update severity for ${id}, Severity: ${severity} is not supported ..`);
             return
         }
-        
+
         let url = `${this.url}${url_alerts}/${id}?severity=${severity_to_id[severity]}`
-        
+
         let obj = {
             method: 'PATCH',
             headers: {
@@ -186,22 +186,22 @@ export class AlertManagerApi {
             }
         }
 
-        return fetch( url, obj )
-          .then(handleErrors)
-          .catch(function(error) {
-            console.log(error);
-        });
+        return fetch(url, obj)
+            .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 
-    alertClear({id}={}) {
+    alertClear({ id } = {}) {
         // api/alerts/{id}/clear
-        
+
         // TODO 
         // - Check if user is loggedIn
         // - Integrate with new fetch method
 
         let url = `${this.url}${url_alerts}/${id}/clear`
-        
+
         let obj = {
             method: 'PATCH',
             headers: {
@@ -210,15 +210,15 @@ export class AlertManagerApi {
             }
         }
 
-        return fetch( url, obj )
-          .then(handleErrors)
-          .catch(function(error) {
-            console.log(error);
-        });
+        return fetch(url, obj)
+            .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
 
     }
 
-    alertSuppress({id, duration="1h"}={}) {
+    alertSuppress({ id, duration = "1h" } = {}) {
 
         // TODO 
         // - Check if user is loggedIn
@@ -226,7 +226,7 @@ export class AlertManagerApi {
 
         // api/alerts/{id}/suppress?duration=5m
         let url = `${this.url}${url_alerts}/${id}/suppress?duration=${duration}`
-        
+
         let obj = {
             method: 'PATCH',
             headers: {
@@ -235,17 +235,17 @@ export class AlertManagerApi {
             }
         }
 
-        return fetch( url, obj )
-          .then(handleErrors)
-          .catch(function(error) {
-            console.log(error);
-        });
+        return fetch(url, obj)
+            .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 
-    alertAcknowledge({id, owner="owner"}={}) {
+    alertAcknowledge({ id, owner = "owner" } = {}) {
         // api/alerts/{id}/acknowledge?owner=foo&team=bar
         let url = `${this.url}${url_alerts}/${id}/ack?owner=${owner}`
-        
+
         let obj = {
             method: 'PATCH',
             headers: {
@@ -254,26 +254,26 @@ export class AlertManagerApi {
             }
         }
 
-        return fetch( url, obj )
-          .then(handleErrors)
-          .catch(function(error) {
-            console.log(error);
-        });
+        return fetch(url, obj)
+            .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 
     /// -------------------------------------------------------------------
     /// Suppression Rules
     /// -------------------------------------------------------------------
     getSuppressionRuleDynamicList() {
-        
+
         return fetch(`${this.url}${url_supprules}`)
-          .then(response => response.json());
+            .then(response => response.json());
     }
 
     getSuppressionRulePersistentList() {
 
         return fetch(`${this.url}${url_supprules_persistent}`)
-          .then(response => response.json());
+            .then(response => response.json());
     }
 
     /// -------------------------------------------------------------------
@@ -285,9 +285,9 @@ export class AlertManagerApi {
             console.log("WIll query a new token");
             try {
                 var response = await fetch(this.url + url_auth, {
-                                                method: 'POST',
-                                                body: JSON.stringify({ username: "react", password: "react" })
-                                            })
+                    method: 'POST',
+                    body: JSON.stringify({ username: "react", password: "react" })
+                })
                 var resp = await response.json();
                 this.token = resp.token
                 console.log("Token Fetched: " + this.token)
@@ -298,7 +298,7 @@ export class AlertManagerApi {
             console.log("Token already present");
         }
 
-              
+
         //     var resp = await Promise((resolve, reject) => {
         //         var token = fetch(this.url + url_auth, {
         //             method: 'POST',
@@ -306,9 +306,9 @@ export class AlertManagerApi {
         //           })
         //           .then(handleErrors)
         //           .then(response => response.json())
-            
+
         //         resolve(token)
-    
+
         //     });
 
         //     this.token = resp.token
@@ -319,22 +319,22 @@ export class AlertManagerApi {
     }
 
 
-    getApiToken({username="react", password="react"}={}) {
+    getApiToken({ username = "react", password = "react" } = {}) {
 
         return fetch(this.url + url_auth, {
             method: 'POST',
             body: JSON.stringify({ username: username, password: password })
-          })
-          .then(handleErrors)
-          .then(response => response.json())
-          .then(data => this.setApiToken( data ))
-          .catch(function(error) {
-            console.log(error);
-        });
-        
+        })
+            .then(handleErrors)
+            .then(response => response.json())
+            .then(data => this.setApiToken(data))
+            .catch(function (error) {
+                console.log(error);
+            });
+
     }
 
-    setApiToken( data ) {
+    setApiToken(data) {
         this.token = data.token;
         console.log(this.token);
     }
@@ -346,14 +346,15 @@ export class AlertManagerApi {
         console.log(`Will try to authenticate to ${this.url}api/auth`)
 
         this.setUsername(username)
-        
+
         return fetch(`${this.url}api/auth`, {
             method: 'POST',
-            body: JSON.stringify({ 
-                username: username, 
-                password: password })
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
         }).then(response => {
-            
+
             if (response.status === 200) {
                 return response.json()
             } if (response.status === 401) {
@@ -373,59 +374,59 @@ export class AlertManagerApi {
         })
     }
 
-    getTeamList(){
-        return fetch(`${this.url}${url_team_list}` )
-          .then(response => response.json());
+    getTeamList() {
+        return fetch(`${this.url}${url_team_list}`)
+            .then(response => response.json());
     }
 
-    getUserList(){
-        return fetch(`${this.url}${url_user_list}` )
-          .then(response => response.json());
+    getUserList() {
+        return fetch(`${this.url}${url_user_list}`)
+            .then(response => response.json());
     }
 
-    loggedIn(){
+    loggedIn() {
         // Checks if there is a saved token and it's still valid
         const token = this.getToken()
         return !!token
     }
 
-    setProfile(profile){
+    setProfile(profile) {
         // Saves profile data to localStorage
         localStorage.setItem('profile', JSON.stringify(profile))
     }
 
-    getProfile(){
+    getProfile() {
         // Retrieves the profile data from localStorage
         const profile = localStorage.getItem('profile')
         return profile ? JSON.parse(localStorage.profile) : {}
     }
 
-    setToken(idToken){
+    setToken(idToken) {
         // Saves user token to localStorage
         localStorage.setItem('id_token', idToken)
     }
 
-    getToken(){
+    getToken() {
         // Retrieves the user token from localStorage
         return localStorage.getItem('id_token')
     }
 
-    setUsername(username){
+    setUsername(username) {
         localStorage.setItem('username', username)
     }
 
-    getUsername(){
+    getUsername() {
         // Retrieves the user token from localStorage
         return localStorage.getItem('username')
     }
 
-    logout(){
+    logout() {
         // Clear user token and profile data from localStorage
         localStorage.removeItem('id_token');
         localStorage.removeItem('username');
     }
 
-    checkToken(){
+    checkToken() {
 
         console.log("Checking if token is valid")
         if (!this.getToken()) {
@@ -473,23 +474,41 @@ export class AlertManagerApi {
     //     }
     // }
 
-    fetch(url, options){
+    fetch(url, options) {
         // performs api calls sending the required authentication headers
         const headers = {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         }
 
-        if (this.loggedIn()){
+        if (this.loggedIn()) {
             headers['Authorization'] = 'Bearer ' + this.getToken()
         }
 
         return fetch(url, {
-        headers,
-        ...options
+            headers,
+            ...options
         })
         // .then(this._checkStatus)
         // .then(response => response.json())
+    }
+
+    clearSuppRule(rule) {
+        let url = `${this.url}${url_supprules}/${rule.id}/clear`
+        console.log("Clearing SuppRule " + rule.id)
+
+        let obj = {
+            method: 'DELETE',
+            headers: {
+                // "Content-Type": "application/json",
+                "Authorization": `Bearer ${this.getToken()}`
+            }
+        }
+        return fetch(url, obj)
+            .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
     }
 }
 
