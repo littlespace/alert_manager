@@ -90,8 +90,8 @@ class SuppressionRulesListView extends React.Component {
         this.setState({ openHelp: false })
     }
 
-    handleDelete(id) {
-        this.api.clearSuppRule({ id: id })
+    async handleDelete(id) {
+        await this.api.clearSuppRule({ id: id })
         alert("Cleared suppression rule " + id)
         this.updateSuppRulesList()
     }

@@ -44,7 +44,7 @@ class SuppressionRuleMenu extends React.Component {
                     open={Boolean(anchorEl)}
                     onClose={this.handleClose}
                 >
-                    <MenuItem onClick={this.handleDelete}>Clear SuppRule</MenuItem>
+                    <MenuItem disabled={this.props.disabled} onClick={this.handleDelete}>Clear SuppRule</MenuItem>
                 </Menu>
             </div>
         );

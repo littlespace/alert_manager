@@ -11,6 +11,7 @@ import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 
 import Select from '@material-ui/core/Select';
+import InputLabel from '@material-ui/core/InputLabel';
 import OutlinedInput from '@material-ui/core/OutlinedInput';
 import Paper from '@material-ui/core/Paper';
 import { AlertManagerApi } from '../library/AlertManagerApi';
@@ -23,6 +24,8 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import FormControl from '@material-ui/core/FormControl';
+import TextField from '@material-ui/core/TextField';
+import MenuItem from '@material-ui/core/MenuItem';
 
 import Grid from '@material-ui/core/Grid';
 
@@ -86,12 +89,18 @@ const styles = theme => ({
     title: {
         marginLeft: '20px',
     },
+    textField: {
+        width: 200,
+    },
+    formControl: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        minWidth: 120,
+    },
     select: {
         height: 40,
         margin: '10px',
-    },
-    formControl: {
-        minWidth: 120,
+
     },
     success: {
         backgroundColor: green[600],
@@ -184,6 +193,29 @@ const Text = ({ content }) => {
     );
 };
 
+const suppDurations = [
+    {
+        value: '1h',
+        label: '1 Hour',
+    },
+    {
+        value: '4h',
+        label: '4 Hours',
+    },
+    {
+        value: '24h',
+        label: '24 Hours',
+    },
+    {
+        value: '48h',
+        label: '48 Hours',
+    },
+    {
+        value: '168h',
+        label: '1 week  ',
+    },
+];
+
 class AlertView extends React.Component {
 
     static getDerivedStateFromProps(props, state) {
@@ -210,7 +242,8 @@ class AlertView extends React.Component {
             data: {},
             related_alerts: [],
             suppress_time_dialog_open: false,
-            supress_time: "1h"
+            suppress_time: '1h',
+            suppress_reason: "",
         };
         this.handleSuppressTimeDialogOpen = this.handleSuppressTimeDialogOpen.bind(this);
         this.handleSuppressTimeDialogClose = this.handleSuppressTimeDialogClose.bind(this);
@@ -238,12 +271,20 @@ class AlertView extends React.Component {
         this.setState({ suppress_time_dialog_open: false });
     }
 
-    updateSuppressTime = () => event => {
+    updateSuppressTime = (event) => {
         this.setState({ suppress_time: event.target.value });
     }
 
+    getSuppressReason = () => {
+        return `Suppressed by ${this.api.getUsername()}` + ": " + this.state.suppress_reason
+    }
+
+    updateSuppressReason = (event) => {
+        this.setState({ suppress_reason: event.target.value })
+    }
+
     suppressAlert() {
-        this.api.alertSuppress({ id: this.state.id, duration: this.state.suppress_time })
+        this.api.alertSuppress({ id: this.state.id, duration: this.state.suppress_time, reason: this.state.suppress_reason })
         this.setState({ suppress_time_dialog_open: false });
         this.showSuccessMessage()
         setTimeout(this.updateAlert, 2000); // Update after 2s
@@ -280,7 +321,6 @@ class AlertView extends React.Component {
     };
 
     componentDidMount() {
-
         this.updateAlert()
         setInterval(this.updateAlert, 10000); //Refresh every 10s 
     }
@@ -348,36 +388,39 @@ class AlertView extends React.Component {
                     // onClose={this.handleClose}
                     aria-labelledby="alert-suppress-time-select"
                 >
-                    <DialogTitle id="alert-suppress-time-select-title">For how long would you like to suppress this alert ? </DialogTitle>
+                    <DialogTitle id="alert-suppress-time-select-title">Suppression Parameters</DialogTitle>
                     <DialogContent>
-                        {/* <DialogContentText>
-                    You can set my maximum width and whether to adapt or not.
-                    </DialogContentText> */}
                         <form className={this.classes.form} noValidate>
                             <FormControl className={this.classes.formControl}>
-                                <Select
-                                    native
-                                    className={this.classes.select}
+                                <TextField
+                                    select
+                                    className={this.classes.textField}
                                     value={this.state.suppress_time}
-                                    onChange={this.updateSuppressTime()}
-                                    input={
-                                        <OutlinedInput
-                                            name="suppress-time"
-                                            labelWidth={50}
-                                            id="suppress-time"
-                                        />
-                                    }
+                                    onChange={this.updateSuppressTime}
+                                    helperText="Select duration"
+                                    margin="normal"
                                 >
-                                    <option value={'5m'}>5m</option>
-                                    <option value={'15m'}>15m</option>
-                                    <option value={'30m'}>30m</option>
-                                    <option value={'1h'}>1h</option>
-                                    <option value={'2h'}>2h</option>
-                                    <option value={'6h'}>6h</option>
-                                    <option value={'24h'}>24h</option>
-                                    <option value={'48h'}>48h</option>
-                                    <option value={'168h'}>7d</option>
-                                </Select>
+                                    {suppDurations.map(option => (
+                                        <MenuItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+                            </FormControl>
+                            <FormControl className={this.classes.formControl}>
+                                <TextField
+                                    id="standard-full-width"
+                                    className={this.classes.textField}
+                                    value={this.state.suppress_reason}
+                                    onChange={this.updateSuppressReason}
+                                    placeholder={"Suppressed by " + this.api.getUsername()}
+                                    helperText="Enter Suppress Reason"
+                                    fullWidth
+                                    margin="normal"
+                                    InputLabelProps={{
+                                        shrink: true,
+                                    }}
+                                />
                             </FormControl>
                         </form>
                     </DialogContent>

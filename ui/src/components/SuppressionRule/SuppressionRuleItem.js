@@ -91,7 +91,7 @@ class SuppressionRuleItem extends React.Component {
                         title={this.props.data.name}
                         subheader={subHeader}
                         action={
-                            <SuppressionRuleMenu id={this.props.data.id} onDelete={this.props.onDelete} />
+                            <SuppressionRuleMenu id={this.props.data.id} disabled={isPermanent} onDelete={this.props.onDelete} />
                         }
                         className={this.classes.cardHeader} >
                     </CardHeader>

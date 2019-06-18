@@ -218,14 +218,17 @@ export class AlertManagerApi {
 
     }
 
-    alertSuppress({ id, duration = "1h" } = {}) {
+    alertSuppress({ id, duration = "1h", reason = "" } = {}) {
 
         // TODO 
         // - Check if user is loggedIn
         // - Integrate with new fetch method
 
         // api/alerts/{id}/suppress?duration=5m
-        let url = `${this.url}${url_alerts}/${id}/suppress?duration=${duration}`
+        if (reason == "") {
+            reason = `Suppressed by ${this.getUsername()}`
+        }
+        let url = `${this.url}${url_alerts}/${id}/suppress?duration=${duration}&reason=${reason}`
 
         let obj = {
             method: 'PATCH',
