@@ -126,7 +126,7 @@ class AlertItem extends React.Component {
                     <Grid item xs={12}>Site: {(this.props.data.site !== "") ? this.props.data.site : "undefined"}</Grid>
                     <Grid item xs={12}>Device: {(this.props.data.device !== "") ? this.props.data.device : "undefined"}</Grid>
                 </Grid>
-                <Grid item xs={6} sm={1} className={this.classes.alertCell}>{this.props.data.scope}</Grid>
+                <Grid item xs={6} sm={1} className={this.classes.alertCell}>{this.props.data.entity}</Grid>
                 <Grid item xs={6} sm={3} md={2} className={this.classes.alertCell}>{this.props.data.source}</Grid>
                 <Grid container item xs={6} sm={2} className={classNames(this.classes.alertCell, this.classes.alertItemTimes)}>
                     <Grid item xs={12} className={this.classes.alertItemTimeItem}>Start: {timeConverter(this.props.data.start_time)}</Grid>

@@ -446,7 +446,7 @@ class OngoingAlertsView extends React.Component {
                             <Grid item xs={12} sm={1}>Status</Grid>
                             <Grid item xs={12} sm={3} md={4}>Name</Grid>
                             <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
-                            <Grid item xs={12} sm={1}>Scope</Grid>
+                            <Grid item xs={12} sm={1}>Entity</Grid>
                             <Grid item xs={12} sm={3} md={2}>Source</Grid>
                             <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
                         </Grid>
