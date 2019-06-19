@@ -225,7 +225,7 @@ export class AlertManagerApi {
         // - Integrate with new fetch method
 
         // api/alerts/{id}/suppress?duration=5m
-        if (reason == "") {
+        if (reason === "") {
             reason = `Suppressed by ${this.getUsername()}`
         }
         let url = `${this.url}${url_alerts}/${id}/suppress?duration=${duration}&reason=${reason}`
@@ -509,6 +509,26 @@ export class AlertManagerApi {
         }
         return fetch(url, obj)
             .then(handleErrors)
+            .catch(function (error) {
+                console.log(error);
+            });
+    }
+
+    createSuppRule(rule) {
+        let url = `${this.url}${url_supprules}`
+        console.log("Creating New SuppRule")
+
+        let obj = {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${this.getToken()}`
+            },
+            body: JSON.stringify(rule)
+        }
+        return fetch(url, obj)
+            .then(handleErrors)
+            .then(response => response.json())
             .catch(function (error) {
                 console.log(error);
             });

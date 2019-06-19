@@ -11,7 +11,6 @@ import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 
 import Select from '@material-ui/core/Select';
-import InputLabel from '@material-ui/core/InputLabel';
 import OutlinedInput from '@material-ui/core/OutlinedInput';
 import Paper from '@material-ui/core/Paper';
 import { AlertManagerApi } from '../library/AlertManagerApi';
@@ -193,25 +192,25 @@ const Text = ({ content }) => {
     );
 };
 
-const suppDurations = [
+export const SuppDurations = [
     {
-        value: '1h',
+        value: 3600,
         label: '1 Hour',
     },
     {
-        value: '4h',
+        value: 14400,
         label: '4 Hours',
     },
     {
-        value: '24h',
+        value: 86400,
         label: '24 Hours',
     },
     {
-        value: '48h',
+        value: 172800,
         label: '48 Hours',
     },
     {
-        value: '168h',
+        value: 604800,
         label: '1 week  ',
     },
 ];
@@ -242,7 +241,7 @@ class AlertView extends React.Component {
             data: {},
             related_alerts: [],
             suppress_time_dialog_open: false,
-            suppress_time: '1h',
+            suppress_time: 3600,
             suppress_reason: "",
         };
         this.handleSuppressTimeDialogOpen = this.handleSuppressTimeDialogOpen.bind(this);
@@ -273,10 +272,6 @@ class AlertView extends React.Component {
 
     updateSuppressTime = (event) => {
         this.setState({ suppress_time: event.target.value });
-    }
-
-    getSuppressReason = () => {
-        return `Suppressed by ${this.api.getUsername()}` + ": " + this.state.suppress_reason
     }
 
     updateSuppressReason = (event) => {
@@ -367,7 +362,7 @@ class AlertView extends React.Component {
                         message={
                             <span id="client-snackbar" className={this.classes.message}>
                                 <InfoIcon />
-                                {'Alert Succefully updated'}
+                                {'Alert Successfully updated'}
                             </span>
                         }
                         action={[
@@ -400,7 +395,7 @@ class AlertView extends React.Component {
                                     helperText="Select duration"
                                     margin="normal"
                                 >
-                                    {suppDurations.map(option => (
+                                    {SuppDurations.map(option => (
                                         <MenuItem key={option.value} value={option.value}>
                                             {option.label}
                                         </MenuItem>
