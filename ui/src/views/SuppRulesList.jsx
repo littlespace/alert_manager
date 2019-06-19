@@ -294,10 +294,12 @@ class SuppressionRulesListView extends React.Component {
                             <TextField
                                 className={this.classes.textField}
                                 value={this.state.supprule.name}
+                                id="standard-required"
                                 name="name"
                                 label="Rule Name"
                                 onChange={this.updateSuppRule}
                                 margin="normal"
+                                required={true}
                                 InputLabelProps={{
                                     shrink: true,
                                 }}
@@ -322,12 +324,12 @@ class SuppressionRulesListView extends React.Component {
                                     let keyId = `key-${idx}`, valId = `val-${idx}`
                                     return (
                                         <div className={this.classes.divStyle}>
-                                            <FormControl className={this.classes.formControl}>
+                                            <FormControl className={this.classes.formControl} required={true}>
                                                 <InputLabel htmlFor={keyId}>Entity Key</InputLabel>
                                                 <Input id={keyId} aria-describedby="key-helper-text" onChange={(e) => this.handleSuppRuleEntChange(e, idx, "key")}></Input>
                                                 <FormHelperText id="key-helper-text">e.g device</FormHelperText>
                                             </FormControl>
-                                            <FormControl className={this.classes.formControl}>
+                                            <FormControl className={this.classes.formControl} required={true}>
                                                 <InputLabel htmlFor={valId}>Entity Value</InputLabel>
                                                 <Input id={valId} aria-describedby="val-helper-text" onChange={(e) => this.handleSuppRuleEntChange(e, idx, "value")}></Input>
                                                 <FormHelperText id="val-helper-text">Regexes accepted</FormHelperText>
