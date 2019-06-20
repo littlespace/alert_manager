@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/internal/models"
 	"github.com/mayuresh82/alert_manager/plugins"
 	"github.com/streadway/amqp"
-	"sync"
-	"time"
 )
 
 const (
@@ -38,7 +39,7 @@ type Publisher struct {
 	Notif         chan *plugins.SendRequest
 	channel       *amqp.Channel
 
-	sync.Mutex
+	sync.RWMutex
 }
 
 func (p *Publisher) Name() string {
@@ -79,22 +80,24 @@ func (p *Publisher) uri() string {
 }
 
 func (p *Publisher) Setup() error {
-	p.Lock()
-	defer p.Unlock()
+	p.RLock()
 	if p.ready {
 		return nil
 	}
+	p.RUnlock()
 	var conn *amqp.Connection
 	var err error
-	for {
-		conn, err = amqp.Dial(p.uri())
-		if err != nil {
-			glog.V(2).Infof("Rabbitmq: Error connecting to server %s: %v", p.AmqpAddr, err)
+
+	conn, err = amqp.Dial(p.uri())
+	if err != nil {
+		glog.V(2).Infof("Rabbitmq: Error connecting to server %s: %v", p.AmqpAddr, err)
+		go func() {
 			time.Sleep(p.ConnectRetry)
-			continue
-		}
-		break
+			p.Setup()
+		}()
+		return err
 	}
+
 	channel, err := conn.Channel()
 	if err != nil {
 		return fmt.Errorf("Error getting channel: %v", err)
@@ -111,7 +114,9 @@ func (p *Publisher) Setup() error {
 	); err != nil {
 		return fmt.Errorf("Error declaring exchange: %v", err)
 	}
+	p.Lock()
 	p.ready = true
+	p.Unlock()
 	return nil
 }
 
@@ -137,13 +142,13 @@ func (p *Publisher) Start(ctx context.Context, options *plugins.Options) {
 	for {
 		select {
 		case req := <-p.Notif:
-			p.Lock()
+			p.RLock()
 			if !p.ready {
 				glog.V(2).Infof("Amqp publisher not ready, skipping event")
-				p.Unlock()
+				p.RUnlock()
 				break
 			}
-			p.Unlock()
+			p.RUnlock()
 			if req.Event.Type != models.EventType_ACTIVE && req.Event.Type != models.EventType_CLEARED {
 				break
 			}

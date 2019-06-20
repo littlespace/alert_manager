@@ -17,7 +17,6 @@ import (
 const (
 	EXPIRY_CHECK_INTERVAL     = 5 * time.Minute
 	ESCALATION_CHECK_INTERVAL = 3 * time.Minute
-	CLEAR_HOLDDOWN_INTERVAL   = 1 * time.Minute
 )
 
 // all listeners send alerts down this channel
@@ -135,11 +134,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 				case models.EventType_ACTIVE:
 					return h.handleActive(ctx, tx, alert)
 				case models.EventType_CLEARED:
-					holddown := h.clearHolddown
-					if holddown == 0 {
-						holddown = CLEAR_HOLDDOWN_INTERVAL
-					}
-					return h.handleClear(ctx, tx, alert, holddown)
+					return h.handleClear(ctx, tx, alert, h.clearHolddown)
 				}
 				return nil
 			})
