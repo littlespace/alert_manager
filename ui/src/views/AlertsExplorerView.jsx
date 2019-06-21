@@ -17,6 +17,7 @@ import Select from '@material-ui/core/Select';
 import TextField from '@material-ui/core/TextField';
 
 import { AlertManagerApi } from '../library/AlertManagerApi';
+import { dynamicSort } from './OngoingAlertsView';
 
 import AlertItem from '../components/Alerts/AlertItem';
 import PageHelp from '../components/PageHelp';
@@ -265,7 +266,7 @@ class AlertsExplorerView extends React.Component {
         }
 
         this.setState({
-            alerts: data,
+            alerts: data.sort(dynamicSort('-last_active')),
             NbrActive: NbrActive,
             NbrExpired: NbrExpired,
             NbrSuppressed: NbrSuppressed,
@@ -528,7 +529,7 @@ class AlertsExplorerView extends React.Component {
                             <Grid item xs={12} sm={1}>Status</Grid>
                             <Grid item xs={12} sm={3} md={4}>Name</Grid>
                             <Grid item xs={12} sm={2} md={2}>Site/Device</Grid>
-                            <Grid item xs={12} sm={1}>Scope</Grid>
+                            <Grid item xs={12} sm={1}>Entity</Grid>
                             <Grid item xs={12} sm={3} md={2}>Source</Grid>
                             <Grid item xs={12} sm={2} className={this.classes.alertItemTimes}> Time</Grid>
                         </Grid>

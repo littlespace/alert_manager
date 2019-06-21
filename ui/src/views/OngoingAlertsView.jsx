@@ -151,7 +151,7 @@ const styles = theme => ({
 
 });
 
-function dynamicSort(property) {
+export function dynamicSort(property) {
     var sortOrder = 1;
     if (property[0] === "-") {
         sortOrder = -1;
@@ -199,9 +199,11 @@ class OngoingAlertsView extends React.Component {
         this.getTeamList()
     }
 
-    updateAlertsList = () => {
-        this.api.getAlertsList({ status: [1, 2] })
-            .then(data => this.processAlertsList(data));
+    updateAlertsList = async () => {
+        const active = await this.api.getAlertsList({ status: [1] })
+        const suppr = await this.api.getAlertsList({ status: [2] })
+        var all = active.concat(suppr)
+        this.processAlertsList(all)
 
         this.updateUrl();
     }

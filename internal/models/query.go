@@ -133,7 +133,7 @@ func (q Query) Run(tx Txn) ([]interface{}, error) {
 	if err != nil {
 		return items, err
 	}
-	sql += fmt.Sprintf(" ORDER BY %s.id", q.Table)
+	sql += fmt.Sprintf(" ORDER BY %s.id DESC", q.Table)
 	if q.Limit == 0 {
 		q.Limit = 50
 	}

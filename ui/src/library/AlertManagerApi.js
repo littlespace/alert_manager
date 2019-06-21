@@ -35,7 +35,7 @@ export class AlertManagerApi {
     /// Alerts Management Queries
     /// -------------------------------------------------------------------
     getAlertsList({
-        limit = 500,
+        limit = 250,
         aggregate = true,
         timerange_h = null,
         teams = [],
