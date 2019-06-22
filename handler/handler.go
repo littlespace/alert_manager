@@ -443,8 +443,8 @@ func (h *AlertHandler) Suppress(
 		}
 		// suppress individual alerts
 		for _, a := range grouped {
-			reason = "Alert suppressed due to aggregated alert suppressed"
-			if err := h.Suppress(ctx, tx, a, creator, reason, duration); err != nil {
+			cReason := "Alert suppressed due to aggregated alert suppressed"
+			if err := h.Suppress(ctx, tx, a, creator, cReason, duration); err != nil {
 				return fmt.Errorf("Unable to suppress alert %d: %v", a.Id, err)
 			}
 		}

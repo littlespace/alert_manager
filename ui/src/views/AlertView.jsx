@@ -89,7 +89,7 @@ const styles = theme => ({
         marginLeft: '20px',
     },
     textField: {
-        width: 200,
+        width: 250,
     },
     formControl: {
         display: 'flex',
@@ -195,23 +195,28 @@ const Text = ({ content }) => {
 export const SuppDurations = [
     {
         value: 3600,
+        unit: "1h",
         label: '1 Hour',
     },
     {
         value: 14400,
+        unit: "4h",
         label: '4 Hours',
     },
     {
         value: 86400,
+        unit: "24h",
         label: '24 Hours',
     },
     {
         value: 172800,
+        unit: "46h",
         label: '48 Hours',
     },
     {
         value: 604800,
-        label: '1 week  ',
+        unit: "168h",
+        label: '1 week',
     },
 ];
 
@@ -241,7 +246,7 @@ class AlertView extends React.Component {
             data: {},
             related_alerts: [],
             suppress_time_dialog_open: false,
-            suppress_time: 3600,
+            suppress_time: "1h",
             suppress_reason: "",
         };
         this.handleSuppressTimeDialogOpen = this.handleSuppressTimeDialogOpen.bind(this);
@@ -278,7 +283,8 @@ class AlertView extends React.Component {
         this.setState({ suppress_reason: event.target.value })
     }
 
-    suppressAlert() {
+    suppressAlert(e) {
+        e.preventDefault();
         this.api.alertSuppress({ id: this.state.id, duration: this.state.suppress_time, reason: this.state.suppress_reason })
         this.setState({ suppress_time_dialog_open: false });
         this.showSuccessMessage()
@@ -385,38 +391,39 @@ class AlertView extends React.Component {
                 >
                     <DialogTitle id="alert-suppress-time-select-title">Suppression Parameters</DialogTitle>
                     <DialogContent>
-                        <form className={this.classes.form} noValidate>
-                            <FormControl className={this.classes.formControl}>
+                        <form className={this.classes.form} id="suppress" onSubmit={this.suppressAlert}>
+                            <div>
                                 <TextField
                                     select
                                     className={this.classes.textField}
                                     value={this.state.suppress_time}
                                     onChange={this.updateSuppressTime}
-                                    helperText="Select duration"
+                                    label="Duration"
                                     margin="normal"
                                 >
                                     {SuppDurations.map(option => (
-                                        <MenuItem key={option.value} value={option.value}>
+                                        <MenuItem key={option.value} value={option.unit}>
                                             {option.label}
                                         </MenuItem>
                                     ))}
                                 </TextField>
-                            </FormControl>
-                            <FormControl className={this.classes.formControl}>
+                            </div>
+                            <div>
                                 <TextField
                                     id="standard-full-width"
+                                    required={true}
                                     className={this.classes.textField}
                                     value={this.state.suppress_reason}
                                     onChange={this.updateSuppressReason}
                                     placeholder={"Suppressed by " + this.api.getUsername()}
-                                    helperText="Enter Suppress Reason"
                                     fullWidth
                                     margin="normal"
+                                    label="Reason"
                                     InputLabelProps={{
                                         shrink: true,
                                     }}
                                 />
-                            </FormControl>
+                            </div>
                         </form>
                     </DialogContent>
                     <DialogActions>
@@ -427,7 +434,9 @@ class AlertView extends React.Component {
                     </Button>
                         <Button
                             color="secondary"
-                            onClick={this.suppressAlert}>
+                            type="submit"
+                            form="suppress"
+                        >
                             Suppress
                     </Button>
                     </DialogActions>

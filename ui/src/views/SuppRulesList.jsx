@@ -186,7 +186,8 @@ class SuppressionRulesListView extends React.Component {
         this.setState({ supprule_ents: ents })
     }
 
-    createSuppRule = async () => {
+    createSuppRule = async (e) => {
+        e.preventDefault()
         const req = this.state.supprule
         req['creator'] = this.api.getUsername()
         const ents = this.state.supprule_ents
@@ -261,7 +262,7 @@ class SuppressionRulesListView extends React.Component {
                 >
                     <DialogTitle id="rule-create-title">Create New Rule</DialogTitle>
                     <DialogContent>
-                        <form className={this.classes.form} noValidate>
+                        <form className={this.classes.form} id="create-rule" onSubmit={this.createSuppRule}>
                             <TextField
                                 select
                                 className={this.classes.textField}
@@ -357,7 +358,9 @@ class SuppressionRulesListView extends React.Component {
                     </Button>
                         <Button
                             color="secondary"
-                            onClick={this.createSuppRule}>
+                            type="submit"
+                            form="create-rule"
+                        >
                             Create
                     </Button>
                     </DialogActions>

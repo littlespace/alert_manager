@@ -366,6 +366,9 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 			}
 			creator := "alert_manager"
 			reason := "alert suppressed via API"
+			if reasonStr, ok := queries["reason"]; ok {
+				reason = reasonStr[0]
+			}
 			er = s.handler.Suppress(
 				ctx, tx, alert,
 				creator,
