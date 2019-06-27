@@ -344,7 +344,7 @@ export class AlertManagerApi {
     /// -------------------------------------------------------------------
     /// Authentication and Session Management
     /// -------------------------------------------------------------------
-    login(username, password, callback_success) {
+    login(username, password, cb_success, cb_failure) {
 
         console.log(`Will try to authenticate to ${this.url}api/auth`)
 
@@ -361,7 +361,6 @@ export class AlertManagerApi {
             if (response.status === 200) {
                 return response.json()
             } if (response.status === 401) {
-                console.log("Auth is NOT valid")
                 return false
             } else {
                 var error = new Error(response.statusText)
@@ -370,10 +369,14 @@ export class AlertManagerApi {
             }
 
         }).then(data => {
-            console.log(`Auth is valid, Saved token ${data.token}`)
-            this.setToken(data.token)
-            callback_success()
-            return true
+            if (!data) {
+                console.log("Auth is NOT valid")
+                cb_failure()
+            } else {
+                console.log(`Auth is valid, Saved token ${data.token}`)
+                this.setToken(data.token)
+                cb_success()
+            }
         })
     }
 
