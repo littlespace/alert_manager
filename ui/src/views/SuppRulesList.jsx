@@ -222,8 +222,8 @@ class SuppressionRulesListView extends React.Component {
     render() {
         let activeRules = this.state.rules.filter(
             (rule) => {
-                if (rule.done_expire) {
-                    return false
+                if (rule.dont_expire) {
+                    return true
                 }
                 const createdSecs = Date.parse(rule.created_at) / 1000
                 return createdSecs + rule.duration > (new Date()).getTime() / 1000
