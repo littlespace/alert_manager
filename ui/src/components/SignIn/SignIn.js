@@ -16,7 +16,7 @@ import { Redirect } from 'react-router-dom';
 /// -------------------------------------
 /// Icons 
 /// -------------------------------------
-import InfoIcon from '@material-ui/icons/Info';
+import ErrorIcon from '@material-ui/icons/Error';
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
 import LockOutlinedIcon from '@material-ui/icons/LockOutlined';
@@ -55,15 +55,22 @@ const styles = theme => ({
   submit: {
     marginTop: theme.spacing.unit * 3,
   },
+  error: {
+    backgroundColor: theme.palette.error.dark,
+  },
+  message: {
+    display: 'flex',
+    alignItems: 'center',
+  },
 });
 
 class SignIn extends React.Component {
 
-  constructor(props){
+  constructor(props) {
     super(props);
     this.classes = this.props.classes;
-    this.authSuccessfull = this.authSuccessfull.bind(this);
     this.state = {
+      snackbarUpdateMessage: false,
       username: null,
       password: null,
       redirect: false
@@ -74,16 +81,12 @@ class SignIn extends React.Component {
     this.setState({ [name]: event.target.value });
   };
 
-  login = () => {
-    
-    Auth.login(
-        this.state.username, 
-        this.state.password,
-        this.authSuccessfull
-    )
+  login = (e) => {
+    e.preventDefault()
+    Auth.login(this.state.username, this.state.password, this.authSuccessfull, this.showFailureMessage)
   }
 
-  authSuccessfull() {
+  authSuccessfull = () => {
     this.setState({
       redirect: true
     })
@@ -96,45 +99,45 @@ class SignIn extends React.Component {
     this.setState({ snackbarUpdateMessage: false });
   };
 
-  showSuccessMessage() {
-      this.setState({ snackbarUpdateMessage: true });
+  showFailureMessage = () => {
+    console.log('Auth failed')
+    this.setState({ snackbarUpdateMessage: true });
   };
 
   renderRedirect = () => {
     if (this.state.redirect) {
       return <Redirect to='/' />
-    } else {
-
     }
   }
 
   render() {
     return (
-        <main className={this.classes.main}>
-          <Paper className={this.classes.paper}>
-            <Avatar className={this.classes.avatar}>
-              <LockOutlinedIcon />
-            </Avatar>
-            <Typography component="h1" variant="h5">
-              Sign in
+      <main className={this.classes.main}>
+        <Paper className={this.classes.paper}>
+          <Avatar className={this.classes.avatar}>
+            <LockOutlinedIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Sign in
             </Typography>
-            <div className={this.classes.form}>
-              {this.renderRedirect()}
+          <div>
+            {this.renderRedirect()}
+            <form className={this.classes.form} id="signin" onSubmit={this.login}>
               <FormControl margin="normal" required fullWidth>
                 <InputLabel htmlFor="username">Username</InputLabel>
-                <Input 
-                  id="username" 
-                  name="username" 
-                  autoComplete="username" 
+                <Input
+                  id="username"
+                  name="username"
+                  autoComplete="username"
                   autoFocus
                   onChange={this.handleChange('username')} />
               </FormControl>
               <FormControl margin="normal" required fullWidth>
                 <InputLabel htmlFor="password">Password</InputLabel>
-                <Input 
-                  name="password" 
-                  type="password" 
-                  id="password" 
+                <Input
+                  name="password"
+                  type="password"
+                  id="password"
                   autoComplete="current-password"
                   onChange={this.handleChange('password')} />
               </FormControl>
@@ -144,43 +147,46 @@ class SignIn extends React.Component {
                 variant="contained"
                 color="primary"
                 className={this.classes.submit}
-                onClick={this.login}
+                form="signin"
               >
                 Sign in
               </Button>
-            </div>
-          </Paper>
+            </form>
+          </div>
+        </Paper>
+        <div>
           <Snackbar
-                anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'left',
-                }}
-                open={this.state.snackbarUpdateMessage}
-                autoHideDuration={6000}
-                onClose={this.handleMessageClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+            open={this.state.snackbarUpdateMessage}
+            autoHideDuration={6000}
+            onClose={this.handleMessageClose}
+          >
+            <SnackbarContent
+              className={this.classes.error}
+              aria-describedby="client-snackbar"
+              message={
+                <span id="client-snackbar" className={this.classes.message}>
+                  <ErrorIcon />
+                  {'Login Failed'}
+                </span>
+              }
+              action={[
+                <IconButton
+                  key="close"
+                  aria-label="Close"
+                  color="inherit"
+                  className={this.classes.close}
+                  onClick={this.handleMessageClose}
                 >
-                <SnackbarContent
-                    className={this.classes.info}
-                    aria-describedby="client-snackbar"
-                    message={
-                        <span id="client-snackbar" className={this.classes.message}>
-                        <InfoIcon />
-                        {'Alert Succefully updated'}
-                        </span>
-                    }
-                    action={[
-                        <IconButton
-                            key="close"
-                            aria-label="Close"
-                            color="inherit"
-                            className={this.classes.close}
-                            onClick={this.handleMessageClose}
-                        >
-                        <CloseIcon className={this.classes.icon} />
-                        </IconButton>,
-                    ]}
-                    />
-            </Snackbar>
+                  <CloseIcon className={this.classes.icon} />
+                </IconButton>,
+              ]}
+            />
+          </Snackbar>
+        </div>
       </main>
     );
   }

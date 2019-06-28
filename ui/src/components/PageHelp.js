@@ -82,10 +82,10 @@ function ShowSuppRuleLegend(props) {
     return (
         <DialogContent>
             <Typography variant="h6">
-                Suppresion Rule Legent
+                Suppresion Rule Legend
             </Typography>
             <Text
-                content="The color of the badge, in the left corner reflects its type"
+                content="This page shows the ACTIVE suppression rules. The color of the badge, in the left corner reflects its type"
             ></Text>
             <Card className={props.classes.card}>
                 <CardHeader

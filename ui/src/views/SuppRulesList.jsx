@@ -220,7 +220,15 @@ class SuppressionRulesListView extends React.Component {
     }
 
     render() {
-        let rules = this.state.rules
+        let activeRules = this.state.rules.filter(
+            (rule) => {
+                if (rule.dont_expire) {
+                    return true
+                }
+                const createdSecs = Date.parse(rule.created_at) / 1000
+                return createdSecs + rule.duration > (new Date()).getTime() / 1000
+            }
+        )
         let ents = this.state.supprule_ents
         return (
             <div>
@@ -374,7 +382,7 @@ class SuppressionRulesListView extends React.Component {
                         justify="flex-start"
                         alignItems="stretch"
                     >
-                        {rules.map(r => {
+                        {activeRules.map(r => {
                             return (
                                 <SuppressionRuleItem
                                     key={r.id}
