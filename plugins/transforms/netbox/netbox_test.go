@@ -187,6 +187,49 @@ var testDatas = map[string][]byte{
     },
     "region": "US_EAST"
   }`),
+	"/api/rblx/device/dm/v1/dev1-dc1?interfaces=et-0/0/40": []byte(`
+  {
+    "name": "dev1-dc1",
+    "primary_ip": "11.1.1.1/32",
+    "status": "Active",
+    "interfaces": {
+        "et-0/0/40": {
+            "id": 106171,
+            "description": "",
+            "lag": null,
+            "is_lag": false,
+            "is_connected": true,
+            "peer_name": "lb1-dc1",
+            "peer_role": "load-balancer-internal",
+            "peer_int": "et-0/0/0",
+            "peer_is_lag": false,
+            "link_is_active": true,
+            "speed": 40000,
+            "mac_address": null,
+            "interface_connection": {
+                "interface": {
+                    "name": "et-0/0/0",
+                    "device": {
+                        "id": 4945,
+                        "name": "lb1-dc1",
+                        "role": "load-balancer-internal"
+                    }
+                },
+                "status": true
+            },
+            "rblx_description": "et-0/0/0.lb1-dc1"
+        }
+    },
+    "site_data": {
+        "id": 8,
+        "name": "dc1",
+        "region": {
+            "id": 8,
+            "name": "US_EAST"
+        }
+    },
+    "region": "US_EAST"
+    }`),
 	"/api/rblx/device/dm/v1/dev1-bb1?interfaces=et-0/0/3:0": []byte(`
   {
     "name": "dev1-bb1",
@@ -480,6 +523,27 @@ func TestNetboxIntf(t *testing.T) {
 		"type":        "phy",
 		"peerDevice":  "dev2-dc1",
 		"peerIntf":    "et-0/0/31",
+	}
+	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
+}
+
+func TestNetboxIntfLb(t *testing.T) {
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/40", "src1", "phy_interface", "t1", "1", "WARN", []string{}, nil)
+	n := &Netbox{client: &mockClient{}}
+	if err := n.Apply(a); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, a.Site.String, "dc1")
+	exp := models.Labels{
+		"labelType":   "Interface",
+		"device":      "dev1-dc1",
+		"status":      "Active",
+		"interface":   "et-0/0/40",
+		"description": "et-0/0/0.lb1-dc1",
+		"role":        "lb",
+		"type":        "phy",
+		"peerDevice":  "lb1-dc1",
+		"peerIntf":    "et-0/0/0",
 	}
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }

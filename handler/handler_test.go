@@ -184,7 +184,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Equal(t, int(new.Id), 999)
 	assert.Equal(t, h.Teams[0].Name, "t1")
 	assert.Equal(t, h.Teams[0].Id, int64(1))
-	l := models.Labels{"suppress": "me", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "severity": "WARN", "alert_name": "New Alert 1", "team": "t1"}
+	l := models.Labels{"suppress": "me", "description": "", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "severity": "WARN", "alert_name": "New Alert 1", "team": "t1"}
 	assert.Equal(t, new.Labels, l)
 	event := <-h.procChan
 	assert.Equal(t, event.Type, models.EventType_ACTIVE)

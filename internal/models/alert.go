@@ -267,6 +267,7 @@ func (a *Alert) ExtendLabels() {
 	a.Labels["device"] = a.Device.String
 	a.Labels["entity"] = a.Entity
 	a.Labels["alert_name"] = a.Name
+	a.Labels["description"] = a.Description
 	a.Labels["severity"] = a.Severity.String()
 	a.Labels["source"] = a.Source
 	if a.Labels["scope"] == nil {
