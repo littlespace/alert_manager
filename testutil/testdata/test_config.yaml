@@ -79,13 +79,6 @@ suppression_rules:
         RemoteDeviceStatus: Offline
         LocalDeviceStatus: Offline
 
-    - name: QFX Chassis Alarm SuppRule
-      duration: 5m
-      reason: Suppress alerts based on this rule
-      match_condition: any
-      matches:
-        Description: ".* PE Error code: 0x2104be .*"
-
 inhibit_rules:
     - name: Device down
       source_match:

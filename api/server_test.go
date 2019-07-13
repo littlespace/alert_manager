@@ -370,15 +370,10 @@ func TestSuppRule(t *testing.T) {
 	if err := json.NewDecoder(rr.Result().Body).Decode(&b); err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, len(b), 2)
+	assert.Equal(t, len(b), 1)
 	c := b[0].(map[string]interface{})
 	assert.Equal(t, c["id"].(float64), float64(0))
 	assert.Equal(t, c["name"].(string), "Dummy SuppRule")
-	assert.Equal(t, c["creator"].(string), "alert manager")
-	assert.Equal(t, c["dont_expire"].(bool), true)
-	c = b[1].(map[string]interface{})
-	assert.Equal(t, c["id"].(float64), float64(0))
-	assert.Equal(t, c["name"].(string), "QFX Chassis Alarm SuppRule")
 	assert.Equal(t, c["creator"].(string), "alert manager")
 	assert.Equal(t, c["dont_expire"].(bool), true)
 }
