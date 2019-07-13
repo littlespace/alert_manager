@@ -211,7 +211,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	// test new active alert - suppressed
 	rule2 := models.NewSuppRule(models.Labels{"description": "PE Error code: 0x2104be"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
 	h.Suppressor.SaveRule(ctx, tx, rule2)
-	a4 := tu.MockAlert(100, "Test Alert 2", "QFX PE Error code: 0x2104be test", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
+	a4 := tu.MockAlert(100, "Test Alert 2", "QFX PE Error code: 0x2104be test", "dev3", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	a4.ExtendLabels()
 	assert.NotNil(t, h.Suppressor.Match(a4.Labels))
 
