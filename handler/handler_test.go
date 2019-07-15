@@ -184,7 +184,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Equal(t, int(new.Id), 999)
 	assert.Equal(t, h.Teams[0].Name, "t1")
 	assert.Equal(t, h.Teams[0].Id, int64(1))
-	l := models.Labels{"suppress": "me", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "severity": "WARN", "alert_name": "New Alert 1", "team": "t1"}
+	l := models.Labels{"suppress": "me", "description": "", "device": "d2", "entity": "e2", "source": "src2", "scope": "scp2", "severity": "WARN", "alert_name": "New Alert 1", "team": "t1"}
 	assert.Equal(t, new.Labels, l)
 	event := <-h.procChan
 	assert.Equal(t, event.Type, models.EventType_ACTIVE)
@@ -207,6 +207,13 @@ func TestHandlerAlertActive(t *testing.T) {
 	a2 := tu.MockAlert(0, "Test Alert 2", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	a2.ExtendLabels()
 	assert.NotNil(t, h.Suppressor.Match(a2.Labels))
+
+	// test new active alert - suppressed
+	rule2 := models.NewSuppRule(models.Labels{"description": "PE Error code: 0x2104be"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
+	h.Suppressor.SaveRule(ctx, tx, rule2)
+	a4 := tu.MockAlert(100, "Test Alert 2", "QFX PE Error code: 0x2104be test", "dev3", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
+	a4.ExtendLabels()
+	assert.NotNil(t, h.Suppressor.Match(a4.Labels))
 
 	// test existing active agg
 	new = tu.MockAlert(0, "Test Alert 5", "", "d5", "e5", "src5", "scp5", "t1", "5", "WARN", []string{"g", "h"}, nil)

@@ -3,6 +3,7 @@ package netbox
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
@@ -54,6 +55,8 @@ func ifaceLabels(ifaceData map[string]interface{}) (models.Labels, error) {
 	}
 	if ifaceData["peer_role"].(string) == "border-router" {
 		labels["role"] = "bb"
+	} else if strings.Contains(ifaceData["peer_role"].(string), "load-balancer") {
+		labels["role"] = "lb"
 	} else {
 		labels["role"] = "dc"
 	}
