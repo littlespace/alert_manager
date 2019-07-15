@@ -319,13 +319,6 @@ func TestHandlerAlertSuppress(t *testing.T) {
 	assert.Equal(t, event.Type, models.EventType_SUPPRESSED)
 	assert.Equal(t, event.Alert.Status, models.Status_SUPPRESSED)
 
-	// test chassis suppression
-	a3 := tu.MockAlert(200, "Test Chassis Alert 3", "QFX PE Error code: 0x2104be test", "d2", "e2", "src2", "t1", "t1", "2", "WARN", []string{"c", "d"}, nil)
-	assert.Nil(t, h.Suppress(ctx, tx, a3, "test", "test", 1*time.Minute))
-	event = <-h.procChan
-	assert.Equal(t, event.Type, models.EventType_SUPPRESSED)
-	assert.Equal(t, a3.Status, models.Status_SUPPRESSED)
-
 	a1 = tu.MockAlert(100, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
 	a1.ExtendLabels()
 	assert.NotNil(t, h.Suppressor.Match(a1.Labels))
