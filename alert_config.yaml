@@ -38,6 +38,8 @@ alert_config:
       auto_clear: false
       # notify on clear (default : False)
       notify_on_clear: true
+      # configures whether to auto-clear the alert if it has been acknowledged
+      clear_acknowledged: true
       # set of per-severity outputs to send the alert notification to
       outputs:
         - matches:

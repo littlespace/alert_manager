@@ -33,6 +33,10 @@ alert_config:
             severity: CRITICAL
           send_to: [ slack.test1 ]
 
+  - name: Test Alert 3
+    config:
+      clear_acknowledged: true
+
   - name: Neteng BGP Down
     config:
       scope: bgp_peer
