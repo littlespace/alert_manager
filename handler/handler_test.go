@@ -255,6 +255,12 @@ func TestHandlerAlertClear(t *testing.T) {
 	event := <-h.procChan
 	assert.Equal(t, event.Type, models.EventType_CLEARED)
 	assert.Equal(t, int(event.Alert.Id), 100)
+
+	// test alert clear - ack'd
+	mockAlerts["existing_a3"].AutoClear = true
+	mockAlerts["existing_a3"].Owner.Valid = true
+	h.handleClear(ctx, tx, mockAlerts["existing_a3"], 0)
+	assert.Equal(t, mockAlerts["existing_a3"].Status.String(), "ACTIVE")
 }
 
 func TestHandlerAlertExpiry(t *testing.T) {

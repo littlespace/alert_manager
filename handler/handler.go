@@ -205,6 +205,11 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 		glog.V(2).Infof("Not auto-clearing alert %d ", existingAlert.Id)
 		return nil
 	}
+	// dont clear acknowledged alerts
+	if config, ok := Config.GetAlertConfig(existingAlert.Name); ok && config.Config.ClearAcknowledged && existingAlert.Owner.Valid {
+		glog.V(4).Infof("Not clearing ack'd alert: %d", existingAlert.Id)
+		return nil
+	}
 	// wait for a holddown period before clearing the alert to avoid flaps
 	if holddown == 0 {
 		return h.clearAlert(ctx, tx, existingAlert)
