@@ -49,7 +49,7 @@ func (s *suppressor) loadSuppRules(ctx context.Context) {
 		er    error
 	)
 	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
-		if rules, er = tx.SelectRules(models.QuerySelectActive + " LIMIT 50"); er != nil {
+		if rules, er = tx.SelectRules(models.QuerySelectActive); er != nil {
 			return er
 		}
 		return nil
