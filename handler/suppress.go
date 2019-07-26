@@ -114,9 +114,12 @@ func (s *suppressor) Match(labels models.Labels) *models.SuppressionRule {
 	var matches []*models.SuppressionRule
 	for i := 0; i < len(s.suppRules); i++ {
 		rule := s.suppRules[i]
+		glog.V(4).Infof("Trying to match rule %d:%s:%v", rule.Id, rule.Name, rule.Entities)
 		if rule.Match(labels) {
+			glog.V(4).Infof("Rule %d matched labels %v", rule.Id, labels)
 			if rule.TimeLeft() <= 0 {
 				// rule has expired, remove from cache
+				glog.V(2).Infof("Rule %d expired, remove from cache", rule.Id)
 				s.suppRules = append(s.suppRules[:i], s.suppRules[i+1:]...)
 				i--
 				continue
