@@ -158,7 +158,7 @@ func (n *Notifier) Notify(event *models.AlertEvent) {
 
 func (n *Notifier) send(event *models.AlertEvent, outputs []string) {
 	for _, output := range outputs {
-		glog.V(2).Infof("Sending alert %s to %s", event.Alert.Name, output)
+		glog.V(2).Infof("Sending alert %d:%s to %s", event.Alert.Id, event.Alert.Name, output)
 		plugins.Send(output, event)
 	}
 }
