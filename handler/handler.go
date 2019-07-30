@@ -454,6 +454,7 @@ func (h *AlertHandler) Suppress(
 			}
 		}
 		tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))
+		h.notifyReceivers(alert, models.EventType_SUPPRESSED)
 		return h.Suppressor.SuppressAlert(ctx, tx, alert, duration)
 	}
 	if err := h.Suppressor.SuppressAlert(ctx, tx, alert, duration); err != nil {
