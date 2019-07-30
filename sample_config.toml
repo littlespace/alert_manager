@@ -67,8 +67,8 @@
   smtp_password = ""
   
   [outputs.email.recipients.default]
-    from: "email1@org.com"
-    to: [ "to1@org.com", "to2@org.com" ]
+    from = "email1@org.com"
+    to = [ "to1@org.com", "to2@org.com" ]
 
 [outputs.victorops]
   api_url = "http://victorops.com"
@@ -77,4 +77,3 @@
   [outputs.victorops.recipients.default]
     routing_key = "team1"
     send_ack = false
-    routing_key = "foo"

@@ -41,30 +41,29 @@ func (g fibercutGrouper) AggDesc(alerts []*models.Alert) string {
 	var s []AlertInfo
 
 	msg := "Affected Interfaces:\n"
-	is_dup := false
+	isDup := false
 	for _, a := range alerts {
 
-		is_dup = false
+		isDup = false
 		for i, entry := range s {
-			if entry.provider == a.Labels["provider"] && entry.cktId == a.Labels["cktId"] && entry.aSideDev == a.Labels["zSideDeviceName"] && entry.aSideInt == a.Labels["zSideInterface"] && entry.zSideDev == a.Labels["aSideDeviceName"] && entry.zSideInt == a.Labels["aSideInterface"] {
+			if entry.provider == a.Labels["provider"] && entry.cktId == a.Labels["cktId"] && entry.aSideDev == a.Labels["aSideDeviceName"] && entry.aSideInt == a.Labels["aSideInterface"] && entry.zSideDev == a.Labels["zSideDeviceName"] && entry.zSideInt == a.Labels["zSideInterface"] {
 				// Skip printing the alert if this is a duplicate where a/z-Side matches the z/a-Side of cache entry. Remove entry from the local cache.
-				is_dup = true
+				isDup = true
 				s[i], s[len(s)-1] = s[len(s)-1], s[i]
 				s = s[:len(s)-1]
 				break
 			}
 		}
-		if is_dup == true {
+		if isDup == true {
 			continue
 		}
-
 		// If not a duplicate cache this alert for possible dupes and then print the alert info.
 		s = append(s, AlertInfo{a.Labels["provider"].(string), a.Labels["cktId"].(string), a.Labels["aSideDeviceName"].(string), a.Labels["aSideInterface"].(string),
 			a.Labels["zSideDeviceName"].(string), a.Labels["zSideInterface"].(string)})
 
 		msg += fmt.Sprintf(
 			"Provider: %s, CktId: %s, A-Side: %s:%s, Z-Side: %s:%s\n",
-			a.Labels["provider"].(string), a.Labels["cktId"].(string), a.Device.String, a.Entity, a.Labels["zSideDeviceName"].(string), a.Labels["zSideInterface"].(string),
+			a.Labels["provider"].(string), a.Labels["cktId"].(string), a.Labels["aSideDeviceName"].(string), a.Labels["aSideInterface"].(string), a.Labels["zSideDeviceName"].(string), a.Labels["zSideInterface"].(string),
 		)
 	}
 	return msg
