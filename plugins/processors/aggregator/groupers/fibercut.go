@@ -35,21 +35,19 @@ func (g fibercutGrouper) Name() string {
 
 func (g fibercutGrouper) AggDesc(alerts []*models.Alert) string {
 
-	type AlertInfo struct {
-		provider, aSideDev, aSideInt, zSideDev, zSideInt string
-	}
-	m := make(map[string]AlertInfo)
+	// Map to keep track of alerts that are triggered on both ends of the same circuit ID. Map value is not used.
+	// The key is a string with the cktId concatenated with Aside interface name.
+	m := make(map[string]bool)
 
 	msg := "Affected Interfaces:\n"
 	for _, a := range alerts {
-		if _, ok := m[a.Labels["cktId"].(string)]; !ok {
-			m[a.Labels["cktId"].(string)] = AlertInfo{a.Labels["provider"].(string), a.Labels["aSideDeviceName"].(string), a.Labels["aSideInterface"].(string),
-				a.Labels["zSideDeviceName"].(string), a.Labels["zSideInterface"].(string)}
-		}
-	}
 
-	for k, v := range m {
-		msg += fmt.Sprintf("Provider: %s, CktId: %s, A-Side: %s:%s, Z-Side: %s:%s\n", v.provider, k, v.aSideDev, v.aSideInt, v.zSideDev, v.zSideInt)
+		if _, ok := m[a.Labels["cktId"].(string)+a.Labels["aSideInterface"].(string)]; !ok {
+			m[a.Labels["cktId"].(string)+a.Labels["aSideInterface"].(string)] = true
+			msg += fmt.Sprintf("Provider: %s, CktId: %s, A-Side: %s:%s, Z-Side: %s:%s\n",
+				a.Labels["provider"].(string), a.Labels["cktId"].(string), a.Labels["aSideDeviceName"].(string),
+				a.Labels["aSideInterface"].(string), a.Labels["zSideDeviceName"].(string), a.Labels["zSideInterface"].(string))
+		}
 	}
 	return msg
 }
