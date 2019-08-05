@@ -128,7 +128,7 @@ func (q Query) toSQL() (string, error) {
 }
 
 func (q Query) Run(tx Txn) ([]interface{}, error) {
-	var items []interface{}
+	items := []interface{}{}
 	sql, err := q.toSQL()
 	if err != nil {
 		return items, err
@@ -213,7 +213,7 @@ func (u UpdateQuery) toSQL() (string, error) {
 }
 
 func (u UpdateQuery) Run(tx Txn) ([]interface{}, error) {
-	var items []interface{} // dummy so that Run can conform to Querier interface
+	items := []interface{}{} // dummy so that Run can conform to Querier interface
 	sql, err := u.toSQL()
 	if err != nil {
 		return items, err
