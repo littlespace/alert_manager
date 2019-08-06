@@ -18,13 +18,13 @@ docker:
 	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 alert_manager:
-	go build -ldflags "$(LDFLAGS)" ./cmd/alert_manager
+	go build -mod=vendor -ldflags "$(LDFLAGS)" ./cmd/alert_manager
 
 debug:
-	go build -race ./cmd/alert_manager
+	go build -mod=vendor -race ./cmd/alert_manager
 
 test:
-	go test -v -race -short -failfast ./...
+	go test -mod=vendor -v -race -short -failfast ./...
 
 linux:
-	GOOS=linux GOARCH=amd64 go build -o alert_manager_linux ./cmd/alert_manager
+	GOOS=linux GOARCH=amd64 go build -mod=vendor -o alert_manager_linux ./cmd/alert_manager
