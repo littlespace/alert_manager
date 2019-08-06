@@ -210,13 +210,23 @@ export const SuppDurations = [
     },
     {
         value: 172800,
-        unit: "46h",
+        unit: "48h",
         label: '48 Hours',
     },
     {
         value: 604800,
         unit: "168h",
         label: '1 week',
+    },
+    {
+        value: 1209600,
+        unit: "336h",
+        label: '2 weeks',
+    },
+    {
+        value: 2419200,
+        unit: "672h",
+        label: '4 weeks',
     },
 ];
 
