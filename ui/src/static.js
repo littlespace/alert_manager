@@ -17,14 +17,6 @@ export let PagesDoc = {
         long_description: "",
         help: "The ongoing alerts page is designed to show all Active and Suppressed Alerts (only active are visible by default).<br/> On the left side, you can filter on the team and or on the alerts that have been assigned or not"
     },
-    "alerts": {
-        url: "/alerts",
-        title: "Alerts",
-        sub_title: "All Alerts.",
-        short_desc: "List of all alerts. Our main viewer",
-        long_description: "",
-        help: "The main viewer for all our alerts." 
-    },
     "alertsExplorer": {
         url: "/alerts-explorer",
         title: "Alerts Explorer",
