@@ -1,3 +1,8 @@
+
+
+
+
+
 export function secondsToHms(d) {
 
     var now = Math.floor(Date.now() / 1000)
@@ -30,14 +35,3 @@ export function timeConverter(UNIX_timestamp){
 
     // return date;
   }
-
-export function getAlertFilterOptions(alerts, type) {
-  const options = new Set();
-  alerts.forEach((alert) => { options.add(alert[type]) });
-
-  const ret = [];
-  options.forEach((value, key) => ret.push({ label: key, value: value }));
-
-  return ret;
-
-};
