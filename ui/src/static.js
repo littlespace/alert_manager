@@ -1,5 +1,9 @@
-
-
+export const ALERT_STATUS = { 
+  active: 1,
+  suppressed: 2,
+  expired: 3,
+  cleared: 4 ,
+};
 
 export let PagesDoc = {
     "home": {

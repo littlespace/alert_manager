@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { withRouter } from 'react-router-dom';
-import styled from 'styled-components';
+import React, { useState, useEffect } from "react";
+import { withRouter } from "react-router-dom";
+import styled from "styled-components";
 
-import { AlertManagerApi } from '../library/AlertManagerApi';
-import { HIGHLIGHT } from '../styles/styles';
-import AlertsTable from '../components/AlertsTable/AlertsTable';
-import FilterToolbar from '../components/Filters/FilterToolbar';
+import { ALERT_STATUS } from '../static';
+import { AlertManagerApi } from "../library/AlertManagerApi";
+import { HIGHLIGHT } from "../styles/styles";
+import AlertsTable from "../components/AlertsTable/AlertsTable";
+import FilterToolbar from "../components/Filters/FilterToolbar";
 
 const api = new AlertManagerApi();
 
-// TODO: Add filter options in the Columns Def so we can dynamically get the 
+// TODO: Add filter options in the Columns Def so we can dynamically get the
 // list instead of hardcoded in "AlertsView" obj
 const COLUMNS = [
-  { accessor: 'id', Header: 'Id', show: false },
-  { accessor: 'severity', Header: 'Severity', filter: SelectMultiColumnFilter },
-  { accessor: 'status', Header: 'Status', filter: SelectMultiColumnFilter },
-  { accessor: 'name', Header: 'Name' },
-  { accessor: 'site', Header: 'Site', filter: SelectMultiColumnFilter },
-  { accessor: 'device', Header: 'Device', filter: SelectMultiColumnFilter },
-  { accessor: 'entity', Header: 'Entity', filter: SelectMultiColumnFilter },
-  { accessor: 'source', Header: 'Source', filter: SelectMultiColumnFilter },
-  { accessor: 'start_date', Header: 'Start Date', show: true },
-  { accessor: 'start_time', Header: 'Start Time', show: true },
-  { accessor: 'last_active', Header: 'Last Active' },
-  { accessor: 'details', Header: 'Details' },
+  { accessor: "id", Header: "Id", show: false },
+  { accessor: "severity", Header: "Severity", filter: SelectMultiColumnFilter },
+  { accessor: "status", Header: "Status", filter: SelectMultiColumnFilter },
+  { accessor: "name", Header: "Name" },
+  { accessor: "site", Header: "Site", filter: SelectMultiColumnFilter },
+  { accessor: "device", Header: "Device", filter: SelectMultiColumnFilter },
+  { accessor: "entity", Header: "Entity", filter: SelectMultiColumnFilter },
+  { accessor: "source", Header: "Source", filter: SelectMultiColumnFilter },
+  { accessor: "start_date", Header: "Start Date", show: true },
+  { accessor: "start_time", Header: "Start Time", show: true },
+  { accessor: "last_active", Header: "Last Active" },
+  { accessor: "details", Header: "Details" }
 ];
 
 const Wrapper = styled.div`
@@ -51,25 +52,29 @@ function convertTimestamps(data) {
 function addDetails(data) {
   // Add text string to details column
   data.forEach(element => {
-    element.details = 'More Info';
+    element.details = "More Info";
   });
   return data;
 }
 
 // TODO: Add propTypes
 function AlertsView(props) {
+  const [loading, setLoading] = useState(false)
   const [alerts, setAlerts] = useState([]);
   const [filters, setFilters] = useState({});
   const [timeRange, setTimeRange] = useState(0);
+  const [status, setStatus] = useState([
+    ALERT_STATUS['active'],
+    ALERT_STATUS['suppressed']
+  ]);
 
   useEffect(() => {
     api
-      .getAlertsList({ limit: 2000, status: [], timerange_h: timeRange })
+      .getAlertsList({ limit: 5000, status: status, timerange_h: timeRange })
       .then(ret => convertTimestamps(ret))
       .then(ret => addDetails(ret))
       .then(ret => setAlerts(ret))
-      .then(console.log('fetched alerts' + timeRange));
-  }, [timeRange]);
+  }, [timeRange, status, loading]);
 
   return (
     <>
@@ -85,6 +90,7 @@ function AlertsView(props) {
           setFilters={setFilters}
           timeRange={timeRange}
           setTimeRange={setTimeRange}
+          setStatus={setStatus}
         />
         <AlertsTable
           filters={filters}
@@ -92,7 +98,6 @@ function AlertsView(props) {
           data={alerts}
           history={props.history}
         />
-        }
       </Wrapper>
     </>
   );
