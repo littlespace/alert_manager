@@ -1,5 +1,5 @@
-import React from 'react';
-import ReactSelect from 'react-select';
+import React, { useState } from "react";
+import ReactSelect from "react-select";
 
 import {
   PRIMARY,
@@ -7,8 +7,8 @@ import {
   HIGHLIGHT,
   INFO,
   WARN,
-  CRITICAL,
-} from '../../styles/styles';
+  CRITICAL
+} from "../../styles/styles";
 
 // Using ReactSelects custom way to style
 // TODO: Any way we can figure out how to do styled components here?
@@ -17,9 +17,9 @@ const ReactSelectStyles = {
   option: (styles, state) => ({
     ...styles,
     color: state.isFocused ? HIGHLIGHT : PRIMARY,
-    backgroundColor: state.isFocused ? PRIMARY : HIGHLIGHT,
+    backgroundColor: state.isFocused ? PRIMARY : HIGHLIGHT
   }),
-  placeholder: styles => ({ ...styles, color: HIGHLIGHT, fontSize: '0.875em' }),
+  placeholder: styles => ({ ...styles, color: HIGHLIGHT, fontSize: "0.875em" }),
   input: styles => ({ ...styles, color: HIGHLIGHT }),
   dropdownIndictor: styles => ({ ...styles, color: HIGHLIGHT }),
   multiValue: styles => {
@@ -27,31 +27,39 @@ const ReactSelectStyles = {
       ...styles,
       backgroundColor: PRIMARY,
       color: HIGHLIGHT,
-      fontSize: '0.875em',
+      fontSize: "0.875em"
     };
   },
   multiValueLabel: (styles, { data }) => {
     let color = HIGHLIGHT;
-    if (data.value.toLowerCase() === 'info') {
+    if (data.value.toLowerCase() === "info") {
       color = INFO;
-    } else if (data.value.toLowerCase() === 'warn') {
+    } else if (data.value.toLowerCase() === "warn") {
       color = WARN;
-    } else if (data.value.toLowerCase() === 'critical') {
+    } else if (data.value.toLowerCase() === "critical") {
       color = CRITICAL;
     }
     return { ...styles, color: color };
-  },
+  }
 };
 
-const onChangeHandler = (filters, setFilters, filterType, entries) => {
+const onChangeHandler = (
+  setSelectedOptions,
+  filters,
+  setFilters,
+  filterType,
+  values 
+) => {
   // e.g if user deleted all the options, we will have no entries
-  if (entries === null) {
+  if (values === null) {
     delete filters[filterType];
     setFilters(filters => ({ ...filters }));
+    setSelectedOptions([])
   } else {
-    let newEntries = [];
-    entries.forEach(e => newEntries.push(e.value));
-    setFilters(filters => ({ ...filters, [filterType]: newEntries }));
+    setSelectedOptions(values)
+    const filterValues = []
+    values.forEach(e => filterValues.push(e.value));
+    setFilters(filters => ({ ...filters, [filterType]: filterValues}));
   }
 };
 
@@ -61,16 +69,24 @@ function FilterMultiSelect({
   filterType,
   options,
   placeholder,
+  ...props
 }) {
+  // [{ label: "ACTIVE", value: "ACTIVE"}]
+  const [selectedOptions, setSelectedOptions] = useState([]);
+
   return (
     <ReactSelect
       isMulti={true}
+      value={selectedOptions}
       options={options}
       placeholder={placeholder}
-      onChange={entries =>
-        onChangeHandler(filters, setFilters, filterType, entries)
+      onChange={values =>
+        onChangeHandler(
+          setSelectedOptions, 
+          filters, setFilters, filterType, values)
       }
       styles={ReactSelectStyles}
+      {...props}
     />
   );
 }
