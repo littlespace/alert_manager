@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { withRouter } from "react-router-dom";
 import styled from "styled-components";
 
-import { ALERT_STATUS } from '../static';
+import { ALERT_STATUS } from "../static";
 import { AlertManagerApi } from "../library/AlertManagerApi";
 import { HIGHLIGHT } from "../styles/styles";
 import AlertsTable from "../components/AlertsTable/AlertsTable";
+import AlertsSpinner from "../components/Spinners/AlertsSpinner";
 import FilterToolbar from "../components/Filters/FilterToolbar";
 
 const api = new AlertManagerApi();
@@ -46,7 +47,6 @@ function convertTimestamps(data) {
     element.start_date = start.toLocaleDateString();
     element.last_active = `${start.toLocaleDateString()} ${start.toLocaleTimeString()}`;
   });
-  return data;
 }
 
 function addDetails(data) {
@@ -54,27 +54,39 @@ function addDetails(data) {
   data.forEach(element => {
     element.details = "More Info";
   });
-  return data;
 }
+
 
 // TODO: Add propTypes
 function AlertsView(props) {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [filters, setFilters] = useState({});
   const [timeRange, setTimeRange] = useState(0);
   const [status, setStatus] = useState([
-    ALERT_STATUS['active'],
-    ALERT_STATUS['suppressed']
+    ALERT_STATUS["active"],
+    ALERT_STATUS["suppressed"]
   ]);
 
   useEffect(() => {
-    api
-      .getAlertsList({ limit: 5000, status: status, timerange_h: timeRange })
-      .then(ret => convertTimestamps(ret))
-      .then(ret => addDetails(ret))
-      .then(ret => setAlerts(ret))
-  }, [timeRange, status, loading]);
+    const fetchAlerts = async () => {
+      setLoading(true);
+      const results = await api.getAlertsList({
+        limit: 5000,
+        status: status,
+        timerange_h: timeRange
+      });
+
+      // Normalize the alerts for display in the UI
+      convertTimestamps(results);
+      addDetails(results);
+
+      setAlerts(results);
+      setLoading(false);
+    };
+
+    fetchAlerts();
+  }, [status, timeRange]);
 
   return (
     <>
@@ -92,12 +104,14 @@ function AlertsView(props) {
           setTimeRange={setTimeRange}
           setStatus={setStatus}
         />
-        <AlertsTable
-          filters={filters}
-          columns={COLUMNS}
-          data={alerts}
-          history={props.history}
-        />
+        {loading ? <AlertsSpinner /> : ( 
+          <AlertsTable
+            filters={filters}
+            columns={COLUMNS}
+            data={alerts}
+            history={props.history}
+          />
+        )}
       </Wrapper>
     </>
   );
