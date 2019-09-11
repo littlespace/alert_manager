@@ -15,16 +15,18 @@ function logout() {
 }
 
 const Heading = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
   background-color: ${ROBLOX};
   border-bottom: 1px solid ${HIGHLIGHT};
   height: 50px;
 `;
 
 const Menu = styled.span`
+  margin: auto 205px auto 100px;
   font-size: medium;
   font-weight: 400;
-  position: absolute;
-  left: 36%;
 `;
 
 const Link = styled.a`
@@ -51,12 +53,10 @@ const Link = styled.a`
 `;
 
 const Title = styled.text`
+  margin: auto auto auto 25px;
   font-weight: 100;
   font-size: x-large;
   color: ${HIGHLIGHT};
-  position: absolute;
-  top: 10px;
-  left: 25px;
 
   span {
     font-weight: 600;
@@ -64,10 +64,9 @@ const Title = styled.text`
 `;
 
 const LoginIcon = styled.span`
-  float: right;
-  margin-right: 20px;
-  margin-top: 7px;
+  margin: auto 25px auto auto;
 `;
+
 const Logout = styled.button`
   background-color: ${ROBLOX};
   padding-left: 5px;
