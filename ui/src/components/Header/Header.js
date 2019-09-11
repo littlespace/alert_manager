@@ -81,25 +81,25 @@ const Logout = styled.button`
 
 function Header() {
   return (
-    <>
       <Heading>
         <Title>
           Roblox<span>AlertManager</span>
         </Title>
-        <Menu>
-          <Link href={PagesDoc.home.url}>Home</Link>
-          <Link href={PagesDoc.alertsExplorer.url}>Alert Explorer</Link>
-          <Link href={PagesDoc.ongoingAlerts.url}>Ongoing Alerts</Link>
-          <Link href={PagesDoc.suppressionRules.url}>Suppressions</Link>
-        </Menu>
         {Auth.loggedIn() === true ? (
+          <>
+          <Menu>
+            <Link href={PagesDoc.home.url}>Home</Link>
+            <Link href={PagesDoc.alertsExplorer.url}>Alert Explorer</Link>
+            <Link href={PagesDoc.ongoingAlerts.url}>Ongoing Alerts</Link>
+            <Link href={PagesDoc.suppressionRules.url}>Suppressions</Link>
+          </Menu>
           <LoginIcon>
             <AccountCircleIcon fontSize="large" style={{ color: HIGHLIGHT }} />
             <Logout onClick={() => logout()}>Logout</Logout>
           </LoginIcon>
+          </>
         ) : null}
       </Heading>
-    </>
   );
 }
 
