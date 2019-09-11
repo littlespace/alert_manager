@@ -20,6 +20,7 @@ const Table = styled.table`
   background-color: ${PRIMARY};
   font-size: 0.875rem;
   font-weight: 400;
+  text-align: center;
   border-collapse: collapse;
   width: 100%;
 `;
