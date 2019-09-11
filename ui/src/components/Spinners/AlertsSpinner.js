@@ -2,34 +2,32 @@ import React from 'react';
 import styled from "styled-components";
 
 import { SECONDARY, PRIMARY } from "../../styles/styles";
-import EllipsisSpinner from "./EllipsisSpinner";
+import Spinner from "./Spinner";
 
 const SpinnerContainer = styled.div`
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  height: 200px;
 `;
 
 const SpinnerTitle = styled.div`
-  position: absolute;
   font-size: x-large;
-  text-align: center;
   color: ${PRIMARY};
   font-weight: 500;
-  top: 60px;
-  left: 45%;
+  margin: 5px auto;
 `;
 
 const SpinnerComment = styled.div`
-  position: absolute;
   font-size: medium;
   color: ${SECONDARY};
-  top: 95px;
-  left: 40%;
+  margin: 5px auto;
 `;
 
 function AlertsSpinner() {
   return (
     <SpinnerContainer>
-      <EllipsisSpinner color={SECONDARY} />
+      <Spinner />
       <SpinnerTitle>Loading Alerts</SpinnerTitle>
       <SpinnerComment>
         Grab some coffee. It's gonna be a long night.
