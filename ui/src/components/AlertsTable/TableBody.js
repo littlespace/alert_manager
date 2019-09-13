@@ -29,7 +29,7 @@ const Cell = styled.td`
       ? null
       : // Otherwise, if column is the severity column, set to the proper color
       props.columnId === "severity"
-      ? SEVERITYATTRS[props.value.toLowerCase()]["background-color"] || null
+      ? SEVERITYATTRS[props.value.toLowerCase()]["background-color"]
       : null};
   color: ${props =>
     // value of the cell is null (empty), we return null an use default value
@@ -37,14 +37,17 @@ const Cell = styled.td`
       ? null
       : // Otherwise, if column is the severity column, set to the proper color
       props.columnId === "severity"
-      ? SEVERITYATTRS[props.value.toLowerCase()]["color"] || null
+      ? SEVERITYATTRS[props.value.toLowerCase()]["color"]
       : null};
   cursor: ${props => (props.columnId === "details" ? "pointer" : null)};
   padding: 10px;
   border-top: 2px solid ${PRIMARY};
   border-bottom: 2px solid ${PRIMARY};
   :hover {
-    color: ${props => (props.columnId === "details" ? ROBLOX : null)};
+    color: ${props =>
+      props.columnId === "details"
+        ? SEVERITYATTRS[props.severity.toLowerCase()]["background-color"]
+        : null};
   }
 `;
 
@@ -136,6 +139,7 @@ function getCell(cell, row) {
     <Cell
       columnId={columnID}
       value={value}
+      severity={cell.row.values.severity}
       {...cell.getCellProps({
         onClick: () => handleCellClick(columnID, rowID)
       })}
