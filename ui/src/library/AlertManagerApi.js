@@ -38,6 +38,7 @@ export class AlertManagerApi {
         limit = 250,
         aggregate = true,
         timerange_h = null,
+        history = false,
         teams = [],
         sites = [],
         devices = [],
@@ -72,6 +73,10 @@ export class AlertManagerApi {
 
         if (severity.length !== 0) {
             params = params + `&severity__in=${severity.join(',')}`
+        }
+
+        if (history) {
+            params = params + '&history=true'
         }
 
         console.log("fetching > " + this.url + url_alerts + params)
