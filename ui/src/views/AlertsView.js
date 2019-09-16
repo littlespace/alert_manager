@@ -8,6 +8,7 @@ import { HIGHLIGHT } from "../styles/styles";
 import AlertsTable from "../components/AlertsTable/AlertsTable";
 import AlertsSpinner from "../components/Spinners/AlertsSpinner";
 import FilterToolbar from "../components/Filters/FilterToolbar";
+import { secondsToHms } from '../library/utils';
 
 const api = new AlertManagerApi();
 
@@ -15,6 +16,7 @@ const api = new AlertManagerApi();
 // list instead of hardcoded in "AlertsView" obj
 const COLUMNS = [
   { accessor: "id", Header: "Id", show: false },
+  { accessor: "history", Header: "History", show: false },
   { accessor: "severity", Header: "Severity", filter: SelectMultiColumnFilter },
   { accessor: "status", Header: "Status", filter: SelectMultiColumnFilter },
   { accessor: "name", Header: "Name" },
@@ -45,7 +47,7 @@ function convertTimestamps(data) {
     let start = new Date(element.start_time * 1000);
     element.start_time = start.toLocaleTimeString();
     element.start_date = start.toLocaleDateString();
-    element.last_active = `${start.toLocaleDateString()} ${start.toLocaleTimeString()}`;
+    element.last_active = secondsToHms(element.last_active);
   });
 }
 
@@ -74,9 +76,11 @@ function AlertsView(props) {
       const results = await api.getAlertsList({
         limit: 5000,
         status: status,
-        timerange_h: timeRange
+        timerange_h: timeRange,
+        history: true,
       });
 
+      console.log(results)
       // Normalize the alerts for display in the UI
       convertTimestamps(results);
       addDetails(results);

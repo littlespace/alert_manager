@@ -1,8 +1,8 @@
-import React from 'react';
-import styled from 'styled-components';
+import React from "react";
+import styled from "styled-components";
 
-import ArrowDropDownOutlinedIcon from '@material-ui/icons/ArrowDropDownOutlined';
-import ArrowRightIcon from '@material-ui/icons/ArrowRight';
+import ArrowDropDownOutlinedIcon from "@material-ui/icons/ArrowDropDownOutlined";
+import ArrowRightIcon from "@material-ui/icons/ArrowRight";
 
 import {
   PRIMARY,
@@ -11,35 +11,47 @@ import {
   INFO,
   WARN,
   CRITICAL,
-} from '../../styles/styles';
+  ROBLOX
+} from "../../styles/styles";
+import ToolTip from "../ToolTip";
+import HistoryItem from "../Alerts/HistoryItem";
 
 const SEVERITYATTRS = {
-  info: { 'background-color': INFO, color: 'black' },
-  warn: { 'background-color': WARN, color: 'black' },
-  critical: { 'background-color': CRITICAL, color: 'black' },
+  info: { "background-color": INFO, color: PRIMARY },
+  warn: { "background-color": WARN, color: PRIMARY },
+  critical: { "background-color": CRITICAL, color: PRIMARY }
 };
 
 const Cell = styled.td`
   background-color: ${props =>
-    // value of the cell is null (empty), we return null an use default value
+    // On grouping, the cell will be null
     props.value === null
       ? null
       : // Otherwise, if column is the severity column, set to the proper color
-      props.columnId === 'severity'
-      ? SEVERITYATTRS[props.value.toLowerCase()]['background-color'] || null
+      props.columnId === "severity"
+      ? SEVERITYATTRS[props.value.toLowerCase()]["background-color"]
       : null};
   color: ${props =>
-    // value of the cell is null (empty), we return null an use default value
+    // On grouping, the cell will be null
     props.value === null
       ? null
       : // Otherwise, if column is the severity column, set to the proper color
-      props.columnId === 'severity'
-      ? SEVERITYATTRS[props.value.toLowerCase()]['color'] || null
+      props.columnId === "severity"
+      ? SEVERITYATTRS[props.value.toLowerCase()]["color"]
       : null};
-  cursor: ${props => (props.columnId === 'details' ? 'pointer' : null)};
+  cursor: ${props => (props.columnId === "details" ? "pointer" : null)};
   padding: 10px;
   border-top: 2px solid ${PRIMARY};
   border-bottom: 2px solid ${PRIMARY};
+  :hover {
+    color: ${props =>
+      // On grouping, the cell will be null
+      props.value === null
+        ? null
+        : props.columnId === "details"
+        ? SEVERITYATTRS[props.severity.toLowerCase()]["background-color"]
+        : null};
+  }
 `;
 
 const Row = styled.tr`
@@ -67,19 +79,41 @@ const Expanded = styled.span`
   vertical-align: middle;
 `;
 
+function getToolTip({ cell, ...props }) {
+  const msg = cell.row.values.history.slice(-1)[0].event;
+  const background =
+    SEVERITYATTRS[cell.row.values.severity.toLowerCase()]["background-color"] ||
+    null;
+  return (
+    <ToolTip msg={msg} value={cell.value} background={background} {...props} />
+  );
+}
+
 function handleCellClick(columnID, rowID) {
-  return columnID === 'details' ? window.open(`/alert/${rowID}`) : null;
+  return columnID === "details" ? window.open(`/alert/${rowID}`) : null;
+}
+
+function getCellRenderer(cell) {
+  let renderer = null;
+  if (cell.column.id === "last_active") {
+    // the render will pass the column and table props to the component
+    renderer = getToolTip;
+  } else {
+    renderer = "Cell";
+  }
+  return renderer;
 }
 
 function getAggregatedCell(cell) {
   /** If the cell is aggregated, use the Aggregated renderer for cell
      For cells with repeated values, render null Otherwise, 
     just render the regular cell */
+  const renderer = getCellRenderer(cell);
   return cell.isAggregated
-    ? cell.render('Aggregated')
+    ? cell.render("Aggregated")
     : cell.isRepeatedValue
     ? null
-    : cell.render('Cell');
+    : cell.render(renderer);
 }
 
 function getGroupedCell(cell, row) {
@@ -94,7 +128,7 @@ function getGroupedCell(cell, row) {
       <Expanded {...row.getExpandedToggleProps()}>
         {row.isExpanded ? <ArrowDropDownOutlinedIcon /> : <ArrowRightIcon />}
       </Expanded>
-      {cell.render('Cell')} ({row.subRows.length})
+      {cell.render("Cell")} ({row.subRows.length})
     </>
   );
 }
@@ -108,8 +142,9 @@ function getCell(cell, row) {
     <Cell
       columnId={columnID}
       value={value}
+      severity={cell.row.values.severity}
       {...cell.getCellProps({
-        onClick: () => handleCellClick(columnID, rowID),
+        onClick: () => handleCellClick(columnID, rowID)
       })}
     >
       {cell.isGrouped ? getGroupedCell(cell, row) : getAggregatedCell(cell)}
