@@ -24,7 +24,7 @@ const SEVERITYATTRS = {
 
 const Cell = styled.td`
   background-color: ${props =>
-    // value of the cell is null (empty), we return null an use default value
+    // On grouping, the cell will be null
     props.value === null
       ? null
       : // Otherwise, if column is the severity column, set to the proper color
@@ -32,7 +32,7 @@ const Cell = styled.td`
       ? SEVERITYATTRS[props.value.toLowerCase()]["background-color"]
       : null};
   color: ${props =>
-    // value of the cell is null (empty), we return null an use default value
+    // On grouping, the cell will be null
     props.value === null
       ? null
       : // Otherwise, if column is the severity column, set to the proper color
@@ -45,7 +45,10 @@ const Cell = styled.td`
   border-bottom: 2px solid ${PRIMARY};
   :hover {
     color: ${props =>
-      props.columnId === "details"
+      // On grouping, the cell will be null
+      props.value === null
+        ? null
+        : props.columnId === "details"
         ? SEVERITYATTRS[props.severity.toLowerCase()]["background-color"]
         : null};
   }
