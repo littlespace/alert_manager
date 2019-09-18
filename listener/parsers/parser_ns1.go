@@ -42,7 +42,7 @@ func (p *Ns1Parser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		return nil, err
 	}
 
-	if d.Job.JobType != "tcp" || d.Job.JobType != "http" {
+	if d.Job.JobType != "tcp" && d.Job.JobType != "http" {
 		return nil, fmt.Errorf("only TCP/HTTP monitor are supported")
 	}
 	if d.Job.Config.Host == "" {
