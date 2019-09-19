@@ -42,8 +42,8 @@ func (p *Ns1Parser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		return nil, err
 	}
 
-	if !(d.Job.JobType == "tcp") {
-		return nil, fmt.Errorf("only TCP monitor are supported")
+	if d.Job.JobType != "tcp" && d.Job.JobType != "http" {
+		return nil, fmt.Errorf("only TCP/HTTP monitor are supported")
 	}
 	if d.Job.Config.Host == "" {
 		return nil, fmt.Errorf("invalid data received, Config/Host address is mandatory")
