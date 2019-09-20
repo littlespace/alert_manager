@@ -235,6 +235,10 @@ func (h *AlertHandler) reactivateAlert(tx models.Txn, existingAlert *models.Aler
 	if err := tx.InQuery(models.QueryUpdateManyStatus, models.Status_ACTIVE, toUpdate); err != nil {
 		return fmt.Errorf("Failed to update alert status: %v", err)
 	}
+	tx.NewRecord(existingAlert.Id, "Alert re-activated")
+	if existingAlert.AggregatorId != 0 {
+		tx.NewRecord(existingAlert.AggregatorId, fmt.Sprintf("Alert re-activated due to component alert %d", existingAlert.Id))
+	}
 	return nil
 }
 
