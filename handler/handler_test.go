@@ -208,7 +208,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	a4.ExtendLabels()
 	assert.NotNil(t, h.Suppressor.Match(a4.Labels))
 
-	//// test a de-dedup of a cleared alert
+	// test a de-dedup of a cleared alert
 	tx.(*MockTx).inQuery = func() error {
 		mockAlerts["existing_a5"].Status = models.Status_ACTIVE
 		mockAlerts["existing_a6_agg"].Status = models.Status_ACTIVE
@@ -225,15 +225,16 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Equal(t, mockAlerts["existing_a5"].LastActive, nowTime)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].Status, models.Status_ACTIVE)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].LastActive, nowTime)
-	// test existing inactive agg
-	//new.Status = models.Status_ACTIVE
-	//mockAlerts["existing_a5"].Status = models.Status_CLEARED
-	//mockAlerts["existing_a6_agg"].Status = models.Status_CLEARED
-	//h.handleActive(ctx, tx, new)
-	//assert.Equal(t, int(new.Id), 999)
-	//event = <-h.procChan
-	//assert.Equal(t, event.Type, models.EventType_ACTIVE)
-	//assert.Equal(t, int(event.Alert.Id), 999)
+
+	// test dedup of cleared alert - active supprule
+	rule3 := models.NewSuppRule(models.Labels{"device": "d5"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
+	h.Suppressor.SaveRule(ctx, tx, rule3)
+	mockAlerts["existing_a5"].ExtendLabels()
+	mockAlerts["existing_a5"].Status = models.Status_CLEARED
+	mockAlerts["existing_a6_agg"].Status = models.Status_CLEARED
+	h.handleActive(ctx, tx, new)
+	assert.Equal(t, mockAlerts["existing_a5"].Status, models.Status_CLEARED)
+	assert.Equal(t, mockAlerts["existing_a6_agg"].Status, models.Status_CLEARED)
 }
 
 func TestHandlerAlertClear(t *testing.T) {
