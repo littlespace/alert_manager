@@ -183,6 +183,7 @@ func (a *Aggregator) checkExpired(ctx context.Context, out chan *models.AlertEve
 				}
 				a.statAggsActive.Add(-1)
 				tx.NewRecord(aggAlert.Id, fmt.Sprintf("Alert %s", status))
+				aggAlert.ExtendLabels()
 				out <- &models.AlertEvent{Alert: aggAlert, Type: models.EventMap[status]}
 			}
 		}
