@@ -42,7 +42,7 @@ func Run(config *Config) {
 	}()
 
 	// start the handler
-	handler := ah.NewHandler(db, config.Agent.ClearHolddownInterval)
+	handler := ah.NewHandler(db)
 	go handler.Start(ctx)
 
 	//Initialize all the plugins

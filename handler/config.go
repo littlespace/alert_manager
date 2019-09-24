@@ -36,23 +36,23 @@ type TeamConfig struct {
 type AlertConfig struct {
 	Name   string
 	Config struct {
-		Scope             string
-		Severity          string
-		Tags              []string
-		Description       string
-		Source            string
-		AutoExpire        *bool         `yaml:"auto_expire"`
-		ExpireAfter       time.Duration `yaml:"expire_after"`
-		AutoClear         *bool         `yaml:"auto_clear"`
-		NotifyOnClear     bool          `yaml:"notify_on_clear"`
-		NotifyDelay       time.Duration `yaml:"notify_delay"`
-		NotifyRemind      time.Duration `yaml:"notify_remind"`
-		DisableNotify     bool          `yaml:"disable_notify"`
-		ClearAcknowledged bool          `yaml:"clear_acknowledged"`
-		Outputs           Outputs
-		StaticLabels      map[string]interface{} `yaml:"static_labels"`
-		AggregationRules  []string               `yaml:"aggregation_rules"`
-		EscalationRules   []struct {
+		Scope                 string
+		Severity              string
+		Tags                  []string
+		Description           string
+		Source                string
+		AutoExpire            *bool         `yaml:"auto_expire"`
+		ExpireAfter           time.Duration `yaml:"expire_after"`
+		AutoClear             *bool         `yaml:"auto_clear"`
+		NotifyOnClear         bool          `yaml:"notify_on_clear"`
+		NotifyDelay           time.Duration `yaml:"notify_delay"`
+		NotifyRemind          time.Duration `yaml:"notify_remind"`
+		DisableNotify         bool          `yaml:"disable_notify"`
+		DontClearAcknowledged bool          `yaml:"dont_clear_acknowledged"`
+		Outputs               Outputs
+		StaticLabels          map[string]interface{} `yaml:"static_labels"`
+		AggregationRules      []string               `yaml:"aggregation_rules"`
+		EscalationRules       []struct {
 			After      time.Duration
 			EscalateTo string `yaml:"escalate_to"`
 		} `yaml:"escalation_rules"`

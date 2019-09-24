@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -22,55 +21,24 @@ const (
 // all listeners send alerts down this channel
 var ListenChan = make(chan *models.AlertEvent)
 
-// ClearHandler keeps a track of clearing active alerts
-type ClearHandler struct {
-	actives map[int64]chan struct{}
-	sync.RWMutex
-}
-
-func (c *ClearHandler) get(id int64) (chan struct{}, bool) {
-	c.RLock()
-	defer c.RUnlock()
-	resetClear, ok := c.actives[id]
-	return resetClear, ok
-}
-
-func (c *ClearHandler) add(id int64) chan struct{} {
-	c.Lock()
-	defer c.Unlock()
-	c.actives[id] = make(chan struct{})
-	return c.actives[id]
-}
-
-func (c *ClearHandler) delete(id int64) {
-	c.Lock()
-	defer c.Unlock()
-	delete(c.actives, id)
-}
-
 // AlertHandler handles common alert operations such as expiry, suppression etc.
 // It also sends alerts to interested receivers
 type AlertHandler struct {
 	// db handler
-	Db            models.Dbase
-	Suppressor    *suppressor
-	Teams         models.Teams
-	procChan      chan *models.AlertEvent
-	clearer       *ClearHandler
-	clearHolddown time.Duration
-
+	Db                 models.Dbase
+	Suppressor         *suppressor
+	Teams              models.Teams
+	procChan           chan *models.AlertEvent
 	statTransformError stats.Stat
 	statDbError        stats.Stat
 }
 
 // NewHandler returns a new alert handler which uses the supplied db
-func NewHandler(db models.Dbase, clearHolddown time.Duration) *AlertHandler {
+func NewHandler(db models.Dbase) *AlertHandler {
 	h := &AlertHandler{
 		Db:                 db,
 		Suppressor:         GetSuppressor(db),
 		procChan:           make(chan *models.AlertEvent),
-		clearer:            &ClearHandler{actives: make(map[int64]chan struct{})},
-		clearHolddown:      clearHolddown,
 		statTransformError: stats.NewCounter("handler.transform_errors"),
 		statDbError:        stats.NewCounter("handler.db_errors"),
 	}
@@ -134,7 +102,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 				case models.EventType_ACTIVE:
 					return h.handleActive(ctx, tx, alert)
 				case models.EventType_CLEARED:
-					return h.handleClear(ctx, tx, alert, h.clearHolddown)
+					return h.handleClear(ctx, tx, alert)
 				}
 				return nil
 			})
@@ -151,20 +119,24 @@ func (h *AlertHandler) Start(ctx context.Context) {
 }
 
 func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
-	if h.checkExisting(tx, alert) {
-		return nil
+	var labels models.Labels
+	existingAlert, err := h.GetExisting(tx, alert)
+	if err != nil {
+		glog.V(2).Infof("No existing alert found for %s:%s:%s", alert.Name, alert.Device.String, alert.Entity)
+		// add transforms
+		h.applyTransforms(alert)
+		alert.ExtendLabels()
+		labels = alert.Labels
+	} else {
+		labels = existingAlert.Labels
 	}
-	// add transforms
-	h.applyTransforms(alert)
-
 	// check if alert matches an existing suppression rule based on alert labels
-	alert.ExtendLabels()
-	if rule := h.Suppressor.Match(alert.Labels); rule != nil && rule.TimeLeft() > 0 {
+	if rule := h.Suppressor.Match(labels); rule != nil && rule.TimeLeft() > 0 {
 		glog.V(2).Infof("Found matching suppression rule for %s:%s:%s: %d:%s", alert.Name, alert.Entity, alert.Device.String, rule.Id, rule.Name)
 		return nil
 	}
-	if h.checkAggregated(tx, alert) {
-		return nil
+	if existingAlert != nil {
+		return h.reactivateAlert(tx, existingAlert)
 	}
 	// new alert
 	if !h.Teams.Contains(alert.Team) {
@@ -194,50 +166,27 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	return nil
 }
 
-func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *models.Alert, holddown time.Duration) error {
+func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
 	// clear existing alert if auto clear is true
 	existingAlert, err := h.GetExisting(tx, alert)
 	if err != nil {
 		glog.V(2).Infof("No existing alert found for %s:%s to clear", alert.Name, alert.Entity)
 		return nil
 	}
+	if existingAlert.Status == models.Status_CLEARED {
+		// already cleared
+		return nil
+	}
 	if !existingAlert.AutoClear {
 		glog.V(2).Infof("Not auto-clearing alert %d ", existingAlert.Id)
 		return nil
 	}
-	// dont clear acknowledged alerts
-	if config, ok := Config.GetAlertConfig(existingAlert.Name); ok && config.Config.ClearAcknowledged && existingAlert.Owner.Valid {
+	// dont clear acknowledged alerts if the config says so
+	if config, ok := Config.GetAlertConfig(existingAlert.Name); ok && config.Config.DontClearAcknowledged && existingAlert.Owner.Valid {
 		glog.V(4).Infof("Not clearing ack'd alert: %d", existingAlert.Id)
 		return nil
 	}
-	// wait for a holddown period before clearing the alert to avoid flaps
-	if holddown == 0 {
-		return h.clearAlert(ctx, tx, existingAlert)
-	}
-	go func() {
-		if _, ok := h.clearer.get(existingAlert.Id); ok {
-			return
-		}
-		t := time.NewTimer(holddown)
-		resetClear := h.clearer.add(existingAlert.Id)
-		defer h.clearer.delete(existingAlert.Id)
-		for {
-			select {
-			case <-t.C:
-				newTx := h.Db.NewTx()
-				err := models.WithTx(ctx, newTx, func(ctx context.Context, tx models.Txn) error {
-					return h.clearAlert(ctx, tx, existingAlert)
-				})
-				if err != nil {
-					glog.Error(err)
-				}
-				return
-			case <-resetClear:
-				return
-			}
-		}
-	}()
-	return nil
+	return h.clearAlert(ctx, tx, existingAlert)
 }
 
 func (h *AlertHandler) clearAlert(ctx context.Context, tx models.Txn, alert *models.Alert) error {
@@ -249,58 +198,48 @@ func (h *AlertHandler) clearAlert(ctx context.Context, tx models.Txn, alert *mod
 	return nil
 }
 
-func (h *AlertHandler) checkExisting(tx models.Txn, alert *models.Alert) bool {
-	existingAlert, err := h.GetExisting(tx, alert)
-	if err != nil {
-		glog.V(2).Infof("No existing alert found for %s:%s", alert.Name, alert.Entity)
-		return false
+func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.Alert, error) {
+	var existing *models.Alert
+	var err error
+	// an alert is assumed to be uniquely identified by its Id or by its Name:Device:Entity
+	if alert.Id > 0 {
+		existing, err = tx.GetAlert(models.QuerySelectById, alert.Id)
+	} else {
+		if alert.Device.Valid {
+			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device.String)
+		} else {
+			existing, err = tx.GetAlert(models.QuerySelectByNameEntity, alert.Name, alert.Entity)
+		}
 	}
-	// extend the expiry time if alert already exists
+	if err != nil {
+		return nil, err
+	}
+	return existing, nil
+}
+
+func (h *AlertHandler) reactivateAlert(tx models.Txn, existingAlert *models.Alert) error {
+	// reactivate the alert and the agg alert if applicable and extend the expiry time if alert already exists
 	toUpdate := []int64{existingAlert.Id}
 	if existingAlert.AggregatorId != 0 {
 		toUpdate = append(toUpdate, existingAlert.AggregatorId)
 	}
 	newLastActive := models.MyTime{time.Now()}
-	existingAlert.LastActive = newLastActive
-	err = tx.InQuery(models.QueryUpdateLastActive, newLastActive, toUpdate)
-	if err != nil {
+	if err := tx.InQuery(models.QueryUpdateLastActive, newLastActive, toUpdate); err != nil {
 		h.statDbError.Add(1)
-		glog.Errorf("Failed update last active: %v", err)
+		return fmt.Errorf("Failed update last active: %v", err)
 	}
-	if resetClear, ok := h.clearer.get(existingAlert.Id); ok {
-		resetClear <- struct{}{}
+	if existingAlert.Status == models.Status_ACTIVE || existingAlert.Status == models.Status_SUPPRESSED {
+		return nil
 	}
-	return err == nil
-}
-
-func (h *AlertHandler) checkAggregated(tx models.Txn, alert *models.Alert) bool {
-	var dev string
-	if alert.Device.Valid {
-		dev = alert.Device.String
+	glog.V(4).Infof("Reactivating old alert %d", existingAlert.Id)
+	if err := tx.InQuery(models.QueryUpdateManyStatus, models.Status_ACTIVE, toUpdate); err != nil {
+		return fmt.Errorf("Failed to update alert status: %v", err)
 	}
-	existing, err := tx.GetAlert(models.QuerySelectExistingAgg, alert.Name, alert.Entity, dev)
-	if err != nil {
-		glog.V(4).Infof("No existing alert found")
-		return false
+	tx.NewRecord(existingAlert.Id, "Alert re-activated")
+	if existingAlert.AggregatorId != 0 {
+		tx.NewRecord(existingAlert.AggregatorId, fmt.Sprintf("Alert re-activated due to component alert %d", existingAlert.Id))
 	}
-	existingAgg, err := tx.GetAlert(models.QuerySelectById, existing.AggregatorId)
-	if err != nil {
-		glog.V(4).Infof("No existing aggregate alert found")
-		return false
-	}
-	if existingAgg.Status != models.Status_ACTIVE {
-		return false
-	}
-	// ignore the new alert since it was previously aggregated and the agg is still active
-	alert.Status = models.Status_SUPPRESSED
-	existing.Status = models.Status_ACTIVE
-	existing.LastActive = models.MyTime{time.Now()}
-	if err = tx.UpdateAlert(existing); err != nil {
-		glog.Errorf("Unable to update alert: %v", err)
-		return false
-	}
-	glog.Infof("Found existing aggregated alert for %s: %d", existing.Name, existing.Id)
-	return true
+	return nil
 }
 
 func (h *AlertHandler) applyTransforms(alert *models.Alert) {
@@ -413,25 +352,6 @@ func (h *AlertHandler) handleEscalation(ctx context.Context) {
 		glog.Errorf("Failed to escalate alerts : %v", err)
 		h.statDbError.Add(1)
 	}
-}
-
-func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.Alert, error) {
-	var existing *models.Alert
-	var err error
-	// an alert is assumed to be uniquely identified by its Id or by its Name:Device:Entity
-	if alert.Id > 0 {
-		existing, err = tx.GetAlert(models.QuerySelectById, alert.Id)
-	} else {
-		if alert.Device.Valid {
-			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device.String)
-		} else {
-			existing, err = tx.GetAlert(models.QuerySelectByNameEntity, alert.Name, alert.Entity)
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-	return existing, nil
 }
 
 func (h *AlertHandler) Suppress(
