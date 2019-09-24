@@ -1,7 +1,9 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useContext, useEffect, useState } from "react";
+import styled from "styled-components";
 
-import { PRIMARY, HIGHLIGHT } from '../../styles/styles';
+import { FilterContext } from "../contexts/FilterContext";
+import { PRIMARY, HIGHLIGHT } from "../../styles/styles";
+import { TABLE_ACTIONS } from "../../library/utils";
 
 const Input = styled.input`
   position: absolute;
@@ -17,16 +19,40 @@ const Input = styled.input`
   }
 `;
 
-const onChangeHandler = (filters, setFilters, value, type) => {
+const onChangeHandler = (filters, setFilters, value, setValue, type) => {
+  setValue(value);
   setFilters(filters => ({ ...filters, [type]: value }));
 };
 
-function FilterInput({ filters, setFilters, filterType, placeholder }) {
+function FilterInput({
+  filterType,
+  placeholder,
+  tableMutationState,
+  tableMutationDispatch
+}) {
+  const { filters, setFilters } = useContext(FilterContext);
+  const [value, setValue] = useState("");
+
+  useEffect(() => {
+    if (tableMutationState.clearInput) {
+      setValue("");
+      delete filters[filterType];
+      setFilters(filters => ({ ...filters }));
+      tableMutationDispatch({ type: TABLE_ACTIONS.UNSET_CLEAR_INPUT });
+    }
+  }, [tableMutationState.clearInput]);
+
   return (
     <Input
-      value={filters['filterType'] || undefined}
+      value={value}
       onChange={e =>
-        onChangeHandler(filters, setFilters, e.target.value, filterType)
+        onChangeHandler(
+          filters,
+          setFilters,
+          e.target.value,
+          setValue,
+          filterType
+        )
       }
       placeholder={placeholder}
     ></Input>

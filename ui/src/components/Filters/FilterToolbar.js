@@ -4,7 +4,7 @@ import styled from "styled-components";
 import PageviewRoundedIcon from "@material-ui/icons/PageviewRounded";
 
 import { ALERT_STATUS } from "../../static";
-import { getAlertFilterOptions } from "../../library/utils";
+import { getAlertFilterOptions, TABLE_ACTIONS } from "../../library/utils";
 import { PRIMARY } from "../../styles/styles";
 import FilterCheckbox from "./FilterCheckbox";
 import FilterInput from "./FilterInput";
@@ -23,7 +23,7 @@ const MULTI_FILTERS = [
 
 const Toolbar = styled.div`
   background-color: ${PRIMARY};
-  padding: 25px;
+  padding: 1.5em 2em 0.5em;
   position: relative;
 `;
 
@@ -43,18 +43,24 @@ const GridStyle = styled.div`
   padding-bottom: 30px;
 `;
 
-function handleCheckboxClick(event, setChecked, setStatus) {
+function handleCheckboxClick(event, setChecked, tableMutationDispatch) {
   setChecked(event.target.checked);
   // Add "historical" alerts when checked.
   if (event.target.checked === true) {
-    setStatus([
-      ALERT_STATUS["active"],
-      ALERT_STATUS["suppressed"],
-      ALERT_STATUS["cleared"],
-      ALERT_STATUS["expired"]
-    ]);
+    tableMutationDispatch({
+      type: TABLE_ACTIONS.SET_STATUS,
+      status: [
+        ALERT_STATUS["active"],
+        ALERT_STATUS["suppressed"],
+        ALERT_STATUS["cleared"],
+        ALERT_STATUS["expired"]
+      ]
+    });
   } else {
-    setStatus([ALERT_STATUS["active"], ALERT_STATUS["suppressed"]]);
+    tableMutationDispatch({
+      type: TABLE_ACTIONS.SET_STATUS,
+      status: [ALERT_STATUS["active"], ALERT_STATUS["suppressed"]]
+    });
   }
 }
 
@@ -65,7 +71,7 @@ function FilterToolbar({ alerts, ...props }) {
     <Toolbar>
       <FilterCheckbox
         onChangeHandler={e =>
-          handleCheckboxClick(e, setChecked, props.setStatus)
+          handleCheckboxClick(e, setChecked, props.tableMutationDispatch)
         }
         checked={checked}
         title={"Historical"}
@@ -80,9 +86,10 @@ function FilterToolbar({ alerts, ...props }) {
       />
       <FilterSelect {...props} />
       <GridStyle>
-        {MULTI_FILTERS.map(filterType => {
+        {MULTI_FILTERS.map((filterType, index) => {
           return (
             <FilterMultiSelect
+              key={index}
               filterType={filterType}
               options={getAlertFilterOptions(alerts, filterType)}
               placeholder={filterType}

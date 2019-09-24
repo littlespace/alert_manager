@@ -1,20 +1,20 @@
-import React from "react";
+import React, { useContext } from "react";
 import styled from "styled-components";
 
 import ArrowDropDownOutlinedIcon from "@material-ui/icons/ArrowDropDownOutlined";
 import ArrowRightIcon from "@material-ui/icons/ArrowRight";
 
 import {
-  PRIMARY,
-  SECONDARY,
+  CRITICAL,
   HIGHLIGHT,
   INFO,
-  WARN,
-  CRITICAL,
-  ROBLOX
+  PRIMARY,
+  SECONDARY,
+  WARN
 } from "../../styles/styles";
+import { ROW_SELECT_ACTIONS } from "../../library/utils";
+import { TableContext } from "../contexts/TableContext";
 import ToolTip from "../ToolTip";
-import HistoryItem from "../Alerts/HistoryItem";
 
 const SEVERITYATTRS = {
   info: { "background-color": INFO, color: PRIMARY },
@@ -22,7 +22,7 @@ const SEVERITYATTRS = {
   critical: { "background-color": CRITICAL, color: PRIMARY }
 };
 
-const Cell = styled.td`
+const StyledCell = styled.td`
   background-color: ${props =>
     // On grouping, the cell will be null
     props.value === null
@@ -39,23 +39,15 @@ const Cell = styled.td`
       props.columnId === "severity"
       ? SEVERITYATTRS[props.value.toLowerCase()]["color"]
       : null};
-  cursor: ${props => (props.columnId === "details" ? "pointer" : null)};
+  cursor: ${props => (props.columnId === "selection" ? null : "pointer")};
   padding: 10px;
   border-top: 2px solid ${PRIMARY};
   border-bottom: 2px solid ${PRIMARY};
-  :hover {
-    color: ${props =>
-      // On grouping, the cell will be null
-      props.value === null
-        ? null
-        : props.columnId === "details"
-        ? SEVERITYATTRS[props.severity.toLowerCase()]["background-color"]
-        : null};
-  }
 `;
 
 const Row = styled.tr`
-  background-color: ${SECONDARY};
+  background-color: ${props => (props.row.isSelected ? HIGHLIGHT : SECONDARY)};
+  color: ${props => (props.row.isSelected ? PRIMARY : null)};
 
   &:hover {
     background-color: ${HIGHLIGHT};
@@ -79,22 +71,70 @@ const Expanded = styled.span`
   vertical-align: middle;
 `;
 
+function handleSelectionCellClick(row, rowSelectDispatch, prepareRow) {
+  if (row.isSelected && row.canExpand) {
+    // Row is a grouped row and selected; unselect all in the group
+    row.subRows.forEach(row => {
+      prepareRow(row);
+      if (row.isSelected) {
+        rowSelectDispatch({ type: ROW_SELECT_ACTIONS.UNSELECT_ROW, row: row });
+      }
+    });
+  } else if (row.isSelected && !row.canExpand) {
+    // Row is a single row and selected; unselect row
+    rowSelectDispatch({ type: ROW_SELECT_ACTIONS.UNSELECT_ROW, row: row });
+  } else if (!row.isSelected && row.canExpand) {
+    // Row is a grouped row and NOT selected; select all subrows
+
+    /* If you select the "select all" before the rows are expanded the rows do not have all the props
+      e.g "row.toggleRowSelected". So our SELECT_ALL action will fail. We need to prepare each row before
+      sending it off. */
+    const unselectedRows = row.subRows.filter(row => !row.isSelected);
+    row.subRows.forEach(row => {
+      prepareRow(row);
+      if (!row.isSelected) {
+        rowSelectDispatch({ type: ROW_SELECT_ACTIONS.SELECT_ROW, row: row });
+      }
+    });
+  } else if (!row.isSelected && !row.canExpand) {
+    // Row is a single row and NOT selected; select row
+    rowSelectDispatch({ type: ROW_SELECT_ACTIONS.SELECT_ROW, row: row });
+  }
+}
+
+function handleCellClick(columnId, row, rowSelectDispatch, prepareRow) {
+  // Grouped row that is NOT selection, so we don't want any action taken on it otherwise it prevents expanding the row
+  if (row.canExpand === true && columnId !== "selection") {
+    return null;
+  }
+
+  // All cells will open the alert details except for the selection column
+  if (columnId === "selection") {
+    handleSelectionCellClick(row, rowSelectDispatch, prepareRow);
+  } else {
+    return window.open(`/alert/${row.values.id}`);
+  }
+}
+
 function getToolTip({ cell, ...props }) {
   const msg = cell.row.values.history.slice(-1)[0].event;
   const background =
     SEVERITYATTRS[cell.row.values.severity.toLowerCase()]["background-color"] ||
     null;
   return (
-    <ToolTip msg={msg} value={cell.value} background={background} {...props} />
+    <ToolTip
+      msg={msg}
+      value={cell.value}
+      background={background}
+      position={"top"}
+      {...props}
+    />
   );
-}
-
-function handleCellClick(columnID, rowID) {
-  return columnID === "details" ? window.open(`/alert/${rowID}`) : null;
 }
 
 function getCellRenderer(cell) {
   let renderer = null;
+
   if (cell.column.id === "last_active") {
     // the render will pass the column and table props to the component
     renderer = getToolTip;
@@ -106,9 +146,10 @@ function getCellRenderer(cell) {
 
 function getAggregatedCell(cell) {
   /** If the cell is aggregated, use the Aggregated renderer for cell
-     For cells with repeated values, render null Otherwise, 
+     For cells with repeated values, render null Otherwise,
     just render the regular cell */
   const renderer = getCellRenderer(cell);
+
   return cell.isAggregated
     ? cell.render("Aggregated")
     : cell.isRepeatedValue
@@ -133,22 +174,22 @@ function getGroupedCell(cell, row) {
   );
 }
 
-function getCell(cell, row) {
-  const columnID = cell.column.id;
+function Cell({ cell, row }) {
+  const { rowSelectDispatch, prepareRow } = useContext(TableContext);
+  const columnId = cell.column.id;
   const value = cell.value;
-  const rowID = row.values.id;
 
   return (
-    <Cell
-      columnId={columnID}
+    <StyledCell
+      columnId={columnId}
       value={value}
-      severity={cell.row.values.severity}
       {...cell.getCellProps({
-        onClick: () => handleCellClick(columnID, rowID)
+        onClick: e =>
+          handleCellClick(columnId, row, rowSelectDispatch, prepareRow)
       })}
     >
       {cell.isGrouped ? getGroupedCell(cell, row) : getAggregatedCell(cell)}
-    </Cell>
+    </StyledCell>
   );
 }
 
@@ -157,15 +198,16 @@ function getRow(row, prepareRow) {
   // render will fail. See API docs for react-table.
   return (
     prepareRow(row) || (
-      <Row {...row.getRowProps()}>
-        {row.cells.map(cell => getCell(cell, row))}
+      <Row {...row.getRowProps()} row={row}>
+        {row.cells.map((cell, index) => (
+          <Cell cell={cell} row={row} key={row.values.id + index} />
+        ))}
       </Row>
     )
   );
 }
 
-function TableBody({ page, prepareRow }) {
+export default function TableBody() {
+  const { page, prepareRow } = useContext(TableContext);
   return <tbody>{page.map(row => getRow(row, prepareRow))}</tbody>;
 }
-
-export default TableBody;
