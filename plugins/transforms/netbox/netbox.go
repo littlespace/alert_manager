@@ -121,6 +121,6 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 
 func init() {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	n := &Netbox{client: &Client{&http.Client{Transport: tr, Timeout: 5 * time.Second}}}
+	n := &Netbox{client: &Client{&http.Client{Transport: tr, Timeout: 10 * time.Second}}}
 	ah.AddTransform(n)
 }

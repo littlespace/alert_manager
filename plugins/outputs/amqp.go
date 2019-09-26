@@ -16,7 +16,6 @@ import (
 const (
 	exchangeName = "alerts"
 	exchangeType = "direct"
-	routingKey   = "alerts"
 )
 
 type Incident struct {
@@ -33,7 +32,7 @@ type Publisher struct {
 	AmqpAddr      string        `mapstructure:"amqp_addr"`
 	AmqpUser      string        `mapstructure:"amqp_username"`
 	AmqpPass      string        `mapstructure:"amqp_password"`
-	AmqpQueueName string        `mapstructure:"amqp_queue_name"`
+	AmqpRoutingKey string        `mapstructure:"amqp_routing_key"`
 	ConnectRetry  time.Duration `mapstructure:"connect_retry"`
 	ready         bool
 	Notif         chan *plugins.SendRequest
@@ -62,7 +61,7 @@ func (p *Publisher) Publish(incident *Incident) error {
 	}
 	return p.channel.Publish(
 		exchangeName, // publish to an exchange
-		routingKey,   // routing to 0 or more queues
+		p.AmqpRoutingKey,   // routing to 0 or more queues
 		false,        // mandatory
 		false,        // immediate
 		msg,
