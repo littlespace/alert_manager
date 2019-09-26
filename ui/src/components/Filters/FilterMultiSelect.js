@@ -1,14 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import ReactSelect from "react-select";
 
 import {
-  PRIMARY,
-  SECONDARY,
+  CRITICAL,
   HIGHLIGHT,
   INFO,
-  WARN,
-  CRITICAL
+  PRIMARY,
+  SECONDARY,
+  WARN
 } from "../../styles/styles";
+import { FilterContext } from "../contexts/FilterContext";
+import { TABLE_ACTIONS } from "../../library/utils";
 
 // Using ReactSelects custom way to style
 // TODO: Any way we can figure out how to do styled components here?
@@ -19,6 +21,7 @@ const ReactSelectStyles = {
     color: state.isFocused ? HIGHLIGHT : PRIMARY,
     backgroundColor: state.isFocused ? PRIMARY : HIGHLIGHT
   }),
+  menu: styles => ({ ...styles, zIndex: 20 }),
   placeholder: styles => ({ ...styles, color: HIGHLIGHT, fontSize: "0.875em" }),
   input: styles => ({ ...styles, color: HIGHLIGHT }),
   dropdownIndictor: styles => ({ ...styles, color: HIGHLIGHT }),
@@ -48,31 +51,40 @@ const onChangeHandler = (
   filters,
   setFilters,
   filterType,
-  values 
+  values
 ) => {
   // e.g if user deleted all the options, we will have no entries
   if (values === null) {
     delete filters[filterType];
     setFilters(filters => ({ ...filters }));
-    setSelectedOptions([])
+    setSelectedOptions([]);
   } else {
-    setSelectedOptions(values)
-    const filterValues = []
+    setSelectedOptions(values);
+    const filterValues = [];
     values.forEach(e => filterValues.push(e.value));
-    setFilters(filters => ({ ...filters, [filterType]: filterValues}));
+    setFilters(filters => ({ ...filters, [filterType]: filterValues }));
   }
 };
 
 function FilterMultiSelect({
-  filters,
-  setFilters,
   filterType,
   options,
   placeholder,
+  tableMutationState,
+  tableMutationDispatch,
   ...props
 }) {
   // [{ label: "ACTIVE", value: "ACTIVE"}]
+  const { filters, setFilters } = useContext(FilterContext);
   const [selectedOptions, setSelectedOptions] = useState([]);
+
+  useEffect(() => {
+    if (tableMutationState.clearMultiselect) {
+      setSelectedOptions([]);
+      setFilters({});
+      tableMutationDispatch({ type: TABLE_ACTIONS.UNSET_CLEAR_MULTISELECT });
+    }
+  }, [tableMutationState.clearMultiselect]);
 
   return (
     <ReactSelect
@@ -82,8 +94,12 @@ function FilterMultiSelect({
       placeholder={placeholder}
       onChange={values =>
         onChangeHandler(
-          setSelectedOptions, 
-          filters, setFilters, filterType, values)
+          setSelectedOptions,
+          filters,
+          setFilters,
+          filterType,
+          values
+        )
       }
       styles={ReactSelectStyles}
       {...props}

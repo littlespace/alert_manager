@@ -1,13 +1,14 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useContext } from "react";
+import styled from "styled-components";
 
-import FirstPageOutlinedIcon from '@material-ui/icons/FirstPageOutlined';
-import LastPageOutlinedIcon from '@material-ui/icons/LastPageOutlined';
-import NavigateBeforeOutlinedIcon from '@material-ui/icons/NavigateBeforeOutlined';
-import NavigateNextOutlinedIcon from '@material-ui/icons/NavigateNextOutlined';
-import PageviewOutlinedIcon from '@material-ui/icons/PageviewOutlined';
+import FirstPageOutlinedIcon from "@material-ui/icons/FirstPageOutlined";
+import LastPageOutlinedIcon from "@material-ui/icons/LastPageOutlined";
+import NavigateBeforeOutlinedIcon from "@material-ui/icons/NavigateBeforeOutlined";
+import NavigateNextOutlinedIcon from "@material-ui/icons/NavigateNextOutlined";
+import PageviewOutlinedIcon from "@material-ui/icons/PageviewOutlined";
 
-import { PRIMARY, SECONDARY, HIGHLIGHT } from '../../styles/styles';
+import { PRIMARY, SECONDARY, HIGHLIGHT } from "../../styles/styles";
+import { TableContext } from "../contexts/TableContext";
 
 const PAGE_OPTIONS = [10, 50, 100];
 
@@ -38,73 +39,71 @@ const Select = styled.select`
   ::ms-expand {
     color: ${SECONDARY};
   }
-`
+`;
 
 const PageIcon = styled.span`
-    padding-right: 2px;
-    display: inline-flex;
-    vertical-align: middle;
-`
+  padding-right: 2px;
+  display: inline-flex;
+  vertical-align: middle;
+`;
 
 const Buttons = styled.span`
   position: absolute;
   right: 300px;
   padding-top: 10px;
-`
+`;
 
 const Label = styled.span`
   position: absolute;
   right: 173px;
-  padding-top: 13px; 
-`
+  padding-top: 13px;
+`;
 
 const NumberSelect = styled.span`
   position: absolute;
   right: 100px;
   padding-top: 10px;
-`
+`;
 
 const TableSize = styled.span`
   position: absolute;
   right: 40px;
   padding-top: 12px;
-`
-function PaginationToolbar({
-  pageCount,
-  gotoPage,
-  nextPage,
-  previousPage,
-  canNextPage,
-  canPreviousPage,
-  pageOptions,
-  setPageSize,
-  pageSize,
-  pageIndex,
-}) {
+`;
+function PaginationToolbar() {
+  const {
+    pageCount,
+    gotoPage,
+    nextPage,
+    previousPage,
+    canNextPage,
+    canPreviousPage,
+    pageOptions,
+    setPageSize,
+    pageSize,
+    pageIndex
+  } = useContext(TableContext);
+
   return (
     <Pagination>
       <Buttons>
         <FirstPageOutlinedIcon
-          style={{ cursor: 'pointer' }}
-          fontSize={'medium'}
+          style={{ cursor: "pointer" }}
           onClick={() => gotoPage(0)}
           disabled={!canPreviousPage}
         />
         <NavigateBeforeOutlinedIcon
-          style={{ cursor: 'pointer' }}
-          fontSize={'medium'}
+          style={{ cursor: "pointer" }}
           onClick={() => previousPage()}
           disabled={!canPreviousPage}
         />
         <NavigateNextOutlinedIcon
-          style={{ cursor: 'pointer' }}
-          fontSize={'medium'}
+          style={{ cursor: "pointer" }}
           onClick={() => nextPage()}
           disabled={!canNextPage}
         />
         <LastPageOutlinedIcon
-          style={{ cursor: 'pointer' }}
-          fontSize={'medium'}
+          style={{ cursor: "pointer" }}
           onClick={() => gotoPage(pageCount - 1)}
           disabled={!canNextPage}
         />

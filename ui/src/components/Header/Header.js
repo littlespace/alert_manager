@@ -1,17 +1,17 @@
-import React from 'react';
-import styled from 'styled-components';
+import React from "react";
+import styled from "styled-components";
 
-import AccountCircleIcon from '@material-ui/icons/AccountCircle';
+import AccountCircleIcon from "@material-ui/icons/AccountCircle";
 
-import { AlertManagerApi } from '../../library/AlertManagerApi';
-import { PagesDoc } from '../../static';
-import { HIGHLIGHT, INFO, WARN, CRITICAL, ROBLOX } from '../../styles/styles';
+import { AlertManagerApi } from "../../library/AlertManagerApi";
+import { PagesDoc } from "../../static";
+import { HIGHLIGHT, INFO, WARN, CRITICAL, ROBLOX } from "../../styles/styles";
 
 const Auth = new AlertManagerApi();
 
 function logout() {
   Auth.logout();
-  window.location = '/login';
+  window.location = "/login";
 }
 
 const Heading = styled.div`
@@ -52,7 +52,7 @@ const Link = styled.a`
   }
 `;
 
-const Title = styled.text`
+const Title = styled.div`
   margin: auto auto auto 25px;
   font-weight: 100;
   font-size: x-large;
@@ -81,12 +81,12 @@ const Logout = styled.button`
 
 function Header() {
   return (
-      <Heading>
-        <Title>
-          Roblox<span>AlertManager</span>
-        </Title>
-        {Auth.loggedIn() === true ? (
-          <>
+    <Heading>
+      <Title>
+        Roblox<span>AlertManager</span>
+      </Title>
+      {Auth.loggedIn() === true ? (
+        <>
           <Menu>
             <Link href={PagesDoc.home.url}>Home</Link>
             <Link href={PagesDoc.alertsExplorer.url}>Alert Explorer</Link>
@@ -97,9 +97,9 @@ function Header() {
             <AccountCircleIcon fontSize="large" style={{ color: HIGHLIGHT }} />
             <Logout onClick={() => logout()}>Logout</Logout>
           </LoginIcon>
-          </>
-        ) : null}
-      </Heading>
+        </>
+      ) : null}
+    </Heading>
   );
 }
 

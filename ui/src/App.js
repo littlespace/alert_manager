@@ -32,6 +32,7 @@ import Header from './components/Header/Header';
 import { PagesDoc } from './static';
 
 import { AlertManagerApi } from './library/AlertManagerApi';
+import { NotificationProvider } from './components/contexts/NotificationContext';
 
 const history = createHistory();   
 const Auth = new AlertManagerApi()
@@ -46,6 +47,7 @@ export default class App extends Component {
     return (
         <Router history={history}>
           <MuiThemeProvider theme={theme}>
+            <NotificationProvider>
             <div>
                 <Header/>
                 <Switch>
@@ -59,6 +61,7 @@ export default class App extends Component {
                   <Route render={this._redirectToHome} />
                 </Switch>
             </div>
+            </NotificationProvider>
           </MuiThemeProvider>
         </Router>
     );

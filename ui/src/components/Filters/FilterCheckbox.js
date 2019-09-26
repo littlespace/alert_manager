@@ -10,8 +10,7 @@ const Checkbox = styled.input.attrs({ type: "checkbox" })`
 
 const Title = styled.span` 
   position: absolute;
-  font-size: 16px;
-  left: 46px;
+  left: 53px;
   top: 19px;
 `
 

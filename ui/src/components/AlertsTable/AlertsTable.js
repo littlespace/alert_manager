@@ -1,20 +1,14 @@
-import React from 'react';
-import {
-  useTable,
-  useGroupBy,
-  useFilters,
-  useExpanded,
-  usePagination,
-  useTableState,
-} from 'react-table';
-import styled from 'styled-components';
+import React, { useEffect, useContext } from "react";
+import styled from "styled-components";
 
-
-import { PRIMARY } from '../../styles/styles';
-
-import PaginationToolbar from './PaginationToolbar'
-import TableHeaders from './TableHeader'
-import TableBody from './TableBody'
+import { FilterContext } from "../contexts/FilterContext";
+import { PRIMARY } from "../../styles/styles";
+import { ROW_SELECT_ACTIONS, TABLE_ACTIONS } from "../../library/utils";
+import { TableContext } from "../contexts/TableContext";
+import PaginationToolbar from "./PaginationToolbar";
+import SelectToolbar from "./SelectToolbar";
+import TableBody from "./TableBody";
+import TableHeaders from "./TableHeader";
 
 const Table = styled.table`
   background-color: ${PRIMARY};
@@ -25,48 +19,64 @@ const Table = styled.table`
   width: 100%;
 `;
 
-function AlertsTable(props) {
-  /** Hoists the tableState from our react-table. The first arg is the 
-   *  initalState, the second is our overrides. `filters` will change from the 
-   *  cause a re=-render which will cause our "filter" to take place */
-  const tableState = useTableState(
-    { pageSize: 50 },
-    { filters: props.filters },
-  );
-
+export default function AlertsTable({
+  tableMutationState,
+  tableMutationDispatch
+}) {
   const {
+    columns,
     getTableProps,
-    headerGroups,
-    prepareRow,
-    page,
-    ...tableProps
-  } = useTable(
-    {
-      columns: props.columns,
-      data: props.data,
-      state: tableState,
-    },
-    useFilters,
-    useGroupBy,
-    useExpanded,
-    usePagination,
-  );
+    state,
+    rowSelectDispatch,
+    rowSelectState
+  } = useContext(TableContext);
+  const { filters } = useContext(FilterContext);
+
+  useEffect(() => {
+    // Set allSelected to false to trigger a checkbox update for Selection Header Cell
+    columns.find(c => c.id === "selection").allSelected = false;
+    rowSelectDispatch({
+      type: ROW_SELECT_ACTIONS.UNSELECT_ALL
+    });
+
+    if (tableMutationState.clearSelection) {
+      // Cleanup the filters and row selects on unmount
+      return () => {
+        tableMutationDispatch({
+          type: TABLE_ACTIONS.SET_CLEAR_SELECTION
+        });
+        rowSelectDispatch({ type: ROW_SELECT_ACTIONS.UNSELECT_ALL });
+      };
+    }
+  }, [
+    filters,
+    state[0].pageSize,
+    state[0].pageIndex,
+    tableMutationState.clearSelection
+  ]);
 
   return (
     <>
-      {/* <div>
+      {/* <div style={{ color: "black" }}>
         <pre>
-          <code>{JSON.stringify(state[0].filters, null, 2)}</code>
+          <code>{console.log("Rendering Table")}</code>
+        </pre>
+        <pre>
+          <code>{JSON.stringify(filters, null, 2)}</code>
+        </pre>
+        <pre>
+          <code>{JSON.stringify(rowSelectState.rows.length, null, 2)}</code>
+        </pre>
+        <pre>
+          <code>{JSON.stringify(rowSelectState.ids, null, 2)}</code>
         </pre>
       </div> */}
+      {rowSelectState.rows.length > 0 ? <SelectToolbar /> : null}
       <Table {...getTableProps()}>
-        <TableHeaders headerGroups={headerGroups} />
-        <TableBody page={page} prepareRow={prepareRow} />
+        <TableHeaders />
+        <TableBody />
       </Table>
-      <PaginationToolbar {...tableProps} />
-   </>
+      <PaginationToolbar />
+    </>
   );
 }
-
-
-export default AlertsTable;
