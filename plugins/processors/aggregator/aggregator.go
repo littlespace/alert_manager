@@ -136,7 +136,6 @@ func (a *Aggregator) handleGrouped(ctx context.Context, group *alertGroup, out c
 			return err
 		}
 		agg.Id = id
-		agg.ExtendLabels()
 		a.statAggsActive.Add(1)
 		event := &models.AlertEvent{Type: models.EventType_ACTIVE, Alert: agg}
 		out <- event
@@ -183,7 +182,6 @@ func (a *Aggregator) checkExpired(ctx context.Context, out chan *models.AlertEve
 				}
 				a.statAggsActive.Add(-1)
 				tx.NewRecord(aggAlert.Id, fmt.Sprintf("Alert %s", status))
-				aggAlert.ExtendLabels()
 				out <- &models.AlertEvent{Alert: aggAlert, Type: models.EventMap[status]}
 			}
 		}
@@ -248,7 +246,7 @@ func (a *Aggregator) startProcess(in, out chan *models.AlertEvent) {
 		for _, ruleName := range rules {
 			grouper := a.grouperForAlert(event.Alert, ruleName)
 			if grouper == nil {
-				glog.V(2).Infof("No grouper found for rule: %s, skipping", ruleName)
+				glog.V(4).Infof("No grouper found for rule: %s, skipping", ruleName)
 				continue
 			}
 			processed = true

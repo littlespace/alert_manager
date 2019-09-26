@@ -106,6 +106,7 @@ func (n *Notifier) Notify(event *models.AlertEvent) {
 	if ok && alertConfig.Config.DisableNotify {
 		return
 	}
+	alert.ExtendLabels()
 	n.Lock()
 	defer n.Unlock()
 	var outputs []string

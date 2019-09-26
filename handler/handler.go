@@ -128,6 +128,8 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 		alert.ExtendLabels()
 		labels = alert.Labels
 	} else {
+		h.applyTransforms(existingAlert)
+		existingAlert.ExtendLabels()
 		labels = existingAlert.Labels
 	}
 	// check if alert matches an existing suppression rule based on alert labels
@@ -265,8 +267,11 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	for _, xform := range toApply {
 		glog.V(2).Infof("Applying Transform: %s to alert %s", xform.Name(), alert.Name)
 		if err := xform.Apply(alert); err != nil {
-			glog.Errorf("Failed to apply transform %s to alert %s: %v", xform.Name(), alert.Name, err)
-			h.statTransformError.Add(1)
+			glog.Errorf("Failed to apply transform %s to alert %s: %v, retrying..", xform.Name(), alert.Name, err)
+			if err := xform.Apply(alert); err != nil {
+				glog.Errorf("Failed to apply transform %s to alert %s: %v", xform.Name(), alert.Name, err)
+				h.statTransformError.Add(1)
+			}
 		}
 	}
 }
