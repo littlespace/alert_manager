@@ -34,7 +34,6 @@ import { NotificationProvider } from "./components/contexts/NotificationContext"
 const history = createHistory();
 const Auth = new AlertManagerApi();
 const env = process.env;
-console.log("env: ", env);
 
 export default class App extends Component {
   _redirectToHome() {

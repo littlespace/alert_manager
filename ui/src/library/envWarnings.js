@@ -17,16 +17,21 @@ const WarningBanner = styled.div`
   }
 `;
 
-const ALERT_MANAGER_SERVER = {
+const ALERT_MANAGER_API = {
   prod: "https://alert-manager-api.simulprod.com/",
   integration: "https://alert-manager-integration-api.simulprod.com/"
 };
+
+const ALERT_MANAGER_INTEGRATION_SERVER =
+  "https://alert-manager-integration.simulprod.com";
 
 export default function Warning({ NODE_ENV, REACT_APP_ALERT_MANAGER_SERVER }) {
   // Integration and Production deployments have "production" versions of node
   const deployedNodeEnv = NODE_ENV === "production" ? true : false;
   const prodBackend =
-    REACT_APP_ALERT_MANAGER_SERVER === ALERT_MANAGER_SERVER.prod ? true : false;
+    REACT_APP_ALERT_MANAGER_SERVER === ALERT_MANAGER_API.prod ? true : false;
+  const integrationEnv =
+    window.location.origin === ALERT_MANAGER_INTEGRATION_SERVER;
 
   const warnMsg = (
     <p>
@@ -46,7 +51,8 @@ export default function Warning({ NODE_ENV, REACT_APP_ALERT_MANAGER_SERVER }) {
       - INFORM: When using the test (integration) backend
       - WARN: When using PROD alert backend
     2. Production (Integration and Production Deployments)
-      - INFORM: WHen using the test (integration) backend */
+      - INFORM: WHen using the test (integration) backend 
+      - WARN: When using Integration Server with PROD Backend (This should never happen) */
   let warning = null;
   if (!deployedNodeEnv && prodBackend) {
     warning = <WarningBanner bgColor={CRITICAL}>{warnMsg}</WarningBanner>;
@@ -54,6 +60,8 @@ export default function Warning({ NODE_ENV, REACT_APP_ALERT_MANAGER_SERVER }) {
     warning = <WarningBanner>{infoMsg}</WarningBanner>;
   } else if (deployedNodeEnv && !prodBackend) {
     warning = <WarningBanner>{infoMsg}</WarningBanner>;
+  } else if (integrationEnv && prodBackend) {
+    warning = <WarningBanner bgColor={CRITICAL}>{warnMsg}</WarningBanner>;
   }
 
   return warning;
