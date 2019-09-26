@@ -1,13 +1,13 @@
 import React from "react";
-import { CRITICAL, WARN } from "../styles/styles";
+import { CRITICAL, PRIMARY, WARN } from "../styles/styles";
 import styled from "styled-components";
 
 const WarningBanner = styled.div`
   position: sticky;
   top: 0;
-  background-color: ${props => (props.bgColor ? props.bgColor : WARN)};
-  color: null;
-  padding: 1em;
+  background-color: ${props => (props.critical ? CRITICAL : WARN)};
+  color: ${PRIMARY};
+  padding: 0.6em;
   text-align: center;
   z-index: 10;
 
@@ -33,17 +33,24 @@ export default function Warning({ NODE_ENV, REACT_APP_ALERT_MANAGER_SERVER }) {
   const integrationEnv =
     window.location.origin === ALERT_MANAGER_INTEGRATION_SERVER;
 
-  const warnMsg = (
-    <p>
-      <strong>!!WARNING!! Using Production Alert Database.</strong> Proceed with
-      caution. Changes will affect our production alerts.
-    </p>
+  const criticalMsg = (
+    <>
+      <p>
+        <strong>!! WARNING !! Using Production Alert Database.</strong>
+      </p>
+      <p>Proceed with caution. Changes will affect our production alerts.</p>
+    </>
   );
-  const infoMsg = (
-    <p>
-      <strong>Using Test Alert Database.</strong> These alerts may not match{" "}
-      <strong>production</strong> alerts and may include test data.
-    </p>
+  const warnMsg = (
+    <>
+      <p>
+        <strong>Using Test Alert Database.</strong>
+      </p>
+      <p>
+        These alerts may not match <strong>production</strong> alerts and may
+        include test data.
+      </p>
+    </>
   );
 
   /* Different Scenarios We Warn For
@@ -55,13 +62,13 @@ export default function Warning({ NODE_ENV, REACT_APP_ALERT_MANAGER_SERVER }) {
       - WARN: When using Integration Server with PROD Backend (This should never happen) */
   let warning = null;
   if (!deployedNodeEnv && prodBackend) {
-    warning = <WarningBanner bgColor={CRITICAL}>{warnMsg}</WarningBanner>;
+    warning = <WarningBanner critical>{criticalMsg}</WarningBanner>;
   } else if (!deployedNodeEnv && !prodBackend) {
-    warning = <WarningBanner>{infoMsg}</WarningBanner>;
+    warning = <WarningBanner>{warnMsg}</WarningBanner>;
   } else if (deployedNodeEnv && !prodBackend) {
-    warning = <WarningBanner>{infoMsg}</WarningBanner>;
+    warning = <WarningBanner>{warnMsg}</WarningBanner>;
   } else if (integrationEnv && prodBackend) {
-    warning = <WarningBanner bgColor={CRITICAL}>{warnMsg}</WarningBanner>;
+    warning = <WarningBanner critical>{criticalMsg}</WarningBanner>;
   }
 
   return warning;
