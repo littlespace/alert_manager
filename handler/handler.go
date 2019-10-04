@@ -222,8 +222,14 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 func (h *AlertHandler) reactivateAlert(tx models.Txn, existingAlert *models.Alert) error {
 	// reactivate the alert and the agg alert if applicable and extend the expiry time if alert already exists
 	toUpdate := []int64{existingAlert.Id}
+	toNotify := existingAlert
 	if existingAlert.AggregatorId != 0 {
 		toUpdate = append(toUpdate, existingAlert.AggregatorId)
+		agg, err := tx.GetAlert(models.QuerySelectById, existingAlert.AggregatorId)
+		if err != nil {
+			return fmt.Errorf("Failed to get alert %d: %v", existingAlert.AggregatorId, err)
+		}
+		toNotify = agg
 	}
 	newLastActive := models.MyTime{time.Now()}
 	if err := tx.InQuery(models.QueryUpdateLastActive, newLastActive, toUpdate); err != nil {
@@ -241,6 +247,7 @@ func (h *AlertHandler) reactivateAlert(tx models.Txn, existingAlert *models.Aler
 	if existingAlert.AggregatorId != 0 {
 		tx.NewRecord(existingAlert.AggregatorId, fmt.Sprintf("Alert re-activated due to component alert %d", existingAlert.Id))
 	}
+	h.notifyReceivers(toNotify, models.EventType_ACTIVE)
 	return nil
 }
 

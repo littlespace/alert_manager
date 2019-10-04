@@ -37,7 +37,7 @@ func (m *MockDb) Close() error {
 
 type MockTx struct {
 	*models.Tx
-	inQuery func() error
+	inQuery func(query string) error
 }
 
 func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
@@ -90,7 +90,7 @@ func (t *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, err
 
 func (t *MockTx) InQuery(query string, args ...interface{}) error {
 	if t.inQuery != nil {
-		return t.inQuery()
+		return t.inQuery(query)
 	}
 	return fmt.Errorf("InQuery undefined")
 }
@@ -163,13 +163,14 @@ func NewTestHandler(procChanSize int) *AlertHandler {
 }
 
 func TestHandlerAlertActive(t *testing.T) {
-	h := NewTestHandler(2)
+	h := NewTestHandler(3)
 	tx := h.Db.NewTx()
 	ctx := context.Background()
 
 	// test new active alert
 	new := tu.MockAlert(0, "New Alert 1", "", "d2", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
-	h.handleActive(ctx, tx, new)
+	err := h.handleActive(ctx, tx, new)
+	assert.Nil(t, err)
 	assert.Equal(t, int(new.Id), 999)
 	assert.Equal(t, h.Teams[0].Name, "t1")
 	assert.Equal(t, h.Teams[0].Id, int64(1))
@@ -181,16 +182,19 @@ func TestHandlerAlertActive(t *testing.T) {
 
 	// test new team
 	a3 := tu.MockAlert(0, "New Alert 6", "", "d6", "e6", "src6", "scp6", "t2", "2", "WARN", []string{"c", "d"}, nil)
-	h.handleActive(ctx, tx, a3)
+	err = h.handleActive(ctx, tx, a3)
+	assert.Nil(t, err)
 	assert.Equal(t, h.Teams.Contains("t2"), true)
+	<-h.procChan
 
 	// test existing active alert
-	tx.(*MockTx).inQuery = func() error {
+	tx.(*MockTx).inQuery = func(query string) error {
 		mockAlerts["existing_a1"].LastActive = nowTime
 		return nil
 	}
 	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
-	h.handleActive(ctx, tx, a1)
+	err = h.handleActive(ctx, tx, a1)
+	assert.Nil(t, err)
 	assert.Equal(t, int(a1.Id), 0)
 	assert.Equal(t, mockAlerts["existing_a1"].LastActive, nowTime)
 
@@ -209,22 +213,29 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.NotNil(t, h.Suppressor.Match(a4.Labels))
 
 	// test a de-dedup of a cleared alert
-	tx.(*MockTx).inQuery = func() error {
-		mockAlerts["existing_a5"].Status = models.Status_ACTIVE
-		mockAlerts["existing_a6_agg"].Status = models.Status_ACTIVE
-		mockAlerts["existing_a5"].LastActive = nowTime
-		mockAlerts["existing_a6_agg"].LastActive = nowTime
+	tx.(*MockTx).inQuery = func(query string) error {
+		if query == models.QueryUpdateManyStatus {
+			mockAlerts["existing_a5"].Status = models.Status_ACTIVE
+			mockAlerts["existing_a6_agg"].Status = models.Status_ACTIVE
+		}
+		if query == models.QueryUpdateLastActive {
+			mockAlerts["existing_a5"].LastActive = nowTime
+			mockAlerts["existing_a6_agg"].LastActive = nowTime
+		}
 		return nil
 	}
 	new = tu.MockAlert(0, "Test Alert 5", "", "d5", "e5", "src5", "scp5", "t1", "5", "WARN", []string{"g", "h"}, nil)
 	mockAlerts["existing_a5"].Status = models.Status_CLEARED
 	mockAlerts["existing_a6_agg"].Status = models.Status_CLEARED
 	mockAlerts["existing_a5"].AggregatorId = 600
-	h.handleActive(ctx, tx, new)
+	err = h.handleActive(ctx, tx, new)
+	assert.Nil(t, err)
 	assert.Equal(t, mockAlerts["existing_a5"].Status, models.Status_ACTIVE)
 	assert.Equal(t, mockAlerts["existing_a5"].LastActive, nowTime)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].Status, models.Status_ACTIVE)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].LastActive, nowTime)
+	event = <-h.procChan
+	assert.Equal(t, event.Alert.Id, int64(600))
 
 	// test dedup of cleared alert - active supprule
 	rule3 := models.NewSuppRule(models.Labels{"device": "d5"}, models.MatchCond_ALL, "", "", time.Duration(1*time.Minute))
@@ -232,7 +243,8 @@ func TestHandlerAlertActive(t *testing.T) {
 	mockAlerts["existing_a5"].ExtendLabels()
 	mockAlerts["existing_a5"].Status = models.Status_CLEARED
 	mockAlerts["existing_a6_agg"].Status = models.Status_CLEARED
-	h.handleActive(ctx, tx, new)
+	err = h.handleActive(ctx, tx, new)
+	assert.Nil(t, err)
 	assert.Equal(t, mockAlerts["existing_a5"].Status, models.Status_CLEARED)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].Status, models.Status_CLEARED)
 }
