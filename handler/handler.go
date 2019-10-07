@@ -247,6 +247,7 @@ func (h *AlertHandler) reactivateAlert(tx models.Txn, existingAlert *models.Aler
 	if existingAlert.AggregatorId != 0 {
 		tx.NewRecord(existingAlert.AggregatorId, fmt.Sprintf("Alert re-activated due to component alert %d", existingAlert.Id))
 	}
+	toNotify.Status = models.Status_ACTIVE
 	h.notifyReceivers(toNotify, models.EventType_ACTIVE)
 	return nil
 }
