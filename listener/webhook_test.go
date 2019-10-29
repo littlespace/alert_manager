@@ -3,15 +3,16 @@ package listener
 import (
 	"bytes"
 	"flag"
-	ah "github.com/mayuresh82/alert_manager/handler"
-	"github.com/mayuresh82/alert_manager/internal/models"
-	tu "github.com/mayuresh82/alert_manager/testutil"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
+
+	ah "github.com/mayuresh82/alert_manager/handler"
+	"github.com/mayuresh82/alert_manager/internal/models"
+	tu "github.com/mayuresh82/alert_manager/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockParser struct{}

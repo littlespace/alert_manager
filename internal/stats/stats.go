@@ -2,16 +2,18 @@ package stats
 
 import (
 	"context"
-	"github.com/golang/glog"
-	"github.com/mayuresh82/alert_manager/internal/reporting"
+	"fmt"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/mayuresh82/alert_manager/internal/reporting"
 )
 
-type statType int
+const defaultAppName = "test"
 
-const measurement = "alert_manager_stats"
+type statType int
 
 type Stat interface {
 	Add(Value int64)
@@ -36,23 +38,6 @@ type Gauge struct {
 	sync.Mutex
 }
 
-var (
-	allCounters []*Counter
-	allGauges   []*Gauge
-)
-
-func NewCounter(name string) *Counter {
-	s := &Counter{name: name}
-	allCounters = append(allCounters, s)
-	return s
-}
-
-func NewGauge(name string) *Gauge {
-	s := &Gauge{name: name, values: make(map[time.Time]int64)}
-	allGauges = append(allGauges, s)
-	return s
-}
-
 func (c *Counter) Add(value int64) {
 	c.Lock()
 	defer c.Unlock()
@@ -73,7 +58,7 @@ func (c *Counter) Set(value int64) {
 	glog.Errorf("CAnnot set a counter type")
 }
 
-func (c *Counter) toDatapoint() *reporting.Datapoint {
+func (c *Counter) toDatapoint(measurement string) *reporting.Datapoint {
 	c.Lock()
 	defer c.Unlock()
 	return &reporting.Datapoint{
@@ -106,7 +91,7 @@ func (g *Gauge) Reset() {
 	g.values = make(map[time.Time]int64)
 }
 
-func (g *Gauge) toDatapoint() []*reporting.Datapoint {
+func (g *Gauge) toDatapoint(measurement string) []*reporting.Datapoint {
 	g.Lock()
 	defer g.Unlock()
 	dp := []*reporting.Datapoint{}
@@ -127,6 +112,35 @@ func (g *Gauge) toDatapoint() []*reporting.Datapoint {
 	return dp
 }
 
+type Application struct {
+	name        string
+	allCounters []*Counter
+	allGauges   []*Gauge
+	sync.Mutex
+}
+
+var app = &Application{}
+
+func AppName(name string) {
+	app.name = name
+}
+
+func NewCounter(name string) *Counter {
+	s := &Counter{name: name}
+	app.Lock()
+	defer app.Unlock()
+	app.allCounters = append(app.allCounters, s)
+	return s
+}
+
+func NewGauge(name string) *Gauge {
+	s := &Gauge{name: name, values: make(map[time.Time]int64)}
+	app.Lock()
+	defer app.Unlock()
+	app.allGauges = append(app.allGauges, s)
+	return s
+}
+
 func StartExport(ctx context.Context, interval time.Duration) {
 	if interval == 0 {
 		interval = 60 * time.Second
@@ -135,16 +149,21 @@ func StartExport(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-t.C:
-			for _, c := range allCounters {
-				reporting.DataChan <- c.toDatapoint()
+			name := app.name
+			if name == "" {
+				name = defaultAppName
 			}
-			for _, g := range allGauges {
-				for _, dp := range g.toDatapoint() {
+			measurement := fmt.Sprintf("%s_stats", name)
+			for _, c := range app.allCounters {
+				reporting.DataChan <- c.toDatapoint(measurement)
+			}
+			for _, g := range app.allGauges {
+				for _, dp := range g.toDatapoint(measurement) {
 					reporting.DataChan <- dp
 				}
 				g.Reset()
 			}
-			for _, dp := range internalStats() {
+			for _, dp := range internalStats(measurement) {
 				reporting.DataChan <- dp
 			}
 		case <-ctx.Done():
@@ -153,7 +172,7 @@ func StartExport(ctx context.Context, interval time.Duration) {
 	}
 }
 
-func internalStats() []*reporting.Datapoint {
+func internalStats(measurement string) []*reporting.Datapoint {
 	return []*reporting.Datapoint{
 		&reporting.Datapoint{
 			Measurement: measurement,
