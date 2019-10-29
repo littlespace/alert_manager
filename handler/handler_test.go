@@ -37,7 +37,8 @@ func (m *MockDb) Close() error {
 
 type MockTx struct {
 	*models.Tx
-	inQuery func(query string) error
+	inQuery     func(query string) error
+	updateAlert func(alert *models.Alert) error
 }
 
 func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
@@ -57,6 +58,9 @@ func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
 }
 
 func (t *MockTx) UpdateAlert(alert *models.Alert) error {
+	if t.updateAlert != nil {
+		return t.updateAlert(alert)
+	}
 	return nil
 }
 
@@ -188,7 +192,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	<-h.procChan
 
 	// test existing active alert
-	tx.(*MockTx).inQuery = func(query string) error {
+	tx.(*MockTx).updateAlert = func(alert *models.Alert) error {
 		mockAlerts["existing_a1"].LastActive = nowTime
 		return nil
 	}
@@ -213,14 +217,13 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.NotNil(t, h.Suppressor.Match(a4.Labels))
 
 	// test a de-dedup of a cleared alert
-	tx.(*MockTx).inQuery = func(query string) error {
-		if query == models.QueryUpdateManyStatus {
-			mockAlerts["existing_a5"].Status = models.Status_ACTIVE
-			mockAlerts["existing_a6_agg"].Status = models.Status_ACTIVE
-		}
-		if query == models.QueryUpdateLastActive {
-			mockAlerts["existing_a5"].LastActive = nowTime
-			mockAlerts["existing_a6_agg"].LastActive = nowTime
+	tx.(*MockTx).updateAlert = func(alert *models.Alert) error {
+		for _, a := range mockAlerts {
+			if a.Id == alert.Id {
+				a.LastActive = nowTime
+				a.StartTime = nowTime
+				break
+			}
 		}
 		return nil
 	}
@@ -234,6 +237,7 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Equal(t, mockAlerts["existing_a5"].LastActive, nowTime)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].Status, models.Status_ACTIVE)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].LastActive, nowTime)
+	assert.Equal(t, mockAlerts["existing_a6_agg"].StartTime, nowTime)
 	event = <-h.procChan
 	assert.Equal(t, event.Alert.Id, int64(600))
 
