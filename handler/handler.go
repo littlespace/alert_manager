@@ -221,27 +221,32 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 
 func (h *AlertHandler) reactivateAlert(tx models.Txn, existingAlert *models.Alert) error {
 	// reactivate the alert and the agg alert if applicable and extend the expiry time if alert already exists
-	toUpdate := []int64{existingAlert.Id}
+	toUpdate := models.Alerts{existingAlert}
 	toNotify := existingAlert
 	if existingAlert.AggregatorId != 0 {
-		toUpdate = append(toUpdate, existingAlert.AggregatorId)
 		agg, err := tx.GetAlert(models.QuerySelectById, existingAlert.AggregatorId)
 		if err != nil {
 			return fmt.Errorf("Failed to get alert %d: %v", existingAlert.AggregatorId, err)
 		}
 		toNotify = agg
+		toUpdate = append(toUpdate, agg)
 	}
 	newLastActive := models.MyTime{time.Now()}
-	if err := tx.InQuery(models.QueryUpdateLastActive, newLastActive, toUpdate); err != nil {
-		h.statDbError.Add(1)
-		return fmt.Errorf("Failed update last active: %v", err)
+	alreadyActive := existingAlert.Status == models.Status_ACTIVE || existingAlert.Status == models.Status_SUPPRESSED
+	for _, a := range toUpdate {
+		a.LastActive = newLastActive
+		a.StartTime = newLastActive
+		if !alreadyActive {
+			glog.V(4).Infof("Reactivating old alert %d", a.Id)
+			a.Status = models.Status_ACTIVE
+		}
+		if err := tx.UpdateAlert(a); err != nil {
+			h.statDbError.Add(1)
+			return fmt.Errorf("Failed update alert %d: %v", a.Id, err)
+		}
 	}
-	if existingAlert.Status == models.Status_ACTIVE || existingAlert.Status == models.Status_SUPPRESSED {
+	if alreadyActive {
 		return nil
-	}
-	glog.V(4).Infof("Reactivating old alert %d", existingAlert.Id)
-	if err := tx.InQuery(models.QueryUpdateManyStatus, models.Status_ACTIVE, toUpdate); err != nil {
-		return fmt.Errorf("Failed to update alert status: %v", err)
 	}
 	tx.NewRecord(existingAlert.Id, "Alert re-activated")
 	if existingAlert.AggregatorId != 0 {
