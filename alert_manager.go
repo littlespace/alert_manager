@@ -20,6 +20,10 @@ var (
 	alertConfig = flag.String("alert-config", "", "full path to alert defintion file")
 )
 
+func init() {
+	stats.AppName("alert_manager")
+}
+
 func Run(config *Config) {
 	db := models.NewDB(config.Db.Addr, config.Db.Username, config.Db.Password, config.Db.DbName, config.Db.Timeout)
 	defer db.Close()

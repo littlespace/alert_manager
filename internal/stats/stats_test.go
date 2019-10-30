@@ -1,8 +1,9 @@
 package stats
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCounter(t *testing.T) {
@@ -13,7 +14,7 @@ func TestCounter(t *testing.T) {
 	assert.Equal(t, int(c.value), 10)
 	c.Add(-1) // should do nothing
 	assert.Equal(t, int(c.value), 10)
-	dp := c.toDatapoint()
+	dp := c.toDatapoint("test")
 	assert.Nil(t, dp.Tags)
 	assert.Equal(t, dp.Fields, map[string]interface{}{"test": int64(10)})
 	c.Reset()
@@ -46,7 +47,7 @@ func TestGauge(t *testing.T) {
 	assert.Equal(t, len(g.values), 4)
 	assert.Equal(t, int(g.lastVal), 3)
 
-	dps := g.toDatapoint()
+	dps := g.toDatapoint("test")
 	assert.Equal(t, len(dps), 4)
 	g.Reset()
 	assert.Equal(t, len(g.values), 0)
