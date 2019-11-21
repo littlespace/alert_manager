@@ -40,26 +40,31 @@ const StyledCell = styled.td`
       ? SEVERITYATTRS[props.value.toLowerCase()]["color"]
       : null};
   cursor: ${props => (props.columnId === "selection" ? null : "pointer")};
-  padding: 10px;
-  border-top: 2px solid ${PRIMARY};
-  border-bottom: 2px solid ${PRIMARY};
+  padding: 1em;
+
+  tr:hover & {
+    background-color: ${props =>
+      // On grouping, the cell will be null
+      props.value === null
+        ? null
+        : // Otherwise, if column is the severity column, set to the proper color
+        props.columnId === "severity"
+        ? SEVERITYATTRS[props.value.toLowerCase()]["background-color"]
+        : HIGHLIGHT};
+    color: ${PRIMARY};
+  }
 `;
 
 const Row = styled.tr`
   background-color: ${props => (props.row.isSelected ? HIGHLIGHT : SECONDARY)};
   color: ${props => (props.row.isSelected ? PRIMARY : null)};
 
-  &:hover {
-    background-color: ${HIGHLIGHT};
-    color: ${PRIMARY};
-  }
-
-  td:first-child {
+  td:first-of-type {
     border-top-left-radius: 15px;
     border-bottom-left-radius: 15px;
   }
 
-  td:last-child {
+  td:last-of-type {
     border-top-right-radius: 15px;
     border-bottom-right-radius: 15px;
   }

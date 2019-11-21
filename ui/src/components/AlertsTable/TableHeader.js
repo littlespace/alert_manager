@@ -13,7 +13,6 @@ const HeaderCell = styled.th`
   font-size: medium;
   font-weight: 600;
   background-color: ${SECONDARY};
-  border: 2px solid ${PRIMARY};
 `;
 
 const Row = styled.tr`
