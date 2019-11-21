@@ -15,8 +15,11 @@ export const TABLE_ACTIONS = {
   UNSET_CLEAR_MULTISELECT: "UNSET_CLEAR_MULTISELECT",
   SET_CLEAR_SELECTION: "SET_CLEAR_SELECTION",
   UNSET_CLEAR_SELECTION: "UNSET_CLEAR_SELECTION",
-  SET_TIMERANGE: "SET_TIMERANGE"
+  SET_TIMERANGE: "SET_TIMERANGE",
+  SET_TEAM: "SET_TEAM"
 };
+
+export const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1);
 
 export function secondsToHms(d) {
   var now = Math.floor(Date.now() / 1000);
