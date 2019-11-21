@@ -24,6 +24,9 @@ const Heading = styled.div`
 `;
 
 const Menu = styled.span`
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   margin: auto 205px auto 100px;
   font-size: medium;
   font-weight: 400;

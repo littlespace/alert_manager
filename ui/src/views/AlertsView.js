@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useReducer } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useReducer,
+  useRef
+} from "react";
 import styled from "styled-components";
 import { withRouter } from "react-router-dom";
 
@@ -61,16 +67,22 @@ function tableMutationReducer(state, action) {
     case TABLE_ACTIONS.UNSET_CLEAR_SELECTION:
       return { ...state, clearSelection: false };
     case TABLE_ACTIONS.SET_TIMERANGE:
-      return { ...state, timeRange: action.timeRange };
+      return { ...state, timeRange: action.value };
     case TABLE_ACTIONS.SET_STATUS:
       return { ...state, status: action.status };
+    case TABLE_ACTIONS.SET_TEAM:
+      console.log("Setting Team", Boolean(action.value));
+      // If value resolves to null, this resets so we have all teams
+      return { ...state, team: Boolean(action.value) ? action.value : null };
   }
 }
 
 // TODO: Add propTypes
 function AlertsView(props) {
+  const didMountRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [alerts, setAlerts] = useState([]);
+  const [teamList, setTeamList] = useState([]);
   const {
     notificationBar,
     setNotificationBar,
@@ -84,7 +96,8 @@ function AlertsView(props) {
       clearInput: false,
       clearSelection: false,
       timeRange: 0,
-      status: [ALERT_STATUS["active"], ALERT_STATUS["suppressed"]]
+      status: [ALERT_STATUS["active"], ALERT_STATUS["suppressed"]],
+      team: null
     }
   );
 
@@ -94,7 +107,8 @@ function AlertsView(props) {
       limit: 5000,
       status: tableMutationState.status,
       timerange_h: tableMutationState.timeRange,
-      history: true
+      history: true,
+      teams: tableMutationState.team ? [tableMutationState.team] : []
     });
 
     // Normalize the alerts for display in the UI
@@ -104,10 +118,29 @@ function AlertsView(props) {
     setLoading(false);
   };
 
+  const fetchTeamList = async () => {
+    const teams = await api.getTeamList();
+    setTeamList(teams.map(team => team.Name));
+  };
+
+  // This get's all our data on the first mount
   useEffect(() => {
-    tableMutationDispatch({ type: TABLE_ACTIONS.SET_CLEAR_MUTATIONS });
     fetchAlerts();
-  }, [tableMutationState.status, tableMutationState.timeRange]);
+    fetchTeamList();
+  }, []);
+
+  // Update alerts when tableMutationState changes
+  useEffect(() => {
+    if (didMountRef.current) {
+      console.log("Fetch with tableMutations");
+      tableMutationDispatch({ type: TABLE_ACTIONS.SET_CLEAR_MUTATIONS });
+      fetchAlerts();
+    }
+  }, [
+    tableMutationState.status,
+    tableMutationState.timeRange,
+    tableMutationState.team
+  ]);
 
   useEffect(() => {
     if (notificationBar === true) {
@@ -120,6 +153,15 @@ function AlertsView(props) {
     }
   }, [notificationBar]);
 
+  // This needs to be last
+  useEffect(() => {
+    // Set to true on componentMount
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+    }
+  });
+
+  // TODO: FilterToolbar needs to be broken out into FiltersToolbar and ActionsToolbar
   return (
     <>
       {/* <div style={{ color: "black" }}>
@@ -137,6 +179,7 @@ function AlertsView(props) {
               alerts={alerts}
               tableMutationDispatch={tableMutationDispatch}
               tableMutationState={tableMutationState}
+              teamList={teamList}
             />
             {loading ? (
               <AlertsSpinner />

@@ -5,10 +5,8 @@ import { FilterContext } from "../contexts/FilterContext";
 import { PRIMARY, HIGHLIGHT } from "../../styles/styles";
 import { TABLE_ACTIONS } from "../../library/utils";
 
-const Input = styled.input`
-  position: absolute;
-  top: 17px;
-  right: 230px;
+const Input = styled.input.attrs({ type: "text" })`
+  margin: auto 0 auto 0;
   background-color: ${PRIMARY};
   color: ${HIGHLIGHT};
   border: 0px solid ${PRIMARY};
@@ -19,7 +17,7 @@ const Input = styled.input`
   }
 `;
 
-const onChangeHandler = (filters, setFilters, value, setValue, type) => {
+const onChangeHandler = (setFilters, value, setValue, type) => {
   setValue(value);
   setFilters(filters => ({ ...filters, [type]: value }));
 };
@@ -46,13 +44,7 @@ function FilterInput({
     <Input
       value={value}
       onChange={e =>
-        onChangeHandler(
-          filters,
-          setFilters,
-          e.target.value,
-          setValue,
-          filterType
-        )
+        onChangeHandler(setFilters, e.target.value, setValue, filterType)
       }
       placeholder={placeholder}
     ></Input>
