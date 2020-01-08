@@ -15,27 +15,53 @@ function logout() {
 }
 
 const Heading = styled.div`
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  align-items: center;
+  padding: 0.5em 1em;
   justify-content: space-between;
   background-color: ${ROBLOX};
-  border-bottom: 1px solid ${HIGHLIGHT};
-  height: 50px;
+
+  @media screen and (max-width: 850px) {
+    justify-items: center;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(3, auto);
+  }
 `;
 
-const Menu = styled.span`
+const Title = styled.div`
+  grid-column: 1;
+  font-weight: 100;
+  font-size: x-large;
+  color: ${HIGHLIGHT};
+
+  span {
+    font-weight: 600;
+  }
+  @media screen and (max-width: 850px) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+`;
+
+const Menu = styled.div`
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   white-space: nowrap;
-  margin: auto 205px auto 100px;
   font-size: medium;
   font-weight: 400;
+  grid-column: 2;
+
+  @media screen and (max-width: 850px) {
+    flex-direction: column;
+    grid-column: 1;
+    grid-row: 2;
+  }
 `;
 
 const Link = styled.a`
   color: ${HIGHLIGHT};
-  padding: 15px;
-  float: left;
+  padding: 1em;
   text-decoration: none;
 
   :hover {
@@ -55,19 +81,13 @@ const Link = styled.a`
   }
 `;
 
-const Title = styled.div`
-  margin: auto auto auto 25px;
-  font-weight: 100;
-  font-size: x-large;
-  color: ${HIGHLIGHT};
+const LoginIcon = styled.div`
+  grid-column: 3;
 
-  span {
-    font-weight: 600;
+  @media screen and (max-width: 850px) {
+    grid-column: 1;
+    grid-row: 3;
   }
-`;
-
-const LoginIcon = styled.span`
-  margin: auto 25px auto auto;
 `;
 
 const Logout = styled.button`

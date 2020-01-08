@@ -17,13 +17,13 @@ import HomeView from "./views/HomeView";
 import OngoingAlertsView from "./views/OngoingAlertsView";
 import AlertsExplorerView from "./views/AlertsExplorerView";
 import AlertView from "./views/AlertView";
-import AlertsView from "./views/AlertsView.js";
+import AlertsView from "./views/AlertsView";
 import SuppressionRulesListView from "./views/SuppRulesList";
 
 /// ------------------------------------------------------
 /// Menu & Login page
 /// ------------------------------------------------------
-import SignIn from "./components/SignIn/SignIn";
+import LoginView from "./views/LoginView";
 import Header from "./components/Header/Header";
 import { PagesDoc } from "./static";
 
@@ -51,7 +51,7 @@ export default class App extends Component {
               <div>
                 <Header />
                 <Switch>
-                  <Route exact path="/login" component={SignIn} />
+                  <Route exact path="/login" component={LoginView} />
                   <PrivateRoute
                     exact
                     authed={Auth.checkToken()}

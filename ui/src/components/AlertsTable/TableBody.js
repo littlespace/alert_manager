@@ -4,23 +4,13 @@ import styled from "styled-components";
 import ArrowDropDownOutlinedIcon from "@material-ui/icons/ArrowDropDownOutlined";
 import ArrowRightIcon from "@material-ui/icons/ArrowRight";
 
-import {
-  CRITICAL,
-  HIGHLIGHT,
-  INFO,
-  PRIMARY,
-  SECONDARY,
-  WARN
-} from "../../styles/styles";
+import { HIGHLIGHT, PRIMARY, SECONDARY } from "../../styles/styles";
 import { ROW_SELECT_ACTIONS } from "../../library/utils";
-import { TableContext } from "../contexts/TableContext";
-import ToolTip from "../ToolTip";
+import { SEVERITY_COLORS } from "../../library/utils";
 
-const SEVERITYATTRS = {
-  info: { "background-color": INFO, color: PRIMARY },
-  warn: { "background-color": WARN, color: PRIMARY },
-  critical: { "background-color": CRITICAL, color: PRIMARY }
-};
+import { TableContext } from "../contexts/TableContext";
+
+import ToolTip from "../ToolTip";
 
 const StyledCell = styled.td`
   background-color: ${props =>
@@ -29,16 +19,9 @@ const StyledCell = styled.td`
       ? null
       : // Otherwise, if column is the severity column, set to the proper color
       props.columnId === "severity"
-      ? SEVERITYATTRS[props.value.toLowerCase()]["background-color"]
+      ? SEVERITY_COLORS[props.value.toLowerCase()]["background-color"]
       : null};
-  color: ${props =>
-    // On grouping, the cell will be null
-    props.value === null
-      ? null
-      : // Otherwise, if column is the severity column, set to the proper color
-      props.columnId === "severity"
-      ? SEVERITYATTRS[props.value.toLowerCase()]["color"]
-      : null};
+  color: ${props => (props.columnId === "severity" ? PRIMARY : null)};
   cursor: ${props => (props.columnId === "selection" ? null : "pointer")};
   padding: 1em;
 
@@ -49,7 +32,7 @@ const StyledCell = styled.td`
         ? null
         : // Otherwise, if column is the severity column, set to the proper color
         props.columnId === "severity"
-        ? SEVERITYATTRS[props.value.toLowerCase()]["background-color"]
+        ? SEVERITY_COLORS[props.value.toLowerCase()]["background-color"]
         : HIGHLIGHT};
     color: ${PRIMARY};
   }
@@ -124,8 +107,9 @@ function handleCellClick(columnId, row, rowSelectDispatch, prepareRow) {
 function getToolTip({ cell, ...props }) {
   const msg = cell.row.values.history.slice(-1)[0].event;
   const background =
-    SEVERITYATTRS[cell.row.values.severity.toLowerCase()]["background-color"] ||
-    null;
+    SEVERITY_COLORS[cell.row.values.severity.toLowerCase()][
+      "background-color"
+    ] || null;
   return (
     <ToolTip
       msg={msg}

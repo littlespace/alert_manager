@@ -1,6 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 
+import { HIGHLIGHT } from "../../styles/styles";
+
 import Spinner from "./Spinner";
 
 const SpinnerContainer = styled.div`
@@ -12,25 +14,25 @@ const SpinnerContainer = styled.div`
 
 const SpinnerTitle = styled.div`
   font-size: x-large;
+  color: ${HIGHLIGHT};
   font-weight: 500;
   margin: 5px auto;
 `;
 
 const SpinnerComment = styled.div`
   font-size: medium;
+  color: ${HIGHLIGHT};
   margin: 5px auto;
 `;
 
-function AlertsSpinner() {
+function AlertSpinner() {
   return (
     <SpinnerContainer>
       <Spinner />
-      <SpinnerTitle>Loading Alerts</SpinnerTitle>
-      <SpinnerComment>
-        Grab some coffee. It's gonna be a long night.
-      </SpinnerComment>
+      <SpinnerTitle>Grabbing Alert Details</SpinnerTitle>
+      <SpinnerComment>Are you excited because I am!</SpinnerComment>
     </SpinnerContainer>
   );
 }
 
-export default AlertsSpinner;
+export default AlertSpinner;

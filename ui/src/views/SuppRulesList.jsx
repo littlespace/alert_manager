@@ -13,7 +13,6 @@ import Grid from '@material-ui/core/Grid';
 
 import PageHelp from '../components/PageHelp';
 import { PagesDoc } from '../static';
-import { SuppDurations } from './AlertView';
 import Fab from '@material-ui/core/Fab';
 import Tooltip from '@material-ui/core/Tooltip';
 import Button from '@material-ui/core/Button';
@@ -62,7 +61,8 @@ const styles = theme => ({
         height: "30px",
         lineHeight: "30px",
         paddingLeft: "15px",
-        paddingTop: "10px"
+        paddingTop: "10px",
+        color: "white"
     },
     titleBar: {
         display: "flex",
@@ -103,6 +103,44 @@ const mconds = [
         label: "Any",
     },
 ]
+
+const SuppDurations = [
+    {
+        value: 3600,
+        unit: "1h",
+        label: '1 Hour',
+    },
+    {
+        value: 14400,
+        unit: "4h",
+        label: '4 Hours',
+    },
+    {
+        value: 86400,
+        unit: "24h",
+        label: '24 Hours',
+    },
+    {
+        value: 172800,
+        unit: "48h",
+        label: '48 Hours',
+    },
+    {
+        value: 604800,
+        unit: "168h",
+        label: '1 week',
+    },
+    {
+        value: 1209600,
+        unit: "336h",
+        label: '2 weeks',
+    },
+    {
+        value: 2419200,
+        unit: "672h",
+        label: '4 weeks',
+    },
+];
 
 
 class SuppressionRulesListView extends React.Component {

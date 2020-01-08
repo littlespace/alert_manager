@@ -1,3 +1,13 @@
+import {
+  CRITICAL,
+  HIGHLIGHT,
+  INFO,
+  PRIMARY,
+  ROBLOX,
+  SECONDARY,
+  WARN
+} from "../styles/styles";
+
 export const ROW_SELECT_ACTIONS = {
   SELECT_ROW: "SELECT_ROW",
   SELECT_ALL: "SELECT_ALL",
@@ -19,21 +29,59 @@ export const TABLE_ACTIONS = {
   SET_TEAM: "SET_TEAM"
 };
 
+export const SEVERITY_LEVELS = ["CRITICAL", "WARN", "INFO"];
+
+export const SEVERITY_COLORS = {
+  info: { "background-color": INFO },
+  warn: { "background-color": WARN },
+  critical: { "background-color": CRITICAL }
+};
+
+export const STATUS_COLOR = {
+  active: { "background-color": HIGHLIGHT, color: SECONDARY },
+  suppressed: { "background-color": SECONDARY, color: HIGHLIGHT },
+  cleared: { "background-color": ROBLOX, color: HIGHLIGHT },
+  expired: { "background-color": PRIMARY, color: HIGHLIGHT }
+};
+
 export const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1);
 
-export function secondsToHms(d) {
-  var now = Math.floor(Date.now() / 1000);
+export function secondsToHms(prevDate) {
+  // Variables in seconds
+  const MINUTE = 60;
+  const HOUR = 60 * MINUTE;
+  const DAY = 24 * HOUR;
 
-  d = now - Number(d);
-  var h = Math.floor(d / 3600);
-  var m = Math.floor((d % 3600) / 60);
-  var s = Math.floor((d % 3600) % 60);
+  // Javasript time is represented in ms, so we need to convert it to seconds by "/1000"
+  const currDate = Date.now() / 1000;
+  var delta = currDate - prevDate;
 
-  var hDisplay = h > 0 ? h + (h === 1 ? "h" : "h") : "";
-  var mDisplay = m > 0 ? m + (m === 1 ? "m" : "m") : "";
-  var sDisplay = s > 0 ? s + (s === 1 ? "s" : "s") : "";
+  const displayTime = [];
+  // calculate (and subtract) whole days
+  var days = Math.floor(delta / DAY);
+  if (days !== 0) {
+    delta -= days * DAY;
+    displayTime.push(`${days}d`);
+  }
 
-  return hDisplay + mDisplay + sDisplay;
+  // calculate (and subtract) whole hours
+  var hours = Math.floor(delta / HOUR);
+  if (hours !== 0) {
+    delta -= hours * HOUR;
+    displayTime.push(`${hours}h`);
+  }
+
+  // calculate (and subtract) whole minutes
+  var minutes = Math.floor(delta / MINUTE);
+  if (minutes !== 0) {
+    delta -= minutes * MINUTE;
+    displayTime.push(`${minutes}m`);
+  }
+
+  // what's left is seconds
+  displayTime.push(`${Math.floor(delta)}s`);
+
+  return displayTime.join("");
 }
 
 export function timeConverter(UNIX_timestamp) {

@@ -38,6 +38,32 @@ function convertTimestamps(data) {
   });
 }
 
+function sortAlerts(alerts) {
+  const severity = {
+    CRITICAL: 3,
+    WARN: 2,
+    INFO: 1
+  };
+
+  // Sort based on last_active first
+  alerts.sort((first, second) =>
+    first.last_active < second.last_active
+      ? 1
+      : first.last_active > second.last_active
+      ? -1
+      : 0
+  );
+
+  // Then sort by severity
+  alerts.sort((first, second) =>
+    severity[first.severity] < severity[second.severity]
+      ? 1
+      : severity[first.severity] > severity[second.severity]
+      ? -1
+      : 0
+  );
+}
+
 function tableMutationReducer(state, action) {
   switch (action.type) {
     case TABLE_ACTIONS.SET_CLEAR_MUTATIONS:
@@ -111,6 +137,8 @@ function AlertsView(props) {
       teams: tableMutationState.team ? [tableMutationState.team] : []
     });
 
+    // Default sorting
+    sortAlerts(results);
     // Normalize the alerts for display in the UI
     convertTimestamps(results);
 
