@@ -347,6 +347,11 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	err = models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
 		queries := req.URL.Query()
+		notify := true
+		notifyQ, ok := queries["notify"]
+		if ok && notifyQ[0] == "false" {
+			notify = false
+		}
 		var er error
 		switch vars["action"] {
 		case "suppress":
@@ -374,9 +379,10 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 				creator,
 				reason,
 				duration,
+				notify,
 			)
 		case "clear":
-			er = s.handler.Clear(ctx, tx, alert)
+			er = s.handler.Clear(ctx, tx, alert, notify)
 		case "ack":
 			owner, ok := queries["owner"]
 			if !ok {
@@ -388,7 +394,24 @@ func (s *Server) ActionAlert(w http.ResponseWriter, req *http.Request) {
 			if ok {
 				team = teams[0]
 			}
-			er = s.handler.SetOwner(ctx, tx, alert, owner[0], team)
+			er = s.handler.SetOwner(ctx, tx, alert, owner[0], team, notify)
+		case "escalate":
+			newSev, ok := queries["severity"]
+			if !ok {
+				http.Error(w, "Invalid query: expected escalation severity", http.StatusBadRequest)
+				return fmt.Errorf("Invalid query: expected escalation severity")
+			}
+			sev := strings.ToLower(newSev[0])
+			switch sev {
+			case "1", "critical":
+				if alert.Severity > models.Sev_CRITICAL {
+					er = s.handler.Escalate(ctx, tx, alert, models.Sev_CRITICAL, notify)
+				}
+			case "2", "warn", "warning":
+				if alert.Severity > models.Sev_WARN {
+					er = s.handler.Escalate(ctx, tx, alert, models.Sev_WARN, notify)
+				}
+			}
 		}
 		if er != nil {
 			glog.Errorf("Api: Unable to Action alerts: %v", er)
