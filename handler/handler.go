@@ -192,7 +192,7 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 }
 
 func (h *AlertHandler) clearAlert(ctx context.Context, tx models.Txn, alert *models.Alert) error {
-	err := h.Clear(ctx, tx, alert)
+	err := h.Clear(ctx, tx, alert, true)
 	if err != nil {
 		h.statDbError.Add(1)
 		return fmt.Errorf("Cant clear existing alert %d: %v", alert.Id, err)
@@ -378,6 +378,7 @@ func (h *AlertHandler) Suppress(
 	alert *models.Alert,
 	creator, reason string,
 	duration time.Duration,
+	notify bool,
 ) error {
 	if alert.IsAggregate {
 		var grouped models.Alerts
@@ -387,7 +388,7 @@ func (h *AlertHandler) Suppress(
 		// suppress individual alerts
 		for _, a := range grouped {
 			cReason := "Alert suppressed due to aggregated alert suppressed"
-			if err := h.Suppress(ctx, tx, a, creator, cReason, duration); err != nil {
+			if err := h.Suppress(ctx, tx, a, creator, cReason, duration, notify); err != nil {
 				return fmt.Errorf("Unable to suppress alert %d: %v", a.Id, err)
 			}
 		}
@@ -408,23 +409,27 @@ func (h *AlertHandler) Suppress(
 		return fmt.Errorf("Failed to suppress alert: %v", err)
 	}
 	tx.NewRecord(alert.Id, fmt.Sprintf("Alert Suppressed by %s for %v : %s", creator, duration, reason))
-	h.notifyReceivers(alert, models.EventType_SUPPRESSED)
+	if notify {
+		h.notifyReceivers(alert, models.EventType_SUPPRESSED)
+	}
 	return nil
 }
 
-func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert) error {
+func (h *AlertHandler) Clear(ctx context.Context, tx models.Txn, alert *models.Alert, notify bool) error {
 	alert.Clear()
 	if err := tx.Exec(models.QueryUpdateStatus, models.Status_CLEARED, alert.Id); err != nil {
 		h.statDbError.Add(1)
 		return err
 	}
 	tx.NewRecord(alert.Id, "Alert cleared")
-	h.notifyReceivers(alert, models.EventType_CLEARED)
+	if notify {
+		h.notifyReceivers(alert, models.EventType_CLEARED)
+	}
 	return nil
 }
 
 // SetOwner sets the owner when an alert is acknowledged
-func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *models.Alert, name, teamName string) error {
+func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *models.Alert, name, teamName string, notify bool) error {
 	if teamName != "" && !h.Teams.Contains(teamName) {
 		return fmt.Errorf("Team %s does not exist", teamName)
 	}
@@ -435,7 +440,9 @@ func (h *AlertHandler) SetOwner(ctx context.Context, tx models.Txn, alert *model
 	}
 	tx.NewRecord(alert.Id, fmt.Sprintf("Alert owner set to %s, team set to %s", name, teamName))
 	// Notify all the receivers
-	h.notifyReceivers(alert, models.EventType_ACKD)
+	if notify {
+		h.notifyReceivers(alert, models.EventType_ACKD)
+	}
 	return nil
 }
 
@@ -447,4 +454,14 @@ func (h *AlertHandler) AddSuppRule(ctx context.Context, tx models.Txn, rule *mod
 // DeleteSuppRule deletes an existing suppression rule from the suppressor
 func (h *AlertHandler) DeleteSuppRule(ctx context.Context, tx models.Txn, id int64) error {
 	return h.Suppressor.DeleteRule(ctx, tx, id)
+}
+
+// Escalate bumps up alert severity
+func (h *AlertHandler) Escalate(ctx context.Context, tx models.Txn, alert *models.Alert, newSev models.AlertSeverity, notify bool) error {
+	alert.Severity = newSev
+	tx.NewRecord(alert.Id, fmt.Sprintf("Alert severity escalated to %s", newSev.String()))
+	if notify {
+		h.notifyReceivers(alert, models.EventType_ESCALATED)
+	}
+	return nil
 }

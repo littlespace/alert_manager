@@ -81,9 +81,10 @@ func (tx *MockTx) UpdateAlert(alert *models.Alert) error {
 
 func (tx *MockTx) GetAlert(query string, args ...interface{}) (*models.Alert, error) {
 	return &models.Alert{
-		Status: models.Status_ACTIVE,
-		Id:     args[0].(int64),
-		Labels: make(models.Labels)}, nil
+		Status:   models.Status_ACTIVE,
+		Id:       args[0].(int64),
+		Severity: models.Sev_INFO,
+		Labels:   make(models.Labels)}, nil
 }
 
 func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRules, error) {
@@ -327,6 +328,17 @@ func TestServerAlertAction(t *testing.T) {
 	assert.Equal(t, a["status"].(string), "ACTIVE")
 	assert.Equal(t, a["owner"].(string), "foo")
 	assert.Equal(t, a["team"].(string), "bar")
+
+	// test escalate
+	req, _ = http.NewRequest("PATCH", "/api/alerts/1/escalate?severity=CRITICAL", nil)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	a = map[string]interface{}{}
+	if err := json.NewDecoder(rr.Result().Body).Decode(&a); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, a["id"].(float64), float64(1))
+	assert.Equal(t, a["severity"].(string), "CRITICAL")
 }
 
 func TestSuppRule(t *testing.T) {
