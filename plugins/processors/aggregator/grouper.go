@@ -16,38 +16,36 @@ type Grouper struct {
 }
 
 func (g *Grouper) startWindow(grouper groupers.Grouper, ruleName string) {
-	name := grouper.Name()
 	rule, _ := ah.Config.GetAggregationRuleConfig(ruleName)
 	time.Sleep(rule.Window)
 	g.Lock()
 	defer g.Unlock()
-	for _, group := range groupers.DoGrouping(grouper, g.recvBuffers[name]) {
+	for _, group := range groupers.DoGrouping(grouper, g.recvBuffers[ruleName]) {
 		groupedChan <- &alertGroup{groupedAlerts: group, grouper: grouper, ruleName: ruleName}
 	}
-	g.recvBuffers[name] = g.recvBuffers[name][:0]
+	g.recvBuffers[ruleName] = g.recvBuffers[ruleName][:0]
 }
 
 func (g *Grouper) addAlert(grouper groupers.Grouper, ruleName string, alert *models.Alert) {
 	g.Lock()
 	defer g.Unlock()
-	name := grouper.Name()
-	if len(g.recvBuffers[name]) == 0 {
+	if len(g.recvBuffers[ruleName]) == 0 {
 		go g.startWindow(grouper, ruleName)
 	}
-	for _, a := range g.recvBuffers[name] {
+	for _, a := range g.recvBuffers[ruleName] {
 		if a.Id == alert.Id {
 			return
 		}
 	}
-	g.recvBuffers[name] = append(g.recvBuffers[name], alert)
+	g.recvBuffers[ruleName] = append(g.recvBuffers[ruleName], alert)
 }
 
-func (g *Grouper) removeAlert(grouperName string, alert *models.Alert) {
+func (g *Grouper) removeAlert(ruleName string, alert *models.Alert) {
 	g.Lock()
 	defer g.Unlock()
-	for i := 0; i < len(g.recvBuffers[grouperName]); i++ {
-		if g.recvBuffers[grouperName][i].Id == alert.Id {
-			g.recvBuffers[grouperName] = append(g.recvBuffers[grouperName][:i], g.recvBuffers[grouperName][i+1:]...)
+	for i := 0; i < len(g.recvBuffers[ruleName]); i++ {
+		if g.recvBuffers[ruleName][i].Id == alert.Id {
+			g.recvBuffers[ruleName] = append(g.recvBuffers[ruleName][:i], g.recvBuffers[ruleName][i+1:]...)
 			i--
 		}
 	}

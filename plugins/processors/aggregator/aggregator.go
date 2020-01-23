@@ -246,15 +246,15 @@ func (a *Aggregator) startProcess(in, out chan *models.AlertEvent) {
 		for _, ruleName := range rules {
 			grouper := a.grouperForAlert(event.Alert, ruleName)
 			if grouper == nil {
-				glog.V(4).Infof("No grouper found for rule: %s, skipping", ruleName)
 				continue
 			}
 			processed = true
+			glog.V(4).Infof("Got grouper %v for alert %s, rule: %s", grouper, event.Alert.Name, ruleName)
 			switch event.Type {
 			case models.EventType_ACTIVE:
 				a.grouper.addAlert(grouper, ruleName, event.Alert)
 			case models.EventType_CLEARED:
-				a.grouper.removeAlert(grouper.Name(), event.Alert)
+				a.grouper.removeAlert(ruleName, event.Alert)
 			}
 		}
 		if !processed {
