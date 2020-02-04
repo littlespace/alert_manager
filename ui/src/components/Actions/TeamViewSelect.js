@@ -1,21 +1,41 @@
 import React from "react";
+import styled from "styled-components";
+import { useLocation } from "react-router-dom";
 
-import { TABLE_ACTIONS, capitalize } from "../../library/utils";
+import { capitalize, getSearchOptionsByKey } from "../../library/utils";
 
-import FilterSelect from "./ActionSelect";
+import ActionSelect from "./ActionSelect";
 
-export default function TimeRangeSelect({ teamList, ...props }) {
+const TeamView = styled.div`
+  flex: 0 0 200px;
+`;
+
+function getSelectedOption(actionType, location) {
+  let options = getSearchOptionsByKey(actionType, location);
+  // No option is selected
+  if (options.length === 0) {
+    return null;
+  }
+  return { label: capitalize(options[0]), value: options[0] };
+}
+
+export default function TimeRangeSelect({ teamList, setSearch }) {
+  let location = useLocation();
+  const actionType = "team";
+
   return (
-    <FilterSelect actionType={TABLE_ACTIONS.SET_TEAM} {...props}>
-      <option value="DEFAULT" disabled hidden>
-        Select Team
-      </option>
-      <option value="">All</option>
-      {teamList.map((team, index) => (
-        <option key={index} value={team}>
-          {capitalize(team)}
-        </option>
-      ))}
-    </FilterSelect>
+    <TeamView>
+      <ActionSelect
+        actionType={actionType}
+        options={teamList.map(team => ({
+          label: capitalize(team),
+          value: team
+        }))}
+        placeholder={"Select Team"}
+        searchOnChange={true}
+        setSearch={setSearch}
+        value={getSelectedOption(actionType, location)}
+      />
+    </TeamView>
   );
 }

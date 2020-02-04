@@ -119,6 +119,7 @@ func (s *Server) Start(ctx context.Context) {
 	router.HandleFunc("/api/auth", s.CreateToken).Methods("POST")
 	router.HandleFunc("/api/auth/refresh", s.Validate(s.RefreshToken)).Methods("GET")
 	router.HandleFunc("/api/plugins", s.GetPluginsList).Methods("GET")
+	router.HandleFunc("/api/field/{field}", s.GetField).Methods("GET")
 	router.HandleFunc("/api/{category}", s.GetItems).Methods("GET")
 	router.HandleFunc("/api/{category}/{id}", s.Validate(s.Update)).Methods("PATCH", "OPTIONS")
 	router.HandleFunc("/api/alerts/{id}", s.GetAlert).Methods("GET")
@@ -269,6 +270,33 @@ func (s *Server) fetchResults(q models.Querier) ([]interface{}, error) {
 		return nil
 	})
 	return items, err
+}
+
+func (s *Server) GetField(w http.ResponseWriter, req *http.Request) {
+
+	vars := mux.Vars(req)
+	field := vars["field"]
+
+	tx := s.handler.Db.NewTx()
+	ctx := req.Context()
+
+	var values []string
+	query := "SELECT DISTINCT " + field + " FROM alerts WHERE " + field + " IS NOT NULL"
+
+	err := models.WithTx(ctx, tx, func(ctx context.Context, tx models.Txn) error {
+		var err error
+		values, err = tx.SelectFieldDistinctFromDb(query)
+		return err
+	})
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get values in column %v: %v", field, err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(values)
+
 }
 
 func (s *Server) GetItems(w http.ResponseWriter, req *http.Request) {

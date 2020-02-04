@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from "react";
+import React, { createContext, useReducer } from "react";
 import {
   useExpanded,
   useFilters,
@@ -8,7 +8,6 @@ import {
   useTable,
   useTableState
 } from "react-table";
-import { FilterContext } from "./FilterContext";
 import { ROW_SELECT_ACTIONS } from "../../library/utils";
 
 let TableContext;
@@ -66,12 +65,10 @@ function selectReducer(state, action) {
 }
 
 function TableProvider({ columns, data, ...props }) {
-  const { filters } = useContext(FilterContext);
-
   /** Hoists the tableState from our react-table. The first arg is the
    *  initalState, the second is our overrides. `filters` will change from the
    *  cause a re=-render which will cause our "filter" to take place */
-  const tableState = useTableState({ pageSize: 50 }, { filters: filters });
+  const tableState = useTableState({ pageSize: 50 });
 
   const [rowSelectState, rowSelectDispatch] = useReducer(selectReducer, {
     rows: [],

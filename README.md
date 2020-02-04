@@ -33,12 +33,12 @@ The only option to be specified as a CLI arg is a  bare minimum config.toml will
 Specifying An alert_config containing at least one alert definition is optional.
 
 ```
-./alert_manager -logtostderr -config config.toml -alert_config alert_config.yaml
+./alert_manager -logtostderr -config config.toml -alert-config alert_config.yaml
 ```
 
 For verbose logging:
 ```
-./alert_manager -logtostderr -v=<level> -config config.toml -alert_config alert_config.yaml
+./alert_manager -logtostderr -v=<level> -config config.toml -alert-config alert_config.yaml
 ```
 
 ## Deployment

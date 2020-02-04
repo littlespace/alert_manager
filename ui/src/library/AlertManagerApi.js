@@ -38,6 +38,7 @@ export class AlertManagerApi {
     sites = [],
     devices = [],
     severity = [],
+    sources = [],
     status = [1, 2, 3]
   } = {}) {
     var params = `?limit=${limit}`;
@@ -68,6 +69,10 @@ export class AlertManagerApi {
 
     if (severity.length !== 0) {
       params = params + `&severity__in=${severity.join(",")}`;
+    }
+
+    if (sources.length !== 0) {
+      params = params + `&source__in=${sources.join(",")}`;
     }
 
     if (history) {
@@ -271,6 +276,13 @@ export class AlertManagerApi {
   /// -------------------------------------------------------------------
   /// Misc To be cleaned up
   /// -------------------------------------------------------------------
+
+  getDistinctField(field) {
+    return fetch(`${this.url}/api/field/${field}`)
+      .then(handleErrors)
+      .then(response => response.json());
+  }
+
   async getWaitApiToken() {
     if (this.token === null) {
       console.log("WIll query a new token");

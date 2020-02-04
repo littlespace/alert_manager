@@ -1,26 +1,20 @@
-import React, {
-  useState,
-  useEffect,
-  useContext,
-  useReducer,
-  useRef
-} from "react";
+import React, { useState, useEffect, useContext } from "react";
 import styled from "styled-components";
-import { withRouter } from "react-router-dom";
+import { withRouter, useLocation } from "react-router-dom";
 
-import { ALERT_STATUS } from "../static";
 import { AlertManagerApi } from "../library/AlertManagerApi";
-import { FilterProvider } from "../components/contexts/FilterContext";
 import { HIGHLIGHT } from "../styles/styles";
+import { getSearchOptions, secondsToHms } from "../library/utils";
+
 import { NotificationContext } from "../components/contexts/NotificationContext";
-import { secondsToHms } from "../library/utils";
-import { TABLE_ACTIONS } from "../library/utils";
 import { TableProvider } from "../components/contexts/TableContext";
+
 import AlertsSpinner from "../components/Spinners/AlertsSpinner";
 import AlertsTable from "../components/AlertsTable/AlertsTable";
 import COLUMNS from "../components/AlertsTable/columns";
 import FilterToolbar from "../components/Filters/FilterToolbar";
 import NotificationBar from "../components/NotificationBar";
+import ActionsToolbar from "../components/Actions/ActionsToolbar";
 
 const api = new AlertManagerApi();
 
@@ -64,77 +58,35 @@ function sortAlerts(alerts) {
   );
 }
 
-function tableMutationReducer(state, action) {
-  switch (action.type) {
-    case TABLE_ACTIONS.SET_CLEAR_MUTATIONS:
-      return {
-        ...state,
-        clearMultiselect: true,
-        clearInput: true,
-        clearSelection: true
-      };
-    case TABLE_ACTIONS.UNSET_CLEAR_MUTATIONS:
-      return {
-        ...state,
-        clearMultiselect: false,
-        clearInput: false,
-        clearSelection: false
-      };
-    case TABLE_ACTIONS.SET_CLEAR_MULTISELECT:
-      return { ...state, clearMultiselect: true };
-    case TABLE_ACTIONS.UNSET_CLEAR_MULTISELECT:
-      return { ...state, clearMultiselect: false };
-    case TABLE_ACTIONS.SET_CLEAR_INPUT:
-      return { ...state, clearInput: true };
-    case TABLE_ACTIONS.UNSET_CLEAR_INPUT:
-      return { ...state, clearInput: false };
-    case TABLE_ACTIONS.SET_CLEAR_SELECTION:
-      return { ...state, clearSelection: true };
-    case TABLE_ACTIONS.UNSET_CLEAR_SELECTION:
-      return { ...state, clearSelection: false };
-    case TABLE_ACTIONS.SET_TIMERANGE:
-      return { ...state, timeRange: action.value };
-    case TABLE_ACTIONS.SET_STATUS:
-      return { ...state, status: action.status };
-    case TABLE_ACTIONS.SET_TEAM:
-      console.log("Setting Team", Boolean(action.value));
-      // If value resolves to null, this resets so we have all teams
-      return { ...state, team: Boolean(action.value) ? action.value : null };
-  }
-}
-
 // TODO: Add propTypes
 function AlertsView(props) {
-  const didMountRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [teamList, setTeamList] = useState([]);
+  const [search, setSearch] = useState(false);
+
+  let location = useLocation();
+
   const {
     notificationBar,
     setNotificationBar,
     notificationColor,
     notificationMsg
   } = useContext(NotificationContext);
-  const [tableMutationState, tableMutationDispatch] = useReducer(
-    tableMutationReducer,
-    {
-      clearMultiselect: false,
-      clearInput: false,
-      clearSelection: false,
-      timeRange: 0,
-      status: [ALERT_STATUS["active"], ALERT_STATUS["suppressed"]],
-      team: null
-    }
-  );
 
   const fetchAlerts = async () => {
     setLoading(true);
+    let options = getSearchOptions(location);
     const results = await api.getAlertsList({
       limit: 5000,
-      status: tableMutationState.status,
-      timerange_h: tableMutationState.timeRange,
       history: true,
-      teams: tableMutationState.team ? [tableMutationState.team] : []
+      timerange_h: options.timerange || null,
+      teams: options.team || [],
+      severity: options.severity || [],
+      status: options.status || [],
+      devices: options.device || [],
+      sites: options.site || [],
+      sources: options.source || []
     });
 
     // Default sorting
@@ -144,6 +96,7 @@ function AlertsView(props) {
 
     setAlerts(results);
     setLoading(false);
+    setSearch(false);
   };
 
   const fetchTeamList = async () => {
@@ -157,22 +110,16 @@ function AlertsView(props) {
     fetchTeamList();
   }, []);
 
-  // Update alerts when tableMutationState changes
+  // Trigger alert query when search is set to true
   useEffect(() => {
-    if (didMountRef.current) {
-      console.log("Fetch with tableMutations");
-      tableMutationDispatch({ type: TABLE_ACTIONS.SET_CLEAR_MUTATIONS });
+    if (search) {
       fetchAlerts();
     }
-  }, [
-    tableMutationState.status,
-    tableMutationState.timeRange,
-    tableMutationState.team
-  ]);
+  }, [search]);
 
+  // Used for our notifications bar
   useEffect(() => {
     if (notificationBar === true) {
-      tableMutationDispatch({ type: TABLE_ACTIONS.SET_CLEAR_MUTATIONS });
       setTimeout(() => setNotificationBar(false), 10000);
       // We need to add a timeout to wait before fetching the data again. It takes
       // the backend a few seconds to clear/ack the alerts.
@@ -181,15 +128,6 @@ function AlertsView(props) {
     }
   }, [notificationBar]);
 
-  // This needs to be last
-  useEffect(() => {
-    // Set to true on componentMount
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-    }
-  });
-
-  // TODO: FilterToolbar needs to be broken out into FiltersToolbar and ActionsToolbar
   return (
     <>
       {/* <div style={{ color: "black" }}>
@@ -197,29 +135,16 @@ function AlertsView(props) {
           <code>{console.log("Rendering the whole shabang")}</code>
         </pre>
       </div> */}
-      <FilterProvider>
-        <TableProvider data={alerts} columns={COLUMNS}>
-          {notificationBar ? (
-            <NotificationBar color={notificationColor} msg={notificationMsg} />
-          ) : null}
-          <Wrapper>
-            <FilterToolbar
-              alerts={alerts}
-              tableMutationDispatch={tableMutationDispatch}
-              tableMutationState={tableMutationState}
-              teamList={teamList}
-            />
-            {loading ? (
-              <AlertsSpinner />
-            ) : (
-              <AlertsTable
-                tableMutationDispatch={tableMutationDispatch}
-                tableMutationState={tableMutationState}
-              />
-            )}
-          </Wrapper>
-        </TableProvider>
-      </FilterProvider>
+      <TableProvider data={alerts} columns={COLUMNS}>
+        {notificationBar ? (
+          <NotificationBar color={notificationColor} msg={notificationMsg} />
+        ) : null}
+        <Wrapper>
+          <ActionsToolbar teamList={teamList} setSearch={setSearch} />
+          <FilterToolbar setSearch={setSearch} />
+          {loading ? <AlertsSpinner /> : <AlertsTable />}
+        </Wrapper>
+      </TableProvider>
     </>
   );
 }

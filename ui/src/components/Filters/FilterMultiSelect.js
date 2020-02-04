@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import ReactSelect from "react-select";
+
+import { AlertManagerApi } from "../../library/AlertManagerApi";
+import { useHistory, useLocation } from "react-router-dom";
 
 import {
   CRITICAL,
@@ -9,11 +12,18 @@ import {
   SECONDARY,
   WARN
 } from "../../styles/styles";
-import { FilterContext } from "../contexts/FilterContext";
-import { TABLE_ACTIONS } from "../../library/utils";
 
-// Using ReactSelects custom way to style
-// TODO: Any way we can figure out how to do styled components here?
+import {
+  getFilterValuesFromType,
+  getSearchOptionsByKey,
+  setSearchString
+} from "../../library/utils";
+
+const api = new AlertManagerApi();
+
+const TRANSLATE_FILTERS = ["status", "severity"];
+
+// TODO:  convert to styled components
 const ReactSelectStyles = {
   control: styles => ({ ...styles, backgroundColor: SECONDARY }),
   option: (styles, state) => ({
@@ -46,63 +56,57 @@ const ReactSelectStyles = {
   }
 };
 
-const onChangeHandler = (
-  setSelectedOptions,
-  filters,
-  setFilters,
-  filterType,
-  values
-) => {
-  // e.g if user deleted all the options, we will have no entries
-  if (values === null) {
-    delete filters[filterType];
-    setFilters(filters => ({ ...filters }));
-    setSelectedOptions([]);
+function getSelectedOptions(filterType, location) {
+  let options = getSearchOptionsByKey(filterType, location);
+  // TODO: Remove when we move "status" and "severity" into a DB table
+  if (TRANSLATE_FILTERS.includes(filterType.toLowerCase())) {
+    return getFilterValues(filterType, options);
   } else {
-    setSelectedOptions(values);
-    const filterValues = [];
-    values.forEach(e => filterValues.push(e.value));
-    setFilters(filters => ({ ...filters, [filterType]: filterValues }));
+    return options.map(option => ({ label: option, value: option }));
   }
-};
+}
 
-function FilterMultiSelect({
-  filterType,
-  options,
-  placeholder,
-  tableMutationState,
-  tableMutationDispatch,
-  ...props
-}) {
-  // [{ label: "ACTIVE", value: "ACTIVE"}]
-  const { filters, setFilters } = useContext(FilterContext);
-  const [selectedOptions, setSelectedOptions] = useState([]);
+function getFilterValues(filterType, options) {
+  // This expects to return string values for the given type
+  const values = getFilterValuesFromType(filterType);
+  // This will return an arry of options for the select, e.b [{ label: "warn", value: 1}, {...}]
+  return options.map(option => ({ label: values[option], value: option }));
+}
+
+function FilterMultiSelect({ filterType, placeholder }) {
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  let history = useHistory();
+  let location = useLocation();
 
   useEffect(() => {
-    if (tableMutationState.clearMultiselect) {
-      setSelectedOptions([]);
-      setFilters({});
-      tableMutationDispatch({ type: TABLE_ACTIONS.UNSET_CLEAR_MULTISELECT });
-    }
-  }, [tableMutationState.clearMultiselect]);
+    // Get the options and set them for the multi-select based on the select type.
+    const getOptions = async () => {
+      let options = await api.getDistinctField(filterType);
+      // TODO: Remove when we move "status" and "severity" into a DB table
+      if (TRANSLATE_FILTERS.includes(filterType.toLowerCase())) {
+        setOptions(getFilterValues(filterType, options));
+      } else {
+        setOptions(options.map(option => ({ label: option, value: option })));
+      }
+    };
+    setLoading(true);
+    getOptions();
+    setLoading(false);
+  }, []);
 
   return (
     <ReactSelect
-      isMulti={true}
-      value={selectedOptions}
+      isMulti
+      value={getSelectedOptions(filterType, location)}
       options={options}
       placeholder={placeholder}
       onChange={values =>
-        onChangeHandler(
-          setSelectedOptions,
-          filters,
-          setFilters,
-          filterType,
-          values
-        )
+        setSearchString(filterType, values, location, history)
       }
       styles={ReactSelectStyles}
-      {...props}
+      isLoading={loading}
     />
   );
 }
