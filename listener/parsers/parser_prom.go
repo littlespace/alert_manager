@@ -48,7 +48,7 @@ func (p *PromParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 	if labels["entity"] == nil || labels["description"] == nil {
 		return nil, fmt.Errorf("Entity and description are required")
 	}
-	var source string
+	source := "prometheus"
 	if labels["source"] != nil {
 		source = labels["source"].(string)
 	}
