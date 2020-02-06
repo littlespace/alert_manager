@@ -65,6 +65,7 @@ type Txn interface {
 	NewRecord(alertId int64, event string) (int64, error)
 	SelectTeams(query string, args ...interface{}) (Teams, error)
 	SelectUsers(query string, args ...interface{}) (Users, error)
+	SelectFieldDistinctFromDb(query string, args ...interface{}) ([]string, error)
 	Rollback() error
 	Commit() error
 	Exec(query string, args ...interface{}) error
@@ -137,4 +138,10 @@ func (t *MyTime) Scan(src interface{}) error {
 	}
 	*t = MyTime{time.Unix(ns.Int64, 0)}
 	return nil
+}
+
+func (tx *Tx) SelectFieldDistinctFromDb(query string, args ...interface{}) ([]string, error) {
+	var values []string
+	err := tx.Select(&values, query, args...)
+	return values, err
 }

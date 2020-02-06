@@ -1,9 +1,8 @@
 import React, { useEffect, useContext } from "react";
 import styled from "styled-components";
 
-import { FilterContext } from "../contexts/FilterContext";
 import { PRIMARY } from "../../styles/styles";
-import { ROW_SELECT_ACTIONS, TABLE_ACTIONS } from "../../library/utils";
+import { ROW_SELECT_ACTIONS } from "../../library/utils";
 import { TableContext } from "../contexts/TableContext";
 import PaginationToolbar from "./PaginationToolbar";
 import SelectToolbar from "./SelectToolbar";
@@ -19,10 +18,7 @@ const Table = styled.table`
   width: 100%;
 `;
 
-export default function AlertsTable({
-  tableMutationState,
-  tableMutationDispatch
-}) {
+export default function AlertsTable() {
   const {
     columns,
     getTableProps,
@@ -30,7 +26,6 @@ export default function AlertsTable({
     rowSelectDispatch,
     rowSelectState
   } = useContext(TableContext);
-  const { filters } = useContext(FilterContext);
 
   useEffect(() => {
     // Set allSelected to false to trigger a checkbox update for Selection Header Cell
@@ -38,22 +33,7 @@ export default function AlertsTable({
     rowSelectDispatch({
       type: ROW_SELECT_ACTIONS.UNSELECT_ALL
     });
-
-    if (tableMutationState.clearSelection) {
-      // Cleanup the filters and row selects on unmount
-      return () => {
-        tableMutationDispatch({
-          type: TABLE_ACTIONS.SET_CLEAR_SELECTION
-        });
-        rowSelectDispatch({ type: ROW_SELECT_ACTIONS.UNSELECT_ALL });
-      };
-    }
-  }, [
-    filters,
-    state[0].pageSize,
-    state[0].pageIndex,
-    tableMutationState.clearSelection
-  ]);
+  }, [state[0].pageSize, state[0].pageIndex]);
 
   return (
     <>

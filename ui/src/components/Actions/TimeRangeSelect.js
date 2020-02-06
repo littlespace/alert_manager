@@ -1,6 +1,8 @@
 import React from "react";
+import styled from "styled-components";
+import { useLocation } from "react-router-dom";
 
-import { TABLE_ACTIONS } from "../../library/utils";
+import { getSearchOptionsByKey } from "../../library/utils";
 
 import ActionSelect from "./ActionSelect";
 
@@ -12,17 +14,47 @@ const TIME_RANGES_H = [
   { label: "30 Days", value: "720h" }
 ];
 
-export default function TimeRangeSelect({ ...props }) {
+const TimeRange = styled.div`
+  flex: 0 0 200px;
+  margin: auto 1em;
+`;
+
+function getValueFromOptions(options) {
+  // No option is selected
+  if (options.length === 0) {
+    return null;
+  }
+
+  let label;
+  let value = options[0];
+  TIME_RANGES_H.forEach(timeRange => {
+    if (timeRange.value === value) {
+      label = timeRange.label;
+    }
+  });
+
+  return { label: label, value: value };
+}
+
+function getSelectedOption(actionType, location) {
+  let options = getSearchOptionsByKey(actionType, location);
+  return getValueFromOptions(options);
+}
+
+export default function TimeRangeSelect({ setSearch }) {
+  let location = useLocation();
+  const actionType = "timerange";
+
   return (
-    <ActionSelect actionType={TABLE_ACTIONS.SET_TIMERANGE} {...props}>
-      <option value="DEFAULT" disabled hidden>
-        Select Time Range
-      </option>
-      {TIME_RANGES_H.map((time, index) => (
-        <option key={index} value={time["value"]}>
-          {time["label"]}
-        </option>
-      ))}
-    </ActionSelect>
+    <TimeRange>
+      <ActionSelect
+        actionType={actionType}
+        options={TIME_RANGES_H}
+        placeholder={"Select Time Range"}
+        searchOnChange={true}
+        setSearch={setSearch}
+        value={getSelectedOption(actionType, location)}
+      />
+    </TimeRange>
   );
 }
