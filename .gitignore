@@ -6,3 +6,7 @@ ui/Makefile
 
 # Environment Files
 .env
+
+# Config files
+config.toml
+*.sql
