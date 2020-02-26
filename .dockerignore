@@ -1,2 +1,9 @@
 go.mod
 alert_manager
+
+# Unneed directories and files for the API container
+ui/
+db/
+
+# Environment Files
+.env

@@ -3,3 +3,10 @@ bin/
 alert_manager
 .vscode/
 ui/Makefile
+
+# Environment Files
+.env
+
+# Config files
+config.toml
+*.sql
