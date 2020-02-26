@@ -1,0 +1,43 @@
+version: "3"
+services:
+  db_local:
+    build:
+      context: ./db
+      dockerfile: dev.Dockerfile
+      # Build args hardcoded but can be changed to reference an ENV variable
+      # if we leave them blank. 
+      args:
+        PGPASSWORD: notVerySecurePWD
+        SQLFIE: alert_manager_local.sql
+    ports: 
+        - "5432:5432"
+
+  api_local: 
+    build: 
+      context: .
+      dockerfile: dev.Dockerfile
+    ports:
+        - "8181:8181"
+        - "8282:8282"
+    volumes: 
+      # mount our local repo inside the container to be able to change 
+      # the files like normal and have a hot reload of the API
+      - ./:/go/src/github.com/mayuresh82/alert_manager 
+    depends_on: 
+      # We want the DB to come up first
+      - db_local
+
+  web_local:
+    build: 
+      context: ./ui
+      dockerfile: dev.Dockerfile
+    ports:
+        - "3000:3000"
+    volumes: 
+      # mount our local repo inside the container to be able to change 
+      # the files like normal and have a hot reload of the API
+      - ./ui:/alert_manager_web
+    depends_on: 
+      # We want the DB and API to come up first.
+      - db_local
+      - api_local
