@@ -1,9 +1,9 @@
 
 FROM node:10.12.0-alpine
 
-# We are using the localhost instead of "docker.host.internal" because the env
-# will be referenced in the client, e.g web broswer on the host, your laptop.
-ENV REACT_APP_ALERT_MANAGER_SERVER=http://localhost:8181/
+ARG REACT_APP_ALERT_MANAGER_SERVER
+
+ENV REACT_APP_ALERT_MANAGER_SERVER=$REACT_APP_ALERT_MANAGER_SERVER
 
 WORKDIR /alert_manager_web
 

@@ -3,3 +3,6 @@ bin/
 alert_manager
 .vscode/
 ui/Makefile
+
+# Environment Files
+.env

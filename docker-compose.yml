@@ -4,11 +4,13 @@ services:
     build:
       context: ./db
       dockerfile: dev.Dockerfile
-      # Build args hardcoded but can be changed to reference an ENV variable
-      # if we leave them blank. 
+      # These variables are pulled in from the .env file
       args:
-        PGPASSWORD: notVerySecurePWD
-        SQLFIE: alert_manager_local.sql
+        POSTGRES_DB: "${POSTGRES_DB}"
+        POSTGRES_USER: "${POSTGRES_USER}"
+        POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+        # Should be a sql export file, e.g database.sql. Read more here in "initialization scripts": https://hub.docker.com/_/postgres
+        SQL_FILE: "${SQL_FILE}" 
     ports: 
         - "5432:5432"
 
@@ -16,6 +18,10 @@ services:
     build: 
       context: .
       dockerfile: dev.Dockerfile
+      # These variables are pulled in from the .env file
+      args:
+        CONFIG_FILE: "${CONFIG_FILE}"
+        ALERT_CONFIG_FILE: "${ALERT_CONFIG_FILE}"
     ports:
         - "8181:8181"
         - "8282:8282"
@@ -31,6 +37,10 @@ services:
     build: 
       context: ./ui
       dockerfile: dev.Dockerfile
+      args:
+        # We are using the localhost instead of "docker.host.internal" because the env
+        # will be referenced in the client, e.g web broswer on the host, your laptop.
+        REACT_APP_ALERT_MANAGER_SERVER: http://localhost:8181/
     ports:
         - "3000:3000"
     volumes: 

@@ -1,6 +1,11 @@
 FROM golang:1.12-alpine as builder
 
+ARG CONFIG_FILE
+ARG ALERT_CONFIG_FILE
+
 ENV GO111MODULE=on
+ENV CONFIG_FILE=$CONFIG_FILE
+ENV ALERT_CONFIG_FILE=$ALERT_CONFIG_FILE
 
 RUN apk update && \
     apk upgrade && \
@@ -15,4 +20,4 @@ COPY . .
 # Install CompileDaemon to enable hot reloading 
 RUN go get github.com/githubnemo/CompileDaemon
 
-ENTRYPOINT CompileDaemon -log-prefix=false -build="go build -mod=vendor ./cmd/alert_manager" -command="./alert_manager -logtostderr -v=4 -config config.toml -alert-config alert_config.yaml"
+CMD CompileDaemon -log-prefix=false -build="go build -mod=vendor ./cmd/alert_manager" -command="./alert_manager -logtostderr -v=4 -config $CONFIG_FILE -alert-config $ALERT_CONFIG_FILE"
