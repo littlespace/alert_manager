@@ -23,7 +23,7 @@ Current install method is via a docker container (docker pull mayuresh82/alert_m
 4. Run `cd $GOPATH/src/github.com/mayuresh82/alert_manager`
 5. Run `make`
 
-### Development Environment 
+## Development Environment 
 You can use docker-compose to run the `api`, `db` and `web` locally for development purposes. **This is not intended to be used in PRODUCTION.** There are two steps to get this working afterwhich will create three docker containers, `db_local`, `api_local`, `web_local`.
 1. You will need to create three files 
 2. Run `docker-compose up` 
