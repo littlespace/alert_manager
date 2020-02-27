@@ -21,6 +21,7 @@ var mockAlerts = map[string]*models.Alert{
 	"existing_a4":     tu.MockAlert(400, "Test Alert 4", "", "d4", "e4", "src4", "scp4", "t1", "4", "INFO", []string{"e", "f"}, nil),
 	"existing_a5":     tu.MockAlert(500, "Test Alert 5", "", "d5", "e5", "src5", "scp5", "t1", "5", "WARN", []string{"g", "h"}, nil),
 	"existing_a6_agg": tu.MockAlert(600, "Test Alert 6", "", "d6", "e6", "src6", "scp6", "t1", "6", "WARN", []string{"g", "h"}, nil),
+	"existing_a7":     tu.MockAlert(700, "Test Alert 7", "", "d7", "e7", "src7", "scp7", "t1", "7", "WARN", []string{"g", "h"}, nil),
 }
 
 var nowTime = models.MyTime{time.Now()}
@@ -39,9 +40,13 @@ type MockTx struct {
 	*models.Tx
 	inQuery     func(query string) error
 	updateAlert func(alert *models.Alert) error
+	newInsert   func(query string, item interface{}) (int64, error)
 }
 
 func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
+	if t.newInsert != nil {
+		return t.newInsert(query, item)
+	}
 	switch item.(type) {
 	case *models.Alert:
 		alert := item.(*models.Alert)
@@ -166,8 +171,8 @@ func NewTestHandler(procChanSize int) *AlertHandler {
 	return h
 }
 
-func TestHandlerAlertActive(t *testing.T) {
-	h := NewTestHandler(3)
+func TestHandlerAlertActiveNew(t *testing.T) {
+	h := NewTestHandler(2)
 	tx := h.Db.NewTx()
 	ctx := context.Background()
 
@@ -189,7 +194,12 @@ func TestHandlerAlertActive(t *testing.T) {
 	err = h.handleActive(ctx, tx, a3)
 	assert.Nil(t, err)
 	assert.Equal(t, h.Teams.Contains("t2"), true)
-	<-h.procChan
+}
+
+func TestHandlerAlertActiveExisting(t *testing.T) {
+	h := NewTestHandler(1)
+	tx := h.Db.NewTx()
+	ctx := context.Background()
 
 	// test existing active alert
 	tx.(*MockTx).updateAlert = func(alert *models.Alert) error {
@@ -197,7 +207,7 @@ func TestHandlerAlertActive(t *testing.T) {
 		return nil
 	}
 	a1 := tu.MockAlert(0, "Test Alert 1", "", "d1", "e1", "src1", "scp1", "t1", "1", "WARN", []string{"a", "b"}, nil)
-	err = h.handleActive(ctx, tx, a1)
+	err := h.handleActive(ctx, tx, a1)
 	assert.Nil(t, err)
 	assert.Equal(t, int(a1.Id), 0)
 	assert.Equal(t, mockAlerts["existing_a1"].LastActive, nowTime)
@@ -215,6 +225,12 @@ func TestHandlerAlertActive(t *testing.T) {
 	a4 := tu.MockAlert(100, "Test Alert 2", "QFX PE Error code: 0x2104be test", "dev3", "e2", "src2", "scp2", "t1", "2", "WARN", []string{"c", "d"}, nil)
 	a4.ExtendLabels()
 	assert.NotNil(t, h.Suppressor.Match(a4.Labels))
+}
+
+func TestHandlerAlertActiveDedup(t *testing.T) {
+	h := NewTestHandler(2)
+	tx := h.Db.NewTx()
+	ctx := context.Background()
 
 	// test a de-dedup of a cleared alert
 	tx.(*MockTx).updateAlert = func(alert *models.Alert) error {
@@ -227,18 +243,18 @@ func TestHandlerAlertActive(t *testing.T) {
 		}
 		return nil
 	}
-	new = tu.MockAlert(0, "Test Alert 5", "", "d5", "e5", "src5", "scp5", "t1", "5", "WARN", []string{"g", "h"}, nil)
+	new := tu.MockAlert(0, "Test Alert 5", "", "d5", "e5", "src5", "scp5", "t1", "5", "WARN", []string{"g", "h"}, nil)
 	mockAlerts["existing_a5"].Status = models.Status_CLEARED
 	mockAlerts["existing_a6_agg"].Status = models.Status_CLEARED
 	mockAlerts["existing_a5"].AggregatorId = 600
-	err = h.handleActive(ctx, tx, new)
+	err := h.handleActive(ctx, tx, new)
 	assert.Nil(t, err)
 	assert.Equal(t, mockAlerts["existing_a5"].Status, models.Status_ACTIVE)
 	assert.Equal(t, mockAlerts["existing_a5"].LastActive, nowTime)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].Status, models.Status_ACTIVE)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].LastActive, nowTime)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].StartTime, nowTime)
-	event = <-h.procChan
+	event := <-h.procChan
 	assert.Equal(t, event.Alert.Id, int64(600))
 
 	// test dedup of cleared alert - active supprule
@@ -251,6 +267,18 @@ func TestHandlerAlertActive(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, mockAlerts["existing_a5"].Status, models.Status_CLEARED)
 	assert.Equal(t, mockAlerts["existing_a6_agg"].Status, models.Status_CLEARED)
+
+	// test dedup of cleared alert - disabled by config
+	tx.(*MockTx).newInsert = func(query string, item interface{}) (int64, error) {
+		return 999, nil
+	}
+	new = tu.MockAlert(0, "Test Alert 7", "", "d7", "e7", "src7", "scp7", "t1", "7", "WARN", []string{"g", "h"}, nil)
+	mockAlerts["existing_a7"].Status = models.Status_CLEARED
+	err = h.handleActive(ctx, tx, new)
+	assert.Nil(t, err)
+	assert.Equal(t, int(new.Id), 999)
+	event = <-h.procChan
+	assert.Equal(t, event.Type, models.EventType_ACTIVE)
 }
 
 func TestHandlerAlertClear(t *testing.T) {

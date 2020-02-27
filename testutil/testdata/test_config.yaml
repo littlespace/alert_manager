@@ -37,6 +37,10 @@ alert_config:
     config:
       dont_clear_acknowledged: true
 
+  - name: Test Alert 7
+    config:
+      disable_dedup: true
+
   - name: Neteng BGP Down
     config:
       scope: bgp_peer

@@ -120,8 +120,13 @@ func (h *AlertHandler) Start(ctx context.Context) {
 
 func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
 	var labels models.Labels
-	existingAlert, err := h.GetExisting(tx, alert)
-	if err != nil {
+	var existingAlert *models.Alert
+	config, ok := Config.GetAlertConfig(alert.Name)
+	// check existing alerts for de-duping if disable_dedup is not true in config, or if config is not defined
+	if (ok && !config.Config.DisableDedup) || !ok {
+		existingAlert, _ = h.GetExisting(tx, alert)
+	}
+	if existingAlert == nil {
 		glog.V(2).Infof("No existing alert found for %s:%s:%s", alert.Name, alert.Device.String, alert.Entity)
 		// add transforms
 		h.applyTransforms(alert)
@@ -185,7 +190,7 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 	}
 	// dont clear acknowledged alerts if the config says so
 	if config, ok := Config.GetAlertConfig(existingAlert.Name); ok && config.Config.DontClearAcknowledged && existingAlert.Owner.Valid {
-		glog.V(4).Infof("Not clearing ack'd alert: %d", existingAlert.Id)
+		glog.Infof("Not clearing ack'd alert: %d", existingAlert.Id)
 		return nil
 	}
 	return h.clearAlert(ctx, tx, existingAlert)
