@@ -190,7 +190,7 @@ func (h *AlertHandler) handleClear(ctx context.Context, tx models.Txn, alert *mo
 	}
 	// dont clear acknowledged alerts if the config says so
 	if config, ok := Config.GetAlertConfig(existingAlert.Name); ok && config.Config.DontClearAcknowledged && existingAlert.Owner.Valid {
-		glog.Infof("Not clearing ack'd alert: %d", existingAlert.Id)
+		glog.V(4).Infof("Not clearing ack'd alert: %d", existingAlert.Id)
 		return nil
 	}
 	return h.clearAlert(ctx, tx, existingAlert)
