@@ -49,6 +49,7 @@ type AlertConfig struct {
 		NotifyRemind          time.Duration `yaml:"notify_remind"`
 		DisableNotify         bool          `yaml:"disable_notify"`
 		DontClearAcknowledged bool          `yaml:"dont_clear_acknowledged"`
+		DisableDedup          bool          `yaml:"disable_dedup"`
 		Outputs               Outputs
 		StaticLabels          map[string]interface{} `yaml:"static_labels"`
 		AggregationRules      []string               `yaml:"aggregation_rules"`
