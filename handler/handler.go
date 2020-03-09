@@ -120,12 +120,7 @@ func (h *AlertHandler) Start(ctx context.Context) {
 
 func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *models.Alert) error {
 	var labels models.Labels
-	var existingAlert *models.Alert
-	config, ok := Config.GetAlertConfig(alert.Name)
-	// check existing alerts for de-duping if disable_dedup is not true in config, or if config is not defined
-	if (ok && !config.Config.DisableDedup) || !ok {
-		existingAlert, _ = h.GetExisting(tx, alert)
-	}
+	existingAlert, _ := h.GetExisting(tx, alert)
 	if existingAlert == nil {
 		glog.V(2).Infof("No existing alert found for %s:%s:%s", alert.Name, alert.Device.String, alert.Entity)
 		// add transforms
@@ -212,10 +207,18 @@ func (h *AlertHandler) GetExisting(tx models.Txn, alert *models.Alert) (*models.
 	if alert.Id > 0 {
 		existing, err = tx.GetAlert(models.QuerySelectById, alert.Id)
 	} else {
+		query := models.QuerySelectByNameEntity
+		devQuery := models.QuerySelectByDevice
+		config, ok := Config.GetAlertConfig(alert.Name)
+		// if disable_dedup is not true in config, only check for currently active alerts.
+		if ok && config.Config.DisableDedup {
+			query = models.QueryActiveByNameEntity
+			devQuery = models.QueryActiveByDevice
+		}
 		if alert.Device.Valid {
-			existing, err = tx.GetAlert(models.QuerySelectByDevice, alert.Name, alert.Entity, alert.Device.String)
+			existing, err = tx.GetAlert(devQuery, alert.Name, alert.Entity, alert.Device.String)
 		} else {
-			existing, err = tx.GetAlert(models.QuerySelectByNameEntity, alert.Name, alert.Entity)
+			existing, err = tx.GetAlert(query, alert.Name, alert.Entity)
 		}
 	}
 	if err != nil {
@@ -240,10 +243,10 @@ func (h *AlertHandler) reactivateAlert(tx models.Txn, existingAlert *models.Aler
 	alreadyActive := existingAlert.Status == models.Status_ACTIVE || existingAlert.Status == models.Status_SUPPRESSED
 	for _, a := range toUpdate {
 		a.LastActive = newLastActive
-		a.StartTime = newLastActive
 		if !alreadyActive {
 			glog.V(4).Infof("Reactivating old alert %d", a.Id)
 			a.Status = models.Status_ACTIVE
+			a.StartTime = newLastActive
 		}
 		if err := tx.UpdateAlert(a); err != nil {
 			h.statDbError.Add(1)
