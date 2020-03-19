@@ -82,6 +82,7 @@ const (
 	Sev_CRITICAL AlertSeverity = 1
 	Sev_WARN     AlertSeverity = 2
 	Sev_INFO     AlertSeverity = 3
+	Sev_MAJOR    AlertSeverity = 4
 
 	Status_ACTIVE     AlertStatus = 1
 	Status_SUPPRESSED AlertStatus = 2
@@ -90,7 +91,7 @@ const (
 )
 
 var (
-	SevMap    = map[string]AlertSeverity{"CRITICAL": Sev_CRITICAL, "WARN": Sev_WARN, "INFO": Sev_INFO}
+	SevMap    = map[string]AlertSeverity{"CRITICAL": Sev_CRITICAL, "WARN": Sev_WARN, "INFO": Sev_INFO, "MAJOR": Sev_MAJOR}
 	StatusMap = map[string]AlertStatus{"ACTIVE": Status_ACTIVE, "SUPPRESSED": Status_SUPPRESSED, "EXPIRED": Status_EXPIRED, "CLEARED": Status_CLEARED}
 )
 

@@ -174,7 +174,8 @@ export class AlertManagerApi {
     let severity_to_id = {
       CRITICAL: 1,
       WARN: 2,
-      INFO: 3
+      INFO: 3,
+      MAJOR: 4
     };
 
     if (!(severity.toUpperCase() in severity_to_id)) {
