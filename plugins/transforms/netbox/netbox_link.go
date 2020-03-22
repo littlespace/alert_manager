@@ -63,15 +63,17 @@ func ifaceLabels(ifaceData map[string]interface{}) (models.Labels, error) {
 	return labels, nil
 }
 
-func InterfaceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
+func InterfaceLabels(n *Netbox, alert *models.Alert, addSite bool) (models.Labels, error) {
 	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=%s", alert.Device.String, alert.Entity)
 	result, err := getResult(n, url)
 	if err != nil {
 		return nil, err
 	}
 	// add site info to alert
-	site := result["site_data"].(map[string]interface{})
-	alert.AddSite(site["name"].(string))
+	if addSite {
+		site := result["site_data"].(map[string]interface{})
+		alert.AddSite(site["name"].(string))
+	}
 
 	iface := result["interfaces"].(map[string]interface{})
 	ifaceData, ok := iface[alert.Entity]
@@ -89,15 +91,17 @@ func InterfaceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	return labels, nil
 }
 
-func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
+func CircuitLabels(n *Netbox, alert *models.Alert, addSite bool) (models.Labels, error) {
 	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=%s", alert.Device.String, alert.Entity)
 	result, err := getResult(n, url)
 	if err != nil {
 		return nil, err
 	}
 	// add site info to alert
-	site := result["site_data"].(map[string]interface{})
-	alert.AddSite(site["name"].(string))
+	if addSite {
+		site := result["site_data"].(map[string]interface{})
+		alert.AddSite(site["name"].(string))
+	}
 
 	ifc := result["interfaces"].(map[string]interface{})
 	ifaceD, ok := ifc[alert.Entity]

@@ -25,8 +25,11 @@ type Client struct {
 type Netbox struct {
 	Addr, Token string
 	Priority    int
-	Register    string
-	client      Clienter
+	Matches     map[string]struct {
+		Label  string
+		Values []string
+	}
+	client Clienter
 }
 
 func (n *Netbox) Name() string {
@@ -35,10 +38,6 @@ func (n *Netbox) Name() string {
 
 func (n *Netbox) GetPriority() int {
 	return n.Priority
-}
-
-func (n *Netbox) GetRegister() string {
-	return n.Register
 }
 
 func (n *Netbox) getResults(data []byte) ([]interface{}, error) {
@@ -86,16 +85,21 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 			scope = scp.(string)
 		}
 	}
+	addSite := true
+	if site, ok := alert.Labels["site"]; ok {
+		alert.AddSite(site.(string))
+		addSite = false
+	}
 	var err error
 	switch scope {
 	case "device":
-		l, err = DeviceLabels(n, alert)
+		l, err = DeviceLabels(n, alert, addSite)
 	case "phy_interface", "agg_interface":
-		l, err = InterfaceLabels(n, alert)
+		l, err = InterfaceLabels(n, alert, addSite)
 	case "link":
-		l, err = CircuitLabels(n, alert)
+		l, err = CircuitLabels(n, alert, addSite)
 	case "bgp_peer":
-		l, err = BgpLabels(n, alert)
+		l, err = BgpLabels(n, alert, addSite)
 	case "dns_monitor":
 		if val, ok := alert.Labels["vipIp"]; ok {
 			deviceName, er := IptoDevice(n, val.(string))
@@ -103,8 +107,11 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 				alert.AddDevice(deviceName)
 			}
 		}
-		l, err = DeviceLabels(n, alert)
-
+		l, err = DeviceLabels(n, alert, addSite)
+	case "server":
+		l, err = ServerLabels(n, alert, addSite)
+	case "":
+		return nil
 	default:
 		glog.V(2).Infof("Not applying transform: Scope %s is not defined in netbox", alert.Scope)
 		return nil
