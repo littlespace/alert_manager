@@ -25,11 +25,8 @@ type Client struct {
 type Netbox struct {
 	Addr, Token string
 	Priority    int
-	Matches     map[string]struct {
-		Label  string
-		Values []string
-	}
-	client Clienter
+	Options     map[string]string
+	client      Clienter
 }
 
 func (n *Netbox) Name() string {
@@ -85,21 +82,16 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 			scope = scp.(string)
 		}
 	}
-	addSite := true
-	if site, ok := alert.Labels["site"]; ok {
-		alert.AddSite(site.(string))
-		addSite = false
-	}
 	var err error
 	switch scope {
 	case "device":
-		l, err = DeviceLabels(n, alert, addSite)
+		l, err = DeviceLabels(n, alert)
 	case "phy_interface", "agg_interface":
-		l, err = InterfaceLabels(n, alert, addSite)
+		l, err = InterfaceLabels(n, alert)
 	case "link":
-		l, err = CircuitLabels(n, alert, addSite)
+		l, err = CircuitLabels(n, alert)
 	case "bgp_peer":
-		l, err = BgpLabels(n, alert, addSite)
+		l, err = BgpLabels(n, alert)
 	case "dns_monitor":
 		if val, ok := alert.Labels["vipIp"]; ok {
 			deviceName, er := IptoDevice(n, val.(string))
@@ -107,9 +99,9 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 				alert.AddDevice(deviceName)
 			}
 		}
-		l, err = DeviceLabels(n, alert, addSite)
+		l, err = DeviceLabels(n, alert)
 	case "server":
-		l, err = ServerLabels(n, alert, addSite)
+		l, err = ServerLabels(n, alert)
 	case "":
 		return nil
 	default:

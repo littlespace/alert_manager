@@ -7,10 +7,12 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
-const queryUrl = "/api/rblx/device/dm/v1/"
-
 func deviceLabels(n *Netbox, device string) (models.Labels, error) {
-	url := n.Addr + queryUrl + fmt.Sprintf("%s?interfaces=lo0.0", device)
+	queryURL, ok := n.Options["rblx_dm_url"]
+	if !ok {
+		return nil, fmt.Errorf("Cant find Query URL in options")
+	}
+	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=lo0.0", device)
 	body, err := n.query(url)
 	if err != nil {
 		return nil, err
@@ -33,12 +35,14 @@ func deviceLabels(n *Netbox, device string) (models.Labels, error) {
 	return labels, nil
 }
 
-func DeviceLabels(n *Netbox, alert *models.Alert, addSite bool) (models.Labels, error) {
+func DeviceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	labels, err := deviceLabels(n, alert.Device.String)
 	if err != nil {
 		return nil, err
 	}
-	if addSite {
+	if site, ok := alert.Labels["site"]; ok {
+		alert.AddSite(site.(string))
+	} else {
 		alert.AddSite(labels["site"].(string))
 	}
 	return labels, nil

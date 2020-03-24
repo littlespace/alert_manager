@@ -28,8 +28,8 @@ func queryIfaceResults(n *Netbox, ip string) ([]interface{}, error) {
 	return n.getResults(body)
 }
 
-func BgpLabels(n *Netbox, alert *models.Alert, addSite bool) (models.Labels, error) {
-	dLabels, err := DeviceLabels(n, alert, addSite)
+func BgpLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
+	dLabels, err := DeviceLabels(n, alert)
 	if err != nil {
 		return nil, err
 	}
