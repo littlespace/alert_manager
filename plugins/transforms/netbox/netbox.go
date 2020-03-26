@@ -100,6 +100,8 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 			}
 		}
 		l, err = DeviceLabels(n, alert)
+	case "mpls_lsp":
+		l, err = MplsLspLabels(n, alert)
 	case "server":
 		l, err = ServerLabels(n, alert)
 	case "":

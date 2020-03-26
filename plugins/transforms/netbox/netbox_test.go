@@ -622,6 +622,17 @@ func TestNetboxBgp(t *testing.T) {
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
 }
 
+func TestNetboxMplsLsp(t *testing.T) {
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "dev1-bb1-dev2-bb1-1", "src1", "mpls_lsp", "t1", "1", "WARN", []string{}, nil)
+	n := &Netbox{client: &mockClient{}, Options: map[string]string{"rblx_dm_url": "/foobar/"}}
+	if err := n.Apply(a); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, a.Labels["remoteDeviceName"], "dev2-bb1")
+	assert.Equal(t, a.Labels["remoteDeviceSite"], "bb1")
+	assert.Equal(t, a.Labels["remoteDeviceStatus"], "Active")
+}
+
 func TestNetboxIptoDevice(t *testing.T) {
 
 	n := &Netbox{client: &mockClient{}}
