@@ -12,7 +12,7 @@ import (
 )
 
 var testDatas = map[string][]byte{
-	"/api/rblx/device/dm/v1/dev1-bb1?interfaces=lo0.0": []byte(`
+	"/foobar/dev1-bb1?interfaces=lo0.0": []byte(`
   {
     "name": "dev1-bb1",
     "primary_ip": "12.8.1.1/32",
@@ -45,7 +45,7 @@ var testDatas = map[string][]byte{
     },
     "region": "US_WEST"
   }`),
-	"/api/rblx/device/dm/v1/dev2-bb1?interfaces=lo0.0": []byte(`
+	"/foobar/dev2-bb1?interfaces=lo0.0": []byte(`
   {
     "name": "dev2-bb1",
     "primary_ip": "13.8.1.1/32",
@@ -78,7 +78,7 @@ var testDatas = map[string][]byte{
     },
     "region": "US_WEST"
   }`),
-	"/api/rblx/device/dm/v1/dev1-dc1?interfaces=lo0.0": []byte(`
+	"/foobar/dev1-dc1?interfaces=lo0.0": []byte(`
   {
     "name": "dev1-dc1",
     "primary_ip": "10.1.1.1/32",
@@ -111,7 +111,7 @@ var testDatas = map[string][]byte{
     },
     "region": "US_EAST"
   }`),
-	"/api/rblx/device/dm/v1/dev2-dc1?interfaces=lo0.0": []byte(`
+	"/foobar/dev2-dc1?interfaces=lo0.0": []byte(`
   {
     "name": "dev2-dc1",
     "primary_ip": "10.1.1.2/32",
@@ -144,7 +144,7 @@ var testDatas = map[string][]byte{
     },
     "region": "US_EAST"
   }`),
-	"/api/rblx/device/dm/v1/dev1-dc1?interfaces=et-0/0/47": []byte(`
+	"/foobar/dev1-dc1?interfaces=et-0/0/47": []byte(`
   {  
     "name": "dev1-dc1",
     "primary_ip": "10.1.1.1/32",
@@ -187,7 +187,7 @@ var testDatas = map[string][]byte{
     },
     "region": "US_EAST"
   }`),
-	"/api/rblx/device/dm/v1/dev1-dc1?interfaces=et-0/0/40": []byte(`
+	"/foobar/dev1-dc1?interfaces=et-0/0/40": []byte(`
   {
     "name": "dev1-dc1",
     "primary_ip": "11.1.1.1/32",
@@ -230,7 +230,7 @@ var testDatas = map[string][]byte{
     },
     "region": "US_EAST"
     }`),
-	"/api/rblx/device/dm/v1/dev1-bb1?interfaces=et-0/0/3:0": []byte(`
+	"/foobar/dev1-bb1?interfaces=et-0/0/3:0": []byte(`
   {
     "name": "dev1-bb1",
     "primary_ip": "12.8.1.1/32",
@@ -497,7 +497,7 @@ func (m *mockClient) Do(req *http.Request) (*http.Response, error) {
 
 func TestNetboxDevice(t *testing.T) {
 	a := tu.MockAlert(1, "Test", "", "dev1-bb1", "ent1", "src1", "device", "t1", "1", "WARN", []string{}, nil)
-	n := &Netbox{client: &mockClient{}}
+	n := &Netbox{client: &mockClient{}, Options: map[string]string{"rblx_dm_url": "/foobar/"}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
@@ -508,7 +508,7 @@ func TestNetboxDevice(t *testing.T) {
 
 func TestNetboxIntf(t *testing.T) {
 	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "phy_interface", "t1", "1", "WARN", []string{}, nil)
-	n := &Netbox{client: &mockClient{}}
+	n := &Netbox{client: &mockClient{}, Options: map[string]string{"rblx_dm_url": "/foobar/"}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
@@ -529,7 +529,7 @@ func TestNetboxIntf(t *testing.T) {
 
 func TestNetboxIntfLb(t *testing.T) {
 	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/40", "src1", "phy_interface", "t1", "1", "WARN", []string{}, nil)
-	n := &Netbox{client: &mockClient{}}
+	n := &Netbox{client: &mockClient{}, Options: map[string]string{"rblx_dm_url": "/foobar/"}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
@@ -550,7 +550,7 @@ func TestNetboxIntfLb(t *testing.T) {
 
 func TestNetboxLink(t *testing.T) {
 	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "et-0/0/47", "src1", "link", "t1", "1", "WARN", []string{}, nil)
-	n := &Netbox{client: &mockClient{}}
+	n := &Netbox{client: &mockClient{}, Options: map[string]string{"rblx_dm_url": "/foobar/"}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
@@ -578,7 +578,7 @@ func TestNetboxLink(t *testing.T) {
 func TestNetboxBgp(t *testing.T) {
 	// ebgp peer
 	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "AS65101 10.1.1.121", "src1", "bgp_peer", "t1", "1", "WARN", []string{}, nil)
-	n := &Netbox{client: &mockClient{}}
+	n := &Netbox{client: &mockClient{}, Options: map[string]string{"rblx_dm_url": "/foobar/"}}
 	if err := n.Apply(a); err != nil {
 		t.Fatal(err)
 	}
@@ -620,6 +620,17 @@ func TestNetboxBgp(t *testing.T) {
 		"remoteDeviceStatus": "Active",
 	}
 	assert.Equalf(t, a.Labels.Equal(exp), true, "Expected: %v, Got: %v", exp, a.Labels)
+}
+
+func TestNetboxMplsLsp(t *testing.T) {
+	a := tu.MockAlert(1, "Test", "", "dev1-dc1", "dev1-bb1-dev2-bb1-1", "src1", "mpls_lsp", "t1", "1", "WARN", []string{}, nil)
+	n := &Netbox{client: &mockClient{}, Options: map[string]string{"rblx_dm_url": "/foobar/"}}
+	if err := n.Apply(a); err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal(t, a.Labels["remoteDeviceName"], "dev2-bb1")
+	assert.Equal(t, a.Labels["remoteDeviceSite"], "bb1")
+	assert.Equal(t, a.Labels["remoteDeviceStatus"], "Active")
 }
 
 func TestNetboxIptoDevice(t *testing.T) {

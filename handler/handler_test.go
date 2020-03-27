@@ -139,17 +139,14 @@ func (t *MockTx) NewRecord(alertId int64, event string) (int64, error) {
 type mockTransform struct {
 	name     string
 	priority int
-	register string
 }
 
 func (t *mockTransform) Name() string { return t.name }
 
 func (t *mockTransform) GetPriority() int { return t.priority }
 
-func (t *mockTransform) GetRegister() string { return t.register }
-
 func (t *mockTransform) Apply(a *models.Alert) error {
-	a.Labels = models.Labels{"suppress": "me"}
+	a.Labels["suppress"] = "me"
 	return nil
 }
 
@@ -379,7 +376,7 @@ func TestHandlerAlertSuppress(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	AddTransform(&mockTransform{name: "mock", priority: 100, register: "New*"})
+	AddTransform(&mockTransform{name: "mock", priority: 100})
 	plugins.AddProcessor(&mockProcessor{})
 	flag.Parse()
 	Config = NewConfigHandler("../testutil/testdata/test_config.yaml")

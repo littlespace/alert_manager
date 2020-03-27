@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"time"
 
@@ -124,12 +123,12 @@ func (h *AlertHandler) handleActive(ctx context.Context, tx models.Txn, alert *m
 	if existingAlert == nil {
 		glog.V(2).Infof("No existing alert found for %s:%s:%s", alert.Name, alert.Device.String, alert.Entity)
 		// add transforms
-		h.applyTransforms(alert)
 		alert.ExtendLabels()
+		h.applyTransforms(alert)
 		labels = alert.Labels
 	} else {
-		h.applyTransforms(existingAlert)
 		existingAlert.ExtendLabels()
+		h.applyTransforms(existingAlert)
 		labels = existingAlert.Labels
 	}
 	// check if alert matches an existing suppression rule based on alert labels
@@ -269,11 +268,17 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	// apply transforms in order of priority. Lower == first
 	var toApply []Transform
 	for _, transform := range Transforms {
-		if transform.GetRegister() == "" {
+		rule, ok := Config.GetTransformRule(transform.Name())
+		if !ok {
+			// if no rule matches defined, pass all alerts
+			toApply = append(toApply, transform)
 			continue
 		}
-		if match, _ := regexp.MatchString(transform.GetRegister(), alert.Name); match {
-			toApply = append(toApply, transform)
+		for _, m := range rule.Matches {
+			if m.MatchAll(alert.Labels) {
+				toApply = append(toApply, transform)
+				break
+			}
 		}
 	}
 	sort.Slice(toApply, func(i, j int) bool {
@@ -281,7 +286,7 @@ func (h *AlertHandler) applyTransforms(alert *models.Alert) {
 	})
 	defer func() {
 		if r := recover(); r != nil {
-			glog.Errorf("PANIC while applying transform: %v", r)
+			glog.Errorf("PANIC while applying transform to alert %s: %v", alert.Name, r)
 			h.statTransformError.Add(1)
 		}
 	}()

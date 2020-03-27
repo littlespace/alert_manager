@@ -25,7 +25,7 @@ type Client struct {
 type Netbox struct {
 	Addr, Token string
 	Priority    int
-	Register    string
+	Options     map[string]string
 	client      Clienter
 }
 
@@ -35,10 +35,6 @@ func (n *Netbox) Name() string {
 
 func (n *Netbox) GetPriority() int {
 	return n.Priority
-}
-
-func (n *Netbox) GetRegister() string {
-	return n.Register
 }
 
 func (n *Netbox) getResults(data []byte) ([]interface{}, error) {
@@ -104,7 +100,12 @@ func (n *Netbox) Apply(alert *models.Alert) error {
 			}
 		}
 		l, err = DeviceLabels(n, alert)
-
+	case "mpls_lsp":
+		l, err = MplsLspLabels(n, alert)
+	case "server":
+		l, err = ServerLabels(n, alert)
+	case "":
+		return nil
 	default:
 		glog.V(2).Infof("Not applying transform: Scope %s is not defined in netbox", alert.Scope)
 		return nil

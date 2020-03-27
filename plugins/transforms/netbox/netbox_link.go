@@ -8,8 +8,6 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
-const queryURL = "/api/rblx/device/dm/v1/"
-
 // swap swaps two keys in a map
 func swap(in map[string]interface{}, first, second string) map[string]interface{} {
 	tmp := in[first]
@@ -64,15 +62,22 @@ func ifaceLabels(ifaceData map[string]interface{}) (models.Labels, error) {
 }
 
 func InterfaceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
+	queryURL, ok := n.Options["rblx_dm_url"]
+	if !ok {
+		return nil, fmt.Errorf("Cant find Query URL in options")
+	}
 	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=%s", alert.Device.String, alert.Entity)
 	result, err := getResult(n, url)
 	if err != nil {
 		return nil, err
 	}
 	// add site info to alert
-	site := result["site_data"].(map[string]interface{})
-	alert.AddSite(site["name"].(string))
-
+	if site, ok := alert.Labels["site"]; ok {
+		alert.AddSite(site.(string))
+	} else {
+		site := result["site_data"].(map[string]interface{})
+		alert.AddSite(site["name"].(string))
+	}
 	iface := result["interfaces"].(map[string]interface{})
 	ifaceData, ok := iface[alert.Entity]
 	if !ok {
@@ -90,15 +95,22 @@ func InterfaceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 }
 
 func CircuitLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
+	queryURL, ok := n.Options["rblx_dm_url"]
+	if !ok {
+		return nil, fmt.Errorf("Cant find Query URL in options")
+	}
 	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=%s", alert.Device.String, alert.Entity)
 	result, err := getResult(n, url)
 	if err != nil {
 		return nil, err
 	}
 	// add site info to alert
-	site := result["site_data"].(map[string]interface{})
-	alert.AddSite(site["name"].(string))
-
+	if site, ok := alert.Labels["site"]; ok {
+		alert.AddSite(site.(string))
+	} else {
+		site := result["site_data"].(map[string]interface{})
+		alert.AddSite(site["name"].(string))
+	}
 	ifc := result["interfaces"].(map[string]interface{})
 	ifaceD, ok := ifc[alert.Entity]
 	if !ok {
