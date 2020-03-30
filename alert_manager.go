@@ -75,7 +75,7 @@ func Run(config *Config) {
 		admin = &api.User{Username: config.Api.AdminUsername, Password: config.Api.AdminPassword}
 	}
 	server := api.NewServer(config.Api.ApiAddr, config.Api.ApiKey, admin, auth, handler)
-	go server.Start(ctx)
+	go server.Start(ctx, config.Api.ServerTimeout)
 
 	// start the reporting agent
 	glog.Infof("Will send stats to %s", config.Reporter.Url)
