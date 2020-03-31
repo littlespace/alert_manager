@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	tokenExpiryTime = 24 * time.Hour
+	tokenExpiryTime      = 24 * time.Hour
+	defaultServerTimeout = 15 * time.Second
 )
 
 type AuthProvider interface {
@@ -113,7 +114,7 @@ func NewServer(addr, apiKey string, admin *User, authProvider AuthProvider, hand
 	}
 }
 
-func (s *Server) Start(ctx context.Context) {
+func (s *Server) Start(ctx context.Context, timeout time.Duration) {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/auth", s.CreateToken).Methods("POST")
@@ -135,13 +136,17 @@ func (s *Server) Start(ctx context.Context) {
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"})
 
+	if timeout == 0 {
+		timeout = defaultServerTimeout
+	}
+
 	// set up the router
 	srv := &http.Server{
 		Handler: handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
 		Addr:    s.addr,
 		// set some sane timeouts
-		WriteTimeout: 10 * time.Second,
-		ReadTimeout:  10 * time.Second,
+		WriteTimeout: timeout,
+		ReadTimeout:  timeout,
 	}
 	srv.ListenAndServe()
 }
