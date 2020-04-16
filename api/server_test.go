@@ -94,6 +94,18 @@ func (tx *MockTx) SelectRules(query string, args ...interface{}) (models.SuppRul
 	}, nil
 }
 
+func (t *MockTx) GetUser(username string) (models.User, error) {
+	return models.User{
+		Id:     1,
+		Name:   "foo",
+		TeamId: 2,
+		Team: &models.Team{
+			Id:   2,
+			Name: "neteng",
+		},
+	}, nil
+}
+
 func (t *MockTx) NewInsert(query string, item interface{}) (int64, error) {
 	return 1, nil
 }

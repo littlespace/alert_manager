@@ -278,8 +278,46 @@ export class AlertManagerApi {
   /// Misc To be cleaned up
   /// -------------------------------------------------------------------
 
+  createNewUser(username) {
+    let url = `${this.url}api/users`;
+    let obj = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.getToken()}`
+      },
+      body: JSON.stringify({
+        name: username,
+        team: {
+          name: this.getTeam()
+        }
+      })
+    };
+
+    return fetch(url, obj)
+      .then(handleErrors)
+      .then(response => response.json())
+      .catch(error => console.log(error));
+  }
+
+  deleteUser(username) {
+    let url = `${this.url}api/users/${username}/delete`;
+    console.log(`Deleting User User: ${username}`);
+
+    let obj = {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${this.getToken()}`
+      }
+    };
+
+    return fetch(url, obj)
+      .then(handleErrors)
+      .catch(error => console.log(error));
+  }
+
   getDistinctField(field) {
-    return fetch(`${this.url}/api/field/${field}`)
+    return fetch(`${this.url}api/field/${field}`)
       .then(handleErrors)
       .then(response => response.json());
   }
@@ -371,7 +409,7 @@ export class AlertManagerApi {
           cb_failure();
         } else {
           console.log(`Auth is valid, Saved token ${data.token}`);
-          this.setToken(data.token);
+          this.setDate(data);
           cb_success();
         }
       });
@@ -406,9 +444,10 @@ export class AlertManagerApi {
     return profile ? JSON.parse(localStorage.profile) : {};
   }
 
-  setToken(idToken) {
+  setDate(data) {
     // Saves user token to localStorage
-    localStorage.setItem("id_token", idToken);
+    localStorage.setItem("id_token", data.token);
+    localStorage.setItem("user_team", data.team);
   }
 
   getToken() {
@@ -425,10 +464,16 @@ export class AlertManagerApi {
     return localStorage.getItem("username");
   }
 
+  getTeam() {
+    // Retrieves the user token from localStorage
+    return localStorage.getItem("user_team");
+  }
+
   logout() {
     // Clear user token and profile data from localStorage
     localStorage.removeItem("id_token");
     localStorage.removeItem("username");
+    localStorage.removeItem("user_team");
   }
 
   checkToken() {

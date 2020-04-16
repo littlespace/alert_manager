@@ -115,6 +115,7 @@ function Header() {
             <Link href={PagesDoc.alertsExplorer.url}>Alert Explorer</Link>
             <Link href={PagesDoc.ongoingAlerts.url}>Ongoing Alerts</Link>
             <Link href={PagesDoc.suppressionRules.url}>Suppressions</Link>
+            <Link href={PagesDoc.users.url}>Users</Link>
           </Menu>
           <LoginIcon>
             <AccountCircleIcon fontSize="large" style={{ color: HIGHLIGHT }} />

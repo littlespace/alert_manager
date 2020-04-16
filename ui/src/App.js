@@ -14,6 +14,7 @@ import theme from "./theme";
 /// Views
 /// ------------------------------------------------------
 import HomeView from "./views/HomeView";
+import UsersView from "./views/UsersView";
 import OngoingAlertsView from "./views/OngoingAlertsView";
 import AlertsExplorerView from "./views/AlertsExplorerView";
 import AlertView from "./views/AlertView";
@@ -81,6 +82,12 @@ export default class App extends Component {
                     authed={Auth.checkToken()}
                     path="/alert/:id/"
                     component={AlertView}
+                  />
+                  <PrivateRoute
+                    exact
+                    authed={Auth.checkToken()}
+                    path={PagesDoc.users.url}
+                    component={UsersView}
                   />
                   <PrivateRoute
                     exact

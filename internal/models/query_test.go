@@ -1,9 +1,10 @@
 package models
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type MockDb struct{}
@@ -53,7 +54,8 @@ const baseQ = "SELECT * FROM alerts"
 
 var testDatas = map[string]Querier{
 	baseQ: Query{
-		Table: "alerts",
+		Table:     "alerts",
+		BaseQuery: baseQ,
 	},
 	baseQ + " WHERE (cast(extract(epoch from now()) as integer) - last_active) < 5 AND alerts.id IN ('1') AND name IN ('foo')": Query{
 		Table:     "alerts",
@@ -62,6 +64,7 @@ var testDatas = map[string]Querier{
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "name", Values: []string{"foo"}},
 		},
+		BaseQuery: baseQ,
 	},
 	baseQ + " WHERE alerts.id IN ('1','2') AND status IN ('1')": Query{
 		Table: "alerts",
@@ -69,6 +72,7 @@ var testDatas = map[string]Querier{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "status", Values: []string{"ACTIVE"}},
 		},
+		BaseQuery: baseQ,
 	},
 	baseQ + " WHERE alerts.id IN ('1','2') AND name IN ('foo','bar')": Query{
 		Table: "alerts",
@@ -76,6 +80,7 @@ var testDatas = map[string]Querier{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "name", Values: []string{"foo", "bar"}},
 		},
+		BaseQuery: baseQ,
 	},
 	baseQ + " WHERE alerts.id IN ('1') AND 'foo' = ANY(tags)": Query{
 		Table: "alerts",
@@ -83,6 +88,7 @@ var testDatas = map[string]Querier{
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "tags", Values: []string{"foo"}},
 		},
+		BaseQuery: baseQ,
 	},
 	baseQ + " WHERE alerts.id IN ('1','2') AND 'foo' = ANY(tags) AND 'bar' = ANY(tags)": Query{
 		Table: "alerts",
@@ -90,12 +96,14 @@ var testDatas = map[string]Querier{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "tags", Values: []string{"foo", "bar"}},
 		},
+		BaseQuery: baseQ,
 	},
 	baseQ + " WHERE (device IN ('d1','d2') OR (labels::jsonb)->'device' ? 'd1' OR (labels::jsonb)->'device' ? 'd2')": Query{
 		Table: "alerts",
 		Params: []Param{
 			Param{Field: "device", Values: []string{"d1", "d2"}},
 		},
+		BaseQuery: baseQ,
 	},
 	baseQ + " WHERE (device IN ('d1') OR (labels::jsonb)->'device' ? 'd1') AND status IN ('1','2')": Query{
 		Table: "alerts",
@@ -103,6 +111,21 @@ var testDatas = map[string]Querier{
 			Param{Field: "device", Values: []string{"d1"}},
 			Param{Field: "status", Values: []string{"ACTIVE", "SUPPRESSED"}},
 		},
+		BaseQuery: baseQ,
+	},
+	QuerySelectTeams + " WHERE teams.name IN ('foo')": Query{
+		Table: "teams",
+		Params: []Param{
+			Param{Field: "name", Values: []string{"foo"}},
+		},
+		BaseQuery: QuerySelectTeams,
+	},
+	QuerySelectUsers + " WHERE users.name IN ('foo')": Query{
+		Table: "users",
+		Params: []Param{
+			Param{Field: "name", Values: []string{"foo"}},
+		},
+		BaseQuery: QuerySelectUsers,
 	},
 	"UPDATE alerts SET owner='foo' WHERE id IN ('1') AND name IN ('foo')": UpdateQuery{
 		Set: []Field{
@@ -112,6 +135,7 @@ var testDatas = map[string]Querier{
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "name", Values: []string{"foo"}},
 		},
+		BaseQuery: "UPDATE alerts",
 	},
 	"UPDATE alerts SET owner='foo', team='bar' WHERE id IN ('1','2') AND name IN ('foo')": UpdateQuery{
 		Set: []Field{
@@ -122,6 +146,7 @@ var testDatas = map[string]Querier{
 			Param{Field: "id", Values: []string{"1", "2"}},
 			Param{Field: "name", Values: []string{"foo"}},
 		},
+		BaseQuery: "UPDATE alerts",
 	},
 	"UPDATE alerts SET owner='foo', team='bar' WHERE 'foo' = ANY(tags) AND 'bar' = ANY(tags) AND name IN ('foo')": UpdateQuery{
 		Set: []Field{
@@ -132,6 +157,7 @@ var testDatas = map[string]Querier{
 			Param{Field: "tags", Values: []string{"foo", "bar"}},
 			Param{Field: "name", Values: []string{"foo"}},
 		},
+		BaseQuery: "UPDATE alerts",
 	},
 }
 
@@ -150,6 +176,7 @@ func TestSelectQueryRun(t *testing.T) {
 			Param{Field: "id", Values: []string{"1"}},
 			Param{Field: "name", Values: []string{"foo"}},
 		},
+		BaseQuery: baseQ,
 	}
 	sql, err := q.toSQL()
 	assert.Nil(t, err)

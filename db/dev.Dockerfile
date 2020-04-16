@@ -1,4 +1,4 @@
-FROM postgres:12-alpine
+FROM postgres:11.7-alpine
 
 # Pull in our ENV variables as build args. These are assigned in the .env file
 # by default and passed in through the docker-compose, but can be override on the 

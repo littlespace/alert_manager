@@ -38,15 +38,14 @@ export default function ActionSelect({
   placeholder,
   searchOnChange,
   setSearch,
-  value
+  value,
+  ...props
 }) {
   let history = useHistory();
   let location = useLocation();
 
   return (
     <ReactSelect
-      isClearable
-      isSearchable
       placeholder={placeholder}
       options={options}
       onChange={value =>
@@ -61,6 +60,7 @@ export default function ActionSelect({
       }
       value={value}
       styles={ReactSelectStyles}
+      {...props}
     />
   );
 }

@@ -110,6 +110,10 @@ export function getSearchOptions(location) {
   return ret;
 }
 
+export function getSearchString(location) {
+  return QS.stringify(location.search);
+}
+
 export function secondsToHms(prevDate) {
   // Variables in seconds
   const MINUTE = 60;
