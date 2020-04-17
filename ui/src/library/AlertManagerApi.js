@@ -379,40 +379,40 @@ export class AlertManagerApi {
   /// -------------------------------------------------------------------
   /// Authentication and Session Management
   /// -------------------------------------------------------------------
-  login(username, password, cb_success, cb_failure) {
+  async login(username, password) {
     console.log(`Will try to authenticate to ${this.url}api/auth`);
 
-    this.setUsername(username);
-
-    return fetch(`${this.url}api/auth`, {
-      method: "POST",
-      body: JSON.stringify({
-        username: username,
-        password: password
-      })
-    })
-      .then(response => {
-        if (response.status === 200) {
-          return response.json();
-        }
-        if (response.status === 401) {
-          return false;
-        } else {
-          var error = new Error(response.statusText);
-          error.response = response;
-          throw error;
-        }
-      })
-      .then(data => {
-        if (!data) {
-          console.log("Auth is NOT valid");
-          cb_failure();
-        } else {
-          console.log(`Auth is valid, Saved token ${data.token}`);
-          this.setDate(data);
-          cb_success();
-        }
+    try {
+      var response = await fetch(`${this.url}api/auth`, {
+        method: "POST",
+        body: JSON.stringify({
+          username: username,
+          password: password
+        })
       });
+    } catch {
+      // Unknown Failure
+      var response = {
+        ok: false,
+        status: 9999,
+        statusText: "Server Not Found",
+        statusMsg: "Cannot reach authentication server."
+      };
+    }
+
+    if (response.ok) {
+      // Successful authentication
+      let json = await response.json();
+      localStorage.setItem("username", username);
+      localStorage.setItem("id_token", json.token);
+      localStorage.setItem("user_team", json.team);
+    } else {
+      // Failed to auth, get the error message from backend and add it to the response
+      let text = await response.text();
+      response.statusMsg = text;
+    }
+
+    return response;
   }
 
   getTeamList() {
@@ -444,19 +444,9 @@ export class AlertManagerApi {
     return profile ? JSON.parse(localStorage.profile) : {};
   }
 
-  setDate(data) {
-    // Saves user token to localStorage
-    localStorage.setItem("id_token", data.token);
-    localStorage.setItem("user_team", data.team);
-  }
-
   getToken() {
     // Retrieves the user token from localStorage
     return localStorage.getItem("id_token");
-  }
-
-  setUsername(username) {
-    localStorage.setItem("username", username);
   }
 
   getUsername() {
