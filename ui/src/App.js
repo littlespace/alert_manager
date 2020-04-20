@@ -13,10 +13,7 @@ import theme from "./theme";
 /// ------------------------------------------------------
 /// Views
 /// ------------------------------------------------------
-import HomeView from "./views/HomeView";
 import UsersView from "./views/UsersView";
-import OngoingAlertsView from "./views/OngoingAlertsView";
-import AlertsExplorerView from "./views/AlertsExplorerView";
 import AlertView from "./views/AlertView";
 import AlertsView from "./views/AlertsView";
 import SuppressionRulesListView from "./views/SuppRulesList";
@@ -56,26 +53,8 @@ export default class App extends Component {
                   <PrivateRoute
                     exact
                     authed={Auth.checkToken()}
-                    path="/"
-                    component={AlertsView}
-                  />
-                  <PrivateRoute
-                    exact
-                    authed={Auth.checkToken()}
-                    path={PagesDoc.ongoingAlerts.url}
-                    component={OngoingAlertsView}
-                  />
-                  <PrivateRoute
-                    exact
-                    authed={Auth.checkToken()}
                     path={PagesDoc.alerts.url}
                     component={AlertsView}
-                  />
-                  <PrivateRoute
-                    exact
-                    authed={Auth.checkToken()}
-                    path={PagesDoc.alertsExplorer.url}
-                    component={AlertsExplorerView}
                   />
                   <PrivateRoute
                     exact

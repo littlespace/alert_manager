@@ -10,7 +10,7 @@ import { SEVERITY_COLORS } from "../../library/utils";
 
 import { TableContext } from "../contexts/TableContext";
 
-import ToolTip from "../ToolTip";
+import ToolTip from "../Notifications/ToolTip";
 
 const StyledCell = styled.td`
   background-color: ${props =>

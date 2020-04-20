@@ -13,7 +13,7 @@ import AlertDetails from "../components/Alerts/AlertDetails";
 import AlertHistory from "../components/Alerts/AlertHistory";
 import AlertSpinner from "../components/Spinners/AlertSpinner";
 import ContributingAlerts from "../components/Alerts/ContributingAlerts";
-import NotificationBar from "../components/NotificationBar";
+import NotificationBar from "../components/Notifications/NotificationBar";
 import SuppressForm from "../components/Forms/SuppressForm";
 
 const api = new AlertManagerApi();

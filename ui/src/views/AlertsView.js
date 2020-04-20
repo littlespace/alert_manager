@@ -18,7 +18,7 @@ import AlertsSpinner from "../components/Spinners/AlertsSpinner";
 import AlertsTable from "../components/AlertsTable/AlertsTable";
 import COLUMNS from "../components/AlertsTable/columns";
 import FilterToolbar from "../components/Filters/FilterToolbar";
-import NotificationBar from "../components/NotificationBar";
+import NotificationBar from "../components/Notifications/NotificationBar";
 import ActionsToolbar from "../components/Actions/ActionsToolbar";
 
 const api = new AlertManagerApi();

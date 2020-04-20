@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { NotificationContext } from "../components/contexts/NotificationContext";
 
 import { AlertManagerApi } from "../library/AlertManagerApi";
-import NotificationBar from "../components/NotificationBar";
+import NotificationBar from "../components/Notifications/NotificationBar";
 import { SECONDARY, CRITICAL } from "../styles/styles";
 
 import Form from "../components/Forms/Form";
