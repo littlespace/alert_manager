@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -80,6 +81,7 @@ type Querier interface {
 
 type Query struct {
 	Table          string
+	BaseQuery      string
 	Limit          int
 	Offset         int
 	TimeRange      string
@@ -88,11 +90,18 @@ type Query struct {
 }
 
 func NewQuery(table string) Query {
-	return Query{Table: table}
+	q := Query{Table: table}
+	switch table {
+	case "alerts", "suppression_rules", "teams":
+		q.BaseQuery = fmt.Sprintf("SELECT * FROM %s", q.Table)
+	case "users":
+		q.BaseQuery = QuerySelectUsers
+	}
+	return q
 }
 
 func (q Query) toSQL() (string, error) {
-	baseQ := fmt.Sprintf("SELECT * FROM %s", q.Table)
+	baseQ := q.BaseQuery
 	start := "last_active"
 	if q.Table == "suppression_rules" {
 		start = "created_at"
@@ -112,6 +121,11 @@ func (q Query) toSQL() (string, error) {
 	for _, p := range q.Params {
 		if p.Field == "id" && q.Table == "alerts" {
 			p.Field = "alerts.id"
+		}
+		// users and teams tables are joined so we need to qualify the field values
+		// with table names e.g name -> users.name
+		if q.Table == "users" || q.Table == "teams" && !strings.HasPrefix(p.Field, q.Table) {
+			p.Field = fmt.Sprintf("%s.%s", q.Table, p.Field)
 		}
 		sanitizedParams = append(sanitizedParams, sanitizeParam(p))
 	}
@@ -182,26 +196,29 @@ type Field struct {
 }
 
 type UpdateQuery struct {
-	Table string
-	Set   []Field
-	Where []Param
+	Table     string
+	BaseQuery string
+	Set       []Field
+	Where     []Param
 }
 
 func NewUpdateQuery(table string) UpdateQuery {
-	return UpdateQuery{Table: table}
+	q := UpdateQuery{Table: table}
+	baseQuery := queryUpdateAlerts
+	if table == "suppression_rules" {
+		baseQuery = queryUpdateRules
+	}
+	q.BaseQuery = baseQuery
+	return q
 }
 
 func (u UpdateQuery) toSQL() (string, error) {
-	baseQuery := queryUpdateAlerts
-	if u.Table == "suppression_rules" {
-		baseQuery = queryUpdateRules
-	}
 	var sanitizedParams []Param
 	for _, p := range u.Where {
 		sanitizedParams = append(sanitizedParams, sanitizeParam(p))
 	}
 	data := map[string]interface{}{
-		"BaseQ": baseQuery,
+		"BaseQ": u.BaseQuery,
 		"Set":   u.Set,
 		"Where": sanitizedParams,
 	}

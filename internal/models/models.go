@@ -65,6 +65,7 @@ type Txn interface {
 	NewRecord(alertId int64, event string) (int64, error)
 	SelectTeams(query string, args ...interface{}) (Teams, error)
 	SelectUsers(query string, args ...interface{}) (Users, error)
+	GetUser(username string) (User, error)
 	SelectFieldDistinctFromDb(query string, args ...interface{}) ([]string, error)
 	Rollback() error
 	Commit() error

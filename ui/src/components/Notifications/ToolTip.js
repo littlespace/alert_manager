@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 
-import { HIGHLIGHT, PRIMARY } from "../styles/styles";
+import { HIGHLIGHT, PRIMARY } from "../../styles/styles";
 
 const ToolTipBubbleTop = styled.div`
   position: absolute;

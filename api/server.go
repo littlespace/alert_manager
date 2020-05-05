@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	tokenExpiryTime = 24 * time.Hour
+	tokenExpiryTime      = 24 * time.Hour
+	defaultServerTimeout = 15 * time.Second
 )
 
 type AuthProvider interface {
@@ -35,6 +36,7 @@ type User struct {
 type JwtToken struct {
 	Token     string `json:"token"`
 	ExpiresAt int64  `json:"expires_at"`
+	Team      string `json:"team"`
 }
 
 type Claims struct {
@@ -113,7 +115,7 @@ func NewServer(addr, apiKey string, admin *User, authProvider AuthProvider, hand
 	}
 }
 
-func (s *Server) Start(ctx context.Context) {
+func (s *Server) Start(ctx context.Context, timeout time.Duration) {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/auth", s.CreateToken).Methods("POST")
@@ -135,13 +137,17 @@ func (s *Server) Start(ctx context.Context) {
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"})
 
+	if timeout == 0 {
+		timeout = defaultServerTimeout
+	}
+
 	// set up the router
 	srv := &http.Server{
 		Handler: handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
 		Addr:    s.addr,
 		// set some sane timeouts
-		WriteTimeout: 10 * time.Second,
-		ReadTimeout:  10 * time.Second,
+		WriteTimeout: timeout,
+		ReadTimeout:  timeout,
 	}
 	srv.ListenAndServe()
 }
@@ -228,9 +234,16 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	glog.V(2).Infof("Successfully authenticated user: %s", user.Username)
-	// TODO save the user /team to db
+
+	tx := s.handler.Db.NewTx()
+	dbUser, err := tx.GetUser(claims.Username)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unable to find user in database: %v", err), http.StatusBadRequest)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(JwtToken{Token: tokenString, ExpiresAt: expirationTime})
+	json.NewEncoder(w).Encode(JwtToken{Token: tokenString, ExpiresAt: expirationTime, Team: dbUser.Team.Name})
 }
 
 func (s *Server) RefreshToken(w http.ResponseWriter, req *http.Request) {
@@ -251,8 +264,16 @@ func (s *Server) RefreshToken(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	glog.V(2).Infof("Successfully renewed claims for user: %s", claims.Username)
+
+	tx := s.handler.Db.NewTx()
+	dbUser, err := tx.GetUser(claims.Username)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Unable to find user in database: %v", err), http.StatusBadRequest)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(JwtToken{Token: tokenString, ExpiresAt: claims.ExpiresAt})
+	json.NewEncoder(w).Encode(JwtToken{Token: tokenString, ExpiresAt: claims.ExpiresAt, Team: dbUser.Team.Name})
 }
 
 func (s *Server) fetchResults(q models.Querier) ([]interface{}, error) {
@@ -300,13 +321,6 @@ func (s *Server) GetField(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) GetItems(w http.ResponseWriter, req *http.Request) {
-	// hack for users until user mgmt is implemented
-	vars := mux.Vars(req)
-	if vars["category"] == "users" {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(s.handler.GetUsersFromConfig())
-		return
-	}
 	q, err := buildSelectQuery(req)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Unable to fetch items: %s", err.Error()), http.StatusBadRequest)

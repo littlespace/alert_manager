@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useContext } from "react";
 import styled from "styled-components";
-import { withRouter, useLocation } from "react-router-dom";
+import { withRouter, useLocation, useHistory } from "react-router-dom";
 
 import { AlertManagerApi } from "../library/AlertManagerApi";
 import { HIGHLIGHT } from "../styles/styles";
-import { getSearchOptions, secondsToHms } from "../library/utils";
+import {
+  setSearchString,
+  getSearchOptions,
+  getSearchString,
+  secondsToHms
+} from "../library/utils";
 
 import { NotificationContext } from "../components/contexts/NotificationContext";
 import { TableProvider } from "../components/contexts/TableContext";
@@ -13,7 +18,7 @@ import AlertsSpinner from "../components/Spinners/AlertsSpinner";
 import AlertsTable from "../components/AlertsTable/AlertsTable";
 import COLUMNS from "../components/AlertsTable/columns";
 import FilterToolbar from "../components/Filters/FilterToolbar";
-import NotificationBar from "../components/NotificationBar";
+import NotificationBar from "../components/Notifications/NotificationBar";
 import ActionsToolbar from "../components/Actions/ActionsToolbar";
 
 const api = new AlertManagerApi();
@@ -58,6 +63,13 @@ function sortAlerts(alerts) {
   );
 }
 
+function getDefaultTeam(location, history) {
+  const team = api.getTeam();
+  setSearchString("team", team, location, history);
+
+  return team;
+}
+
 // TODO: Add propTypes
 function AlertsView(props) {
   const [loading, setLoading] = useState(false);
@@ -66,6 +78,7 @@ function AlertsView(props) {
   const [search, setSearch] = useState(false);
 
   let location = useLocation();
+  let history = useHistory();
 
   const {
     notificationBar,
@@ -81,7 +94,7 @@ function AlertsView(props) {
       limit: 5000,
       history: true,
       timerange_h: options.timerange || null,
-      teams: options.team || [],
+      teams: options.team || [getDefaultTeam(location, history)],
       severity: options.severity || [],
       status: options.status || [],
       devices: options.device || [],

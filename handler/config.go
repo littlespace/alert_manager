@@ -49,6 +49,7 @@ type AlertConfig struct {
 		NotifyRemind          time.Duration `yaml:"notify_remind"`
 		DisableNotify         bool          `yaml:"disable_notify"`
 		DontClearAcknowledged bool          `yaml:"dont_clear_acknowledged"`
+		DisableDedup          bool          `yaml:"disable_dedup"`
 		Outputs               Outputs
 		StaticLabels          map[string]interface{} `yaml:"static_labels"`
 		AggregationRules      []string               `yaml:"aggregation_rules"`
@@ -57,6 +58,11 @@ type AlertConfig struct {
 			EscalateTo string `yaml:"escalate_to"`
 		} `yaml:"escalation_rules"`
 	}
+}
+
+type TransformRuleConfig struct {
+	Name    string
+	Matches []models.Labels
 }
 
 type AggregationRuleConfig struct {
@@ -92,6 +98,7 @@ type configs struct {
 	OutputConfig           OutputConfig            `yaml:"output_config"`
 	TeamConfig             TeamConfig              `yaml:"team_config"`
 	AlertConfig            []AlertConfig           `yaml:"alert_config"`
+	TransformRuleConfigs   []TransformRuleConfig   `yaml:"transform_rules"`
 	AggregationRuleConfigs []AggregationRuleConfig `yaml:"aggregation_rules"`
 	SuppressionRuleConfigs []SuppressionRuleConfig `yaml:"suppression_rules"`
 	InhibitRuleConfigs     []InhibitRuleConfig     `yaml:"inhibit_rules"`
@@ -114,23 +121,24 @@ func readConfig(file string) (configs, error) {
 }
 
 type ConfigHandler struct {
-	file         string
-	outputConfig OutputConfig
-	teamConfig   TeamConfig
-	alertConfigs map[string]AlertConfig
-	aggRules     map[string]AggregationRuleConfig
-	suppRules    map[string]SuppressionRuleConfig
-	inhibitRules map[string]InhibitRuleConfig
+	file           string
+	config         configs
+	alertConfigs   map[string]AlertConfig
+	transformRules map[string]TransformRuleConfig
+	aggRules       map[string]AggregationRuleConfig
+	suppRules      map[string]SuppressionRuleConfig
+	inhibitRules   map[string]InhibitRuleConfig
 	sync.Mutex
 }
 
 func NewConfigHandler(file string) *ConfigHandler {
 	c := &ConfigHandler{
-		file:         file,
-		alertConfigs: make(map[string]AlertConfig),
-		aggRules:     make(map[string]AggregationRuleConfig),
-		suppRules:    make(map[string]SuppressionRuleConfig),
-		inhibitRules: make(map[string]InhibitRuleConfig),
+		file:           file,
+		alertConfigs:   make(map[string]AlertConfig),
+		transformRules: make(map[string]TransformRuleConfig),
+		aggRules:       make(map[string]AggregationRuleConfig),
+		suppRules:      make(map[string]SuppressionRuleConfig),
+		inhibitRules:   make(map[string]InhibitRuleConfig),
 	}
 	c.LoadConfig()
 	return c
@@ -149,10 +157,12 @@ func (c *ConfigHandler) LoadConfig() {
 	if err != nil {
 		glog.Fatalf("Unable to load config file : %v", err)
 	}
-	c.outputConfig = configs.OutputConfig
-	c.teamConfig = configs.TeamConfig
+	c.config = configs
 	for _, config := range configs.AlertConfig {
 		c.alertConfigs[config.Name] = config
+	}
+	for _, rule := range configs.TransformRuleConfigs {
+		c.transformRules[rule.Name] = rule
 	}
 	for _, rule := range configs.AggregationRuleConfigs {
 		c.aggRules[rule.Name] = rule
@@ -169,13 +179,13 @@ func (c *ConfigHandler) LoadConfig() {
 func (c *ConfigHandler) GetOutputConfig() OutputConfig {
 	c.Lock()
 	defer c.Unlock()
-	return c.outputConfig
+	return c.config.OutputConfig
 }
 
 func (c *ConfigHandler) GetTeamConfig() TeamConfig {
 	c.Lock()
 	defer c.Unlock()
-	return c.teamConfig
+	return c.config.TeamConfig
 }
 
 func (c *ConfigHandler) GetConfiguredAlerts() []AlertConfig {
@@ -188,34 +198,29 @@ func (c *ConfigHandler) GetConfiguredAlerts() []AlertConfig {
 	return configs
 }
 
+func (c *ConfigHandler) GetTransformRule(name string) (TransformRuleConfig, bool) {
+	c.Lock()
+	defer c.Unlock()
+	rule, ok := c.transformRules[name]
+	return rule, ok
+}
+
 func (c *ConfigHandler) GetAggRules() []AggregationRuleConfig {
 	c.Lock()
 	defer c.Unlock()
-	rules := []AggregationRuleConfig{}
-	for _, rule := range c.aggRules {
-		rules = append(rules, rule)
-	}
-	return rules
+	return c.config.AggregationRuleConfigs
 }
 
 func (c *ConfigHandler) GetSuppressionRules() []SuppressionRuleConfig {
 	c.Lock()
 	defer c.Unlock()
-	rules := []SuppressionRuleConfig{}
-	for _, rule := range c.suppRules {
-		rules = append(rules, rule)
-	}
-	return rules
+	return c.config.SuppressionRuleConfigs
 }
 
 func (c *ConfigHandler) GetInhibitRules() []InhibitRuleConfig {
 	c.Lock()
 	defer c.Unlock()
-	rules := []InhibitRuleConfig{}
-	for _, rule := range c.inhibitRules {
-		rules = append(rules, rule)
-	}
-	return rules
+	return c.config.InhibitRuleConfigs
 }
 
 func (c *ConfigHandler) GetAlertConfig(name string) (AlertConfig, bool) {

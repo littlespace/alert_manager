@@ -3,7 +3,7 @@ module github.com/mayuresh82/alert_manager
 go 1.12
 
 require (
-	github.com/BurntSushi/toml v0.3.0
+	github.com/BurntSushi/toml v0.3.1
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-mail/mail v0.0.0-20180301192024-63235f23494b
@@ -25,4 +25,5 @@ require (
 	gopkg.in/ldap.v3 v3.0.1
 	gopkg.in/mail.v2 v2.3.1 // indirect
 	gopkg.in/yaml.v2 v2.2.1
+	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
 )

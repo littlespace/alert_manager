@@ -54,6 +54,7 @@ export default function TimeRangeSelect({ setSearch }) {
         searchOnChange={true}
         setSearch={setSearch}
         value={getSelectedOption(actionType, location)}
+        isClearable
       />
     </TimeRange>
   );

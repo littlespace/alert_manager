@@ -111,10 +111,9 @@ function Header() {
       {Auth.loggedIn() === true ? (
         <>
           <Menu>
-            <Link href={PagesDoc.home.url}>Home</Link>
-            <Link href={PagesDoc.alertsExplorer.url}>Alert Explorer</Link>
-            <Link href={PagesDoc.ongoingAlerts.url}>Ongoing Alerts</Link>
+            <Link href={PagesDoc.alerts.url}>Alerts</Link>
             <Link href={PagesDoc.suppressionRules.url}>Suppressions</Link>
+            <Link href={PagesDoc.users.url}>Users</Link>
           </Menu>
           <LoginIcon>
             <AccountCircleIcon fontSize="large" style={{ color: HIGHLIGHT }} />

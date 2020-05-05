@@ -23,6 +23,60 @@ Current install method is via a docker container (docker pull mayuresh82/alert_m
 4. Run `cd $GOPATH/src/github.com/mayuresh82/alert_manager`
 5. Run `make`
 
+## Development Environment 
+You can use docker-compose to run the `api`, `db` and `web` locally for development purposes. **This is not intended to be used in PRODUCTION.** There are two steps to get this working afterwhich will create three docker containers, `db_local`, `api_local`, `web_local`.
+1. You will need to create three files 
+2. Run `docker-compose up` 
+
+### Creating The Development Environment
+These are the steps needed to spin up the dev environment. Please find more detailed explanations in the next sections about the files and containers.
+
+**File Creation**
+1. Create a `*.sql` file and place it in `/db`, e.g `/db/alert_manager_local.sql`. The name does not matter as you will specify it in the `.env` file created in step 2. 
+2. Create a `.env` file at the root of the repo. See below for details on the expected variables.
+3. Create a `config.toml` file at the root of the repo. You can use the `sample_config.toml` as a base. You will need to specify:
+    1. LDAP host and credentials.
+    2. DB host and credentials (this will need to match what's in the `.env` file). 
+        * **NOTE: use `host.docker.internal:<port>` for the db `addr` field.** The `host.docker.internal` allows the api container to reach the localhosts IP and ports, e.g the DB. For more info see [here](https://docs.docker.com/docker-for-mac/networking/)
+
+**Spinning Up The Containers**
+1. `docker-compose up` -> That's it! This will spin up all three containers and write all output to stdout. See below for more details. 
+
+### Files
+* **\*.sql** -> This is the sql export of your current DB. This file will get passed to the postgres docker container. It will be used to initialize the DB. See [here](https://hub.docker.com/_/postgres?tab=description) under "Initialization scripts" for more info about what types of data and files it expects.
+* **.env** -> This file will contain all the environment variables that `docker-compose` will use to pass into the containers `dev.Dockerfiles`. You can see how they are used in the `docker-compose.yml` file. You will need the following variables specified:
+  ```
+  # These will be used by postgres to create the DB and superuser.
+  * POSTGRES_USER=<value>
+  * POSTGRES_DB=<value>
+  * POSTGRES_PASSWORD=<value>
+  * SQL_FILE=<value>
+ 
+  # These are used by the api to know where to find the config files.
+  * CONFIG_FILE=<value>
+  * ALERT_CONFIG_FILE=<value>
+  ```
+* **config.toml** -> This file is used by the API for various configuration options, e.g how to connect to LDAP and the DB. Please see above in `Creating The Development Environment` for more details.
+
+### Containers
+
+**DB**
+* Will have a new DB created on first run with variables listed in the `.env` file. 
+* `port 5432` exposed to the localhost
+
+**API**
+* Runs with hot reload enabled. So any local changes you make to the code will be picked up automatically and rebuilt on the fly.
+* Creates a bind mount for your local repo into the container
+* `port 8181` exposed for api calls
+* `port 8282` exposed for webhooks
+* connects to the DB via the localhost's `port 5432`. You need to specify `host.docker.internal` in the `config.toml` file for the db `addr` field. 
+
+**Web**
+* Runs with hot reload enabled. So any local changes you make to the code will be picked up automatically and rebuilt on the fly.
+* Creates a bind mount for your local repo into the container
+* `port 3000` exposed to access the UI, e.g `http://localhost:3000`
+* Uses `http://localhost:8181/` as the API address
+
 ## Usage
 
 Alert manager requires an instance of a postgres database to store alerts. You can either use a standalone instance or a dockerized install and the params are specified in the config file.

@@ -1,0 +1,53 @@
+version: "3"
+services:
+  db_local:
+    build:
+      context: ./db
+      dockerfile: dev.Dockerfile
+      # These variables are pulled in from the .env file
+      args:
+        POSTGRES_DB: "${POSTGRES_DB}"
+        POSTGRES_USER: "${POSTGRES_USER}"
+        POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+        # Should be a sql export file, e.g database.sql. Read more here in "initialization scripts": https://hub.docker.com/_/postgres
+        SQL_FILE: "${SQL_FILE}" 
+    ports: 
+        - "5432:5432"
+
+  api_local: 
+    build: 
+      context: .
+      dockerfile: dev.Dockerfile
+      # These variables are pulled in from the .env file
+      args:
+        CONFIG_FILE: "${CONFIG_FILE}"
+        ALERT_CONFIG_FILE: "${ALERT_CONFIG_FILE}"
+    ports:
+        - "8181:8181"
+        - "8282:8282"
+    volumes: 
+      # mount our local repo inside the container to be able to change 
+      # the files like normal and have a hot reload of the API
+      - ./:/go/src/github.com/mayuresh82/alert_manager 
+    depends_on: 
+      # We want the DB to come up first
+      - db_local
+
+  web_local:
+    build: 
+      context: ./ui
+      dockerfile: dev.Dockerfile
+      args:
+        # We are using the localhost instead of "docker.host.internal" because the env
+        # will be referenced in the client, e.g web broswer on the host, your laptop.
+        REACT_APP_ALERT_MANAGER_SERVER: http://localhost:8181/
+    ports:
+        - "3000:3000"
+    volumes: 
+      # mount our local repo inside the container to be able to change 
+      # the files like normal and have a hot reload of the API
+      - ./ui:/alert_manager_web
+    depends_on: 
+      # We want the DB and API to come up first.
+      - db_local
+      - api_local

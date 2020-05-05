@@ -4,6 +4,7 @@ import {
   CRITICAL,
   HIGHLIGHT,
   INFO,
+  MAJOR,
   PRIMARY,
   ROBLOX,
   SECONDARY,
@@ -18,12 +19,13 @@ export const ROW_SELECT_ACTIONS = {
 };
 
 // TODO: Remove once select and pagination is taken care of
-export const SEVERITY_LEVELS = ["CRITICAL", "WARN", "INFO"];
+export const SEVERITY_LEVELS = ["CRITICAL", "MAJOR", "WARN", "INFO"];
 
 export const SEVERITY_COLORS = {
   info: { "background-color": INFO },
   warn: { "background-color": WARN },
-  critical: { "background-color": CRITICAL }
+  critical: { "background-color": CRITICAL },
+  major: { "background-color": MAJOR }
 };
 
 export const STATUS_COLOR = {
@@ -49,7 +51,8 @@ export const STATUS = {
 export const SEVERITY = {
   1: "critical",
   2: "warn",
-  3: "info"
+  3: "info",
+  4: "major"
 };
 
 export function getFilterValuesFromType(type) {
@@ -105,6 +108,10 @@ export function getSearchOptions(location) {
     ret[key] = options[key].split(",");
   }
   return ret;
+}
+
+export function getSearchString(location) {
+  return QS.stringify(location.search);
 }
 
 export function secondsToHms(prevDate) {

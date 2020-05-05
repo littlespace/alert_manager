@@ -7,10 +7,12 @@ import (
 	"github.com/mayuresh82/alert_manager/internal/models"
 )
 
-const queryUrl = "/api/rblx/device/dm/v1/"
-
 func deviceLabels(n *Netbox, device string) (models.Labels, error) {
-	url := n.Addr + queryUrl + fmt.Sprintf("%s?interfaces=lo0.0", device)
+	queryURL, ok := n.Options["rblx_dm_url"]
+	if !ok {
+		return nil, fmt.Errorf("Cant find Query URL in options")
+	}
+	url := n.Addr + queryURL + fmt.Sprintf("%s?interfaces=lo0.0", device)
 	body, err := n.query(url)
 	if err != nil {
 		return nil, err
@@ -22,8 +24,10 @@ func deviceLabels(n *Netbox, device string) (models.Labels, error) {
 	labels := make(models.Labels)
 	labels["labelType"] = "Device"
 	labels["name"] = result["name"]
-	ip, _, _ := net.ParseCIDR(result["primary_ip"].(string))
-	labels["ip"] = ip.String()
+	if primaryIp, ok := result["primary_ip"]; ok {
+		ip, _, _ := net.ParseCIDR(primaryIp.(string))
+		labels["ip"] = ip.String()
+	}
 	site := result["site_data"].(map[string]interface{})
 	labels["site"] = site["name"]
 	labels["region"] = result["region"]
@@ -36,6 +40,10 @@ func DeviceLabels(n *Netbox, alert *models.Alert) (models.Labels, error) {
 	if err != nil {
 		return nil, err
 	}
-	alert.AddSite(labels["site"].(string))
+	if site, ok := alert.Labels["site"]; ok {
+		alert.AddSite(site.(string))
+	} else {
+		alert.AddSite(labels["site"].(string))
+	}
 	return labels, nil
 }

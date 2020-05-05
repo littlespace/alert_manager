@@ -38,8 +38,10 @@ alert_config:
       auto_clear: false
       # notify on clear (default : False)
       notify_on_clear: true
-      # configures whether to auto-clear the alert if it has been acknowledged
-      clear_acknowledged: true
+      # configures whether to auto-clear the alert if it has been acknowledged (default = false)
+      dont_clear_acknowledged: true
+      # disable alert dedup so that a new alert is created every time (default = false)
+      disable_dedup: false
       # set of per-severity outputs to send the alert notification to
       outputs:
         - matches:

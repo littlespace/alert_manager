@@ -3,7 +3,7 @@ import styled from "styled-components";
 
 import NotificationsNoneOutlinedIcon from "@material-ui/icons/NotificationsNoneOutlined";
 
-import { PRIMARY } from "../styles/styles";
+import { PRIMARY } from "../../styles/styles";
 
 const Container = styled.div`
   display: flex;

@@ -3,7 +3,13 @@ import styled from "styled-components";
 
 import { IoMdClose } from "react-icons/io";
 
-import { SECONDARY, HIGHLIGHT, PRIMARY, ROBLOX } from "../../styles/styles";
+import {
+  CRITICAL,
+  HIGHLIGHT,
+  PRIMARY,
+  ROBLOX,
+  SECONDARY
+} from "../../styles/styles";
 
 const FormContainer = styled.div`
   width: 100%;
@@ -13,7 +19,7 @@ const FormContainer = styled.div`
   background-color: ${({ backgroundColor }) =>
     backgroundColor ? backgroundColor : PRIMARY};
   box-shadow: 5px 5px 25px ${PRIMARY};
-  border: ${({ alert }) => (alert ? "1px solid red" : null)};
+  border: ${({ alert }) => (alert ? `5px solid ${CRITICAL}` : null)};
 `;
 
 const FormStyled = styled.form`

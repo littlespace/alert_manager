@@ -7,7 +7,6 @@ import (
 type Transform interface {
 	Name() string
 	GetPriority() int
-	GetRegister() string
 	Apply(alert *models.Alert) error
 }
 

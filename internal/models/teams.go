@@ -21,10 +21,22 @@ var (
 	QueryDeleteUsersForTeam = "DELETE FROM users WHERE team_id=$1"
 
 	QuerySelectTeams = "SELECT * FROM teams"
+	QuerySelectUser  = ` 
+		SELECT
+			users.id,
+			users.name,
+			teams.id AS "team_id",
+			teams.id AS "team.id",
+			teams.name AS "team.name",
+			teams.organization AS "team.organization"
+		FROM
+			users
+		JOIN teams ON users.team_id = teams.id
+		WHERE users.name = $1`
 	QuerySelectUsers = `
 		SELECT users.*, teams.id "team.id", teams.name "team.name", teams.organization "team.organization"
 		FROM users
-		JOIN teams ON users.team_id = teams.id"
+		JOIN teams ON users.team_id = teams.id
 	`
 )
 
@@ -63,8 +75,8 @@ func (t *Team) UnmarshalJSON(data []byte) error {
 type User struct {
 	Id     int64
 	Name   string
-	TeamId int64 `db:"team_id" json:"team_id"`
-	Team   *Team `db:"team" json:"team"`
+	TeamId int64 `db:"team_id" json:"Team_id"`
+	Team   *Team `db:"team" json:"Team"`
 }
 
 func NewUser(name string, teamId int64) *User {
@@ -93,4 +105,10 @@ func (tx *Tx) SelectUsers(query string, args ...interface{}) (Users, error) {
 	var users []*User
 	err := tx.Select(&users, query, args...)
 	return users, err
+}
+
+func (tx *Tx) GetUser(username string) (User, error) {
+	var user User
+	err := tx.Get(&user, QuerySelectUser, username)
+	return user, err
 }
