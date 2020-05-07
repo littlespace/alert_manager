@@ -3,11 +3,12 @@ package parsers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/mayuresh82/alert_manager/listener"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/mayuresh82/alert_manager/listener"
 )
 
 type grafanaData struct {
@@ -45,7 +46,7 @@ func (p *GrafanaParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		return nil, fmt.Errorf("Invalid data received in alert")
 	}
 	metricText := fmt.Sprintf("\nMetric: %v, Value: %v\n", d.EvalMatches[0].Metric, d.EvalMatches[0].Value)
-	l := &listener.WebHookAlertData{
+	l := &listener.WebHookAlert{
 		Id:      strconv.FormatInt(int64(d.RuleId), 10),
 		Name:    d.RuleName,
 		Details: d.Message + metricText,
@@ -65,7 +66,7 @@ func (p *GrafanaParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 	if strings.ToLower(d.State) != "alerting" {
 		l.Status = listener.Status_CLEARED
 	}
-	return l, nil
+	return &listener.WebHookAlertData{Alerts: []*listener.WebHookAlert{l}}, nil
 }
 
 func init() {

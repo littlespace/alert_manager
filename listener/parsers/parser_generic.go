@@ -3,9 +3,10 @@ package parsers
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/listener"
-	"time"
 )
 
 var sevToLevel = map[string]string{"info": "INFO", "warning": "WARN", "critical": "CRITICAL"}
@@ -63,7 +64,7 @@ func (p *GenericParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 	if d.Preamble != "" {
 		details = d.Preamble + ":" + d.Description
 	}
-	return &listener.WebHookAlertData{
+	alertData := &listener.WebHookAlert{
 		Id:      fmt.Sprintf("%d", int64(d.Id)),
 		Name:    d.Name,
 		Details: details,
@@ -74,7 +75,8 @@ func (p *GenericParser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		Level:   sevToLevel[d.Severity],
 		Status:  statusToAlertStatus[d.Status],
 		Labels:  d.Labels,
-	}, nil
+	}
+	return &listener.WebHookAlertData{Alerts: []*listener.WebHookAlert{alertData}}, nil
 }
 
 func init() {

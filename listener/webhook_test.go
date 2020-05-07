@@ -20,7 +20,7 @@ type mockParser struct{}
 func (m *mockParser) Name() string { return "mocked" }
 
 func (m *mockParser) Parse(data []byte) (*WebHookAlertData, error) {
-	return &WebHookAlertData{
+	alert := &WebHookAlert{
 		Id:      "1",
 		Name:    "Test Alert",
 		Details: "Test Alert 123",
@@ -29,7 +29,8 @@ func (m *mockParser) Parse(data []byte) (*WebHookAlertData, error) {
 		Time:    time.Now(),
 		Level:   "WARN",
 		Status:  "ACTIVE",
-		Source:  "mocked"}, nil
+		Source:  "mocked"}
+	return &WebHookAlertData{Alerts: []*WebHookAlert{alert}}, nil
 }
 
 func TestAlertHandlerBadRequest(t *testing.T) {

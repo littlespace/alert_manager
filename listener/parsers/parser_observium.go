@@ -3,10 +3,11 @@ package parsers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/mayuresh82/alert_manager/listener"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/mayuresh82/alert_manager/listener"
 )
 
 type observiumData struct {
@@ -45,7 +46,7 @@ func (p *ObserviumParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 		glog.Errorf("Unable to parse time string , using current time")
 		t = time.Now()
 	}
-	l := &listener.WebHookAlertData{
+	l := &listener.WebHookAlert{
 		Id:      d.Id,
 		Name:    d.Message,
 		Details: d.Title + " / " + d.EntityDescription,
@@ -58,7 +59,7 @@ func (p *ObserviumParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 	if strings.ToLower(d.State) == "recover" {
 		l.Status = listener.Status_CLEARED
 	}
-	return l, nil
+	return &listener.WebHookAlertData{Alerts: []*listener.WebHookAlert{l}}, nil
 }
 
 func init() {

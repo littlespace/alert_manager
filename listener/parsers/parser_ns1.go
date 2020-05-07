@@ -52,7 +52,7 @@ func (p *Ns1Parser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		return nil, fmt.Errorf("Invalid data received, Name is mandatory")
 	}
 
-	l := &listener.WebHookAlertData{
+	l := &listener.WebHookAlert{
 		Id:      d.Job.JobID,
 		Name:    "Neteng DNS Monitor Down",
 		Details: d.Job.Name,
@@ -69,7 +69,7 @@ func (p *Ns1Parser) Parse(data []byte) (*listener.WebHookAlertData, error) {
 		l.Status = listener.Status_CLEARED
 	}
 
-	return l, nil
+	return &listener.WebHookAlertData{Alerts: []*listener.WebHookAlert{l}}, nil
 }
 
 func init() {
