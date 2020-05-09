@@ -236,8 +236,11 @@ func (s *Server) CreateToken(w http.ResponseWriter, req *http.Request) {
 	glog.V(2).Infof("Successfully authenticated user: %s", user.Username)
 
 	tx := s.handler.Db.NewTx()
-	dbUser, err := tx.GetUser(claims.Username)
-	if err != nil {
+	var dbUser models.User
+	if err = models.WithTx(req.Context(), tx, func(ctx context.Context, tx models.Txn) error {
+		dbUser, err = tx.GetUser(claims.Username)
+		return err
+	}); err != nil {
 		http.Error(w, fmt.Sprintf("Unable to find user in database: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -266,8 +269,11 @@ func (s *Server) RefreshToken(w http.ResponseWriter, req *http.Request) {
 	glog.V(2).Infof("Successfully renewed claims for user: %s", claims.Username)
 
 	tx := s.handler.Db.NewTx()
-	dbUser, err := tx.GetUser(claims.Username)
-	if err != nil {
+	var dbUser models.User
+	if err = models.WithTx(req.Context(), tx, func(ctx context.Context, tx models.Txn) error {
+		dbUser, err = tx.GetUser(claims.Username)
+		return err
+	}); err != nil {
 		http.Error(w, fmt.Sprintf("Unable to find user in database: %v", err), http.StatusBadRequest)
 		return
 	}
