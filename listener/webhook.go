@@ -232,7 +232,7 @@ func (k *WebHookListener) Uri() string {
 func (k WebHookListener) Listen(ctx context.Context) {
 	http.HandleFunc("/listener/alert/", k.basicAuth(k.httpHandler))
 	http.HandleFunc("/listener/ping/", k.pingHandler)
-	srv := &http.Server{Addr: k.ListenAddr}
+	srv := &http.Server{Addr: k.ListenAddr, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second}
 	idleConnsClosed := make(chan struct{})
 	go func() {
 		<-ctx.Done()
