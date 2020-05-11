@@ -21,7 +21,7 @@ const (
 	Status_CLEARED  = "cleared"
 )
 
-type WebHookAlertData struct {
+type WebHookAlert struct {
 	Id      string
 	Name    string
 	Details string
@@ -32,6 +32,10 @@ type WebHookAlertData struct {
 	Status  string
 	Source  string
 	Labels  map[string]interface{}
+}
+
+type WebHookAlertData struct {
+	Alerts []*WebHookAlert
 }
 
 type WebHookListener struct {
@@ -53,7 +57,7 @@ func NewWebHookListener() *WebHookListener {
 	}
 }
 
-func (k *WebHookListener) sanityCheck(d *WebHookAlertData) error {
+func (k *WebHookListener) sanityCheck(d *WebHookAlert) error {
 	// alert name should only contain alpha-numeric chars, spaces or underscores
 	reg, err := regexp.Compile("[^a-zA-Z0-9_\\s]+")
 	if err != nil {
@@ -66,7 +70,7 @@ func (k *WebHookListener) sanityCheck(d *WebHookAlertData) error {
 	return nil
 }
 
-func (k *WebHookListener) formatAlertEvent(d *WebHookAlertData, team string) (*models.AlertEvent, error) {
+func (k *WebHookListener) formatAlertEvent(d *WebHookAlert, team string) (*models.AlertEvent, error) {
 	if err := k.sanityCheck(d); err != nil {
 		return nil, err
 	}
@@ -197,15 +201,16 @@ func (k WebHookListener) httpHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	event, err := k.formatAlertEvent(data, team)
-	if err != nil {
-		glog.Error(err)
-		k.statRequestsError.Add(1)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	for _, alert := range data.Alerts {
+		event, err := k.formatAlertEvent(alert, team)
+		if err != nil {
+			glog.Error(err)
+			k.statRequestsError.Add(1)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ah.ListenChan <- event
 	}
-
-	ah.ListenChan <- event
 }
 
 func (k *WebHookListener) Name() string {

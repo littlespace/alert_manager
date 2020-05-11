@@ -3,9 +3,10 @@ package parsers
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/mayuresh82/alert_manager/listener"
-	"time"
 )
 
 type kapacitorData struct {
@@ -45,7 +46,7 @@ func (p *KapacitorParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 	if d.Level == "OK" {
 		status = listener.Status_CLEARED
 	}
-	r := &listener.WebHookAlertData{
+	r := &listener.WebHookAlert{
 		Name:    d.Id,
 		Details: details,
 		Time:    t,
@@ -74,7 +75,7 @@ func (p *KapacitorParser) Parse(data []byte) (*listener.WebHookAlertData, error)
 	if entity, ok := tagMap["entity"]; ok {
 		r.Entity = entity.(string)
 	}
-	return r, nil
+	return &listener.WebHookAlertData{Alerts: []*listener.WebHookAlert{r}}, nil
 }
 
 func init() {
